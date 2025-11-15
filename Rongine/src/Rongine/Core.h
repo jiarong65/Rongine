@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef RONG_PLATFROM_WINDOWS
+#ifdef RONG_PLATFORM_WINDOWS
 	#ifdef RONG_BUILD_DLL
 		#define RONG_API __declspec(dllexport)
 	#else
