@@ -1,7 +1,31 @@
-#Directories
+# Visual Studio
 .vs/
+*.user
+*.suo
+*.ipch
+*.VC.db
+*.VC.opendb
+
+# Build output
 bin/
 bin-int/
+*.obj
+*.o
+*.pch
+*.pdb
+*.idb
+*.ipdb
+*.iobj
+*.ilk
 
-#files
-*.user
+# Executables and libraries
+*.exe
+*.dll
+*.lib
+*.so
+*.dylib
+
+# Logs, caches, temp
+*.log
+*.tmp
+*.cache
