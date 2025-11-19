@@ -4,6 +4,12 @@
     <Filter Include="Rongine">
       <UniqueIdentifier>{B780D4B6-2360-5352-2C78-DE2898D6B9B3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Rongine\Core">
+      <UniqueIdentifier>{6FAFFD5D-5B12-8D02-0498-C5B8F0D95885}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rongine\Events">
+      <UniqueIdentifier>{BB5849D9-A726-3DDF-90BA-AD057C271944}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Rongine.h" />
@@ -13,12 +19,28 @@
     <ClInclude Include="src\Rongine\Core.h">
       <Filter>Rongine</Filter>
     </ClInclude>
+    <ClInclude Include="src\Rongine\Core\KeyCodes.h">
+      <Filter>Rongine\Core</Filter>
+    </ClInclude>
     <ClInclude Include="src\Rongine\EntryPoint.h">
       <Filter>Rongine</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\Events\ApplicationEvent.h">
+      <Filter>Rongine\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\Events\Event.h">
+      <Filter>Rongine\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\Events\KeyEvent.h">
+      <Filter>Rongine\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\Events\MouseEvent.h">
+      <Filter>Rongine\Events</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongine\Log.h">
       <Filter>Rongine</Filter>
     </ClInclude>
+    <ClInclude Include="src\Rongine\Core\MouseCodes.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Rongine\Application.cpp">

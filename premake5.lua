@@ -27,7 +27,9 @@ project "Rongine"
 	includedirs
 	{
 		"%{prj.name}/src",
-		"%{prj.name}/vendor/spdlog/include"
+		"%{prj.name}/vendor/spdlog/include",
+		"%{prj.name}/src/Rongine/Events",
+		"%{prj.name}/src/Rongine/Core"
 	}
 
 	filter "system:windows"
