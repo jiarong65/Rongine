@@ -22,6 +22,9 @@
     <ClInclude Include="src\Rongine\Core\KeyCodes.h">
       <Filter>Rongine\Core</Filter>
     </ClInclude>
+    <ClInclude Include="src\Rongine\Core\MouseCodes.h">
+      <Filter>Rongine\Core</Filter>
+    </ClInclude>
     <ClInclude Include="src\Rongine\EntryPoint.h">
       <Filter>Rongine</Filter>
     </ClInclude>
@@ -40,7 +43,7 @@
     <ClInclude Include="src\Rongine\Log.h">
       <Filter>Rongine</Filter>
     </ClInclude>
-    <ClInclude Include="src\Rongine\Core\MouseCodes.h" />
+    <ClInclude Include="src\Rongpch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Rongine\Application.cpp">
@@ -49,5 +52,6 @@
     <ClCompile Include="src\Rongine\Log.cpp">
       <Filter>Rongine</Filter>
     </ClCompile>
+    <ClCompile Include="src\Rongpch.cpp" />
   </ItemGroup>
 </Project>

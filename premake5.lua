@@ -18,6 +18,9 @@ project "Rongine"
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir("bin-int/" ..outputdir .. "%{prj.name}")
 
+	pchheader("Rongpch.h")
+	pchsource("Rongine/src/Rongpch.cpp")
+
 	files
 	{
 		"%{prj.name}/src/**.h",
@@ -69,6 +72,9 @@ project "Sandbox"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir("bin-int/" ..outputdir .. "%{prj.name}")
+
+	pchheader("Rongpch.h")
+	pchsource("Sandbox/src/Rongpch.cpp")
 
 	files
 	{

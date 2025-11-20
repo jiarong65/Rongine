@@ -7,3 +7,7 @@
 #include "Rongine/EntryPoint.h"
 
 #include "Rongine/Log.h"
+#include "Rongine/Events/Event.h"
+#include "Rongine/Events/ApplicationEvent.h"
+#include "Rongine/Events/KeyEvent.h"
+#include "Rongine/Events/MouseEvent.h"
