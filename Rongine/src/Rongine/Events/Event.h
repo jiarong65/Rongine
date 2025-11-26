@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Rongine/Core.h"
+
 namespace Rongine {
 	enum class EventType
 	{
@@ -32,7 +34,7 @@ namespace Rongine {
 	public:
 		virtual ~Event() = default;
 
-		bool Handled = false;
+		bool handled = false;
 		virtual EventType getEventType() const = 0;
 		virtual const char* getName() const = 0;
 		virtual int getCategoryFlags() const = 0;
@@ -57,9 +59,9 @@ namespace Rongine {
 		template<class T,class F>
 		bool dispatch(const F& func)
 		{
-			if (m_event.getEventType() == T::GetStaticType())
+			if (m_event.getEventType() == T::getStaticType())
 			{
-				m_event |= func(static_cast<T&>(m_event));
+				m_event.handled |= func(static_cast<T&>(m_event));
 				return true;
 			}
 			return false;

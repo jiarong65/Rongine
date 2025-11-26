@@ -10,13 +10,17 @@ workspace "Rongine"
 
 outputdir="%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
+includeDir={}
+includeDir["GLFW"]="Rongine/vendor/GLFW/include"
+include "Rongine/vendor/GLFW"
+
 project "Rongine"
 	location "Rongine"
 	kind "SharedLib"
 	language "C++"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-	objdir("bin-int/" ..outputdir .. "%{prj.name}")
+	objdir("bin-int/" ..outputdir .. "/%{prj.name}")
 
 	pchheader("Rongpch.h")
 	pchsource("Rongine/src/Rongpch.cpp")
@@ -32,7 +36,14 @@ project "Rongine"
 		"%{prj.name}/src",
 		"%{prj.name}/vendor/spdlog/include",
 		"%{prj.name}/src/Rongine/Events",
-		"%{prj.name}/src/Rongine/Core"
+		"%{prj.name}/src/Rongine/Core",
+		"%{includeDir.GLFW}"
+	}
+
+	links
+	{
+		"GLFW",
+		"opengl32.lib"
 	}
 
 	filter "system:windows"
@@ -54,6 +65,7 @@ project "Rongine"
 
 	filter "configurations:Debug"
 		defines "RONG_DEBUG"
+		defines "RONG_ENABLE_ASSERTS"
 		symbols "On"
 
 	filter "configurations:Release"

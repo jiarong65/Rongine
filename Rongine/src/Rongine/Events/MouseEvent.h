@@ -72,7 +72,7 @@ namespace Rongine {
 		std::string toString() const override
 		{
 			std::stringstream ss;
-			ss << "MouseScrolledEvent: " << m_mouseCode;
+			ss << "MouseButtonPressedEvent: " << m_mouseCode;
 			return ss.str();
 		}
 
@@ -89,7 +89,7 @@ namespace Rongine {
 		std::string toString() const override
 		{
 			std::stringstream ss;
-			ss << "MouseScrolledEvent: " << m_mouseCode;
+			ss << "MouseButtonReleasedEvent: " << m_mouseCode;
 			return ss.str();
 		}
 
