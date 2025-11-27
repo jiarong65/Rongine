@@ -6,6 +6,7 @@
 #include "Rongine/Events/ApplicationEvent.h"
 #include "Rongine/Events/KeyEvent.h"
 #include "Rongine/Events/MouseEvent.h"
+#include "Rongine/LayerStack.h"
 
 namespace Rongine {
 	class RONG_API  Application
@@ -16,12 +17,16 @@ namespace Rongine {
 		void run();
 
 		void onEvent(Event& event);
+
+		void pushLayer(Layer* layer);
+		void pushOverLayer(Layer* layer);
 	private:
 		bool onWindowResize(WindowResizeEvent& event);
 		bool onWindowClose(WindowCloseEvent& event);
 	private:
 		std::unique_ptr<Window> m_window;
 		bool m_running = true;
+		LayerStack m_layerStack;
 	};
 
 	Application* createApplication();

@@ -48,7 +48,7 @@ project "Rongine"
 
 	filter "system:windows"
 		cppdialect "C++17"
-		staticruntime "On"
+		staticruntime "Off"
 		systemversion "latest"
 		buildoptions { "/utf-8" }
 
@@ -66,14 +66,17 @@ project "Rongine"
 	filter "configurations:Debug"
 		defines "RONG_DEBUG"
 		defines "RONG_ENABLE_ASSERTS"
+		buildoptions "/MDd"
 		symbols "On"
 
 	filter "configurations:Release"
 		defines "RONG_RELEASE"
+		buildoptions "/MD"
 		optimize "On"
 
 	filter "configurations:Dist"
 		defines "RONG_DIST"
+		buildoptions "/MD"
 		optimize "On"
 
 project "Sandbox"
@@ -107,7 +110,7 @@ project "Sandbox"
 
 	filter "system:windows"
 		cppdialect "C++17"
-		staticruntime "On"
+		staticruntime "Off"
 		systemversion "10.0"
 
 		defines
@@ -117,14 +120,17 @@ project "Sandbox"
 
 	filter "configurations:Debug"
 		defines "RONG_DEBUG"
+		buildoptions "/MDd"
 		symbols "On"
 
 	filter "configurations:Release"
 		defines "RONG_RELEASE"
+		buildoptions "/MD"
 		optimize "On"
 
 	filter "configurations:Dist"
 		defines "RONG_DIST"
+		buildoptions "/MD"
 		optimize "On"
 
 

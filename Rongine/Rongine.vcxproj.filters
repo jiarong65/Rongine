@@ -49,6 +49,12 @@
     <ClInclude Include="src\Rongine\Events\MouseEvent.h">
       <Filter>Rongine\Events</Filter>
     </ClInclude>
+    <ClInclude Include="src\Rongine\Layer.h">
+      <Filter>Rongine</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\LayerStack.h">
+      <Filter>Rongine</Filter>
+    </ClInclude>
     <ClInclude Include="src\Rongine\Log.h">
       <Filter>Rongine</Filter>
     </ClInclude>
@@ -62,6 +68,12 @@
       <Filter>Platform\Windows</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongine\Application.cpp">
+      <Filter>Rongine</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Layer.cpp">
+      <Filter>Rongine</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\LayerStack.cpp">
       <Filter>Rongine</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongine\Log.cpp">
