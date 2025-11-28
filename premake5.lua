@@ -12,7 +12,9 @@ outputdir="%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 includeDir={}
 includeDir["GLFW"]="Rongine/vendor/GLFW/include"
+includeDir["Glad"]="Rongine/vendor/Glad/include"
 include "Rongine/vendor/GLFW"
+include "Rongine/vendor/Glad"
 
 project "Rongine"
 	location "Rongine"
@@ -37,12 +39,14 @@ project "Rongine"
 		"%{prj.name}/vendor/spdlog/include",
 		"%{prj.name}/src/Rongine/Events",
 		"%{prj.name}/src/Rongine/Core",
-		"%{includeDir.GLFW}"
+		"%{includeDir.GLFW}",
+		"%{includeDir.Glad}"
 	}
 
 	links
 	{
 		"GLFW",
+		"Glad",
 		"opengl32.lib"
 	}
 
@@ -55,7 +59,8 @@ project "Rongine"
 		defines
 		{
 			"RONG_PLATFORM_WINDOWS",
-			"RONG_BUILD_DLL"
+			"RONG_BUILD_DLL",
+			"GLFW_INCLUDE_NONE"
 		}
 
 		postbuildcommands

@@ -4,8 +4,7 @@
 #include "Rongine/Events/ApplicationEvent.h"
 #include "Rongine/Events/MouseEvent.h"
 #include "Rongine/Events/KeyEvent.h"
-
-#include <GLFW/glfw3.h>
+#include "Rongine/Log.h"
 
 namespace Rongine {
 
@@ -36,7 +35,8 @@ namespace Rongine {
 
         if (s_GLFWWindowCount == 0)
         {
-            glfwInit();
+            int success = glfwInit();
+            RONG_CORE_ASSERT(success, "Could not init glfw");
             glfwSetErrorCallback(GLFWErrorCallback);
         }
 
@@ -47,10 +47,14 @@ namespace Rongine {
             m_Data.Title.c_str(),
             nullptr, nullptr
         );
+        glfwMakeContextCurrent(m_window);
+        int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+        RONG_CORE_ASSERT(status, "Failed to initailize Glad");
+
         ++s_GLFWWindowCount;
 
         // 避免回调 nullptr crash
-        m_Data.eventCallBack = [](Event& e) {};
+        //m_Data.eventCallBack = [](Event& e) {};
 
         glfwSetWindowUserPointer(m_window, &m_Data);
         setVSync(true);
