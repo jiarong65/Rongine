@@ -4,3 +4,6 @@
 [submodule "Rongine/vendor/GLFW"]
 	path = Rongine/vendor/GLFW
 	url = https://github.com/TheCherno/glfw
+[submodule "Rongine/vendor/imgui"]
+	path = Rongine/vendor/imgui
+	url = https://github.com/TheCherno/imgui
