@@ -13,8 +13,10 @@ outputdir="%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 includeDir={}
 includeDir["GLFW"]="Rongine/vendor/GLFW/include"
 includeDir["Glad"]="Rongine/vendor/Glad/include"
+includeDir["ImGui"]="Rongine/vendor/imgui"
 include "Rongine/vendor/GLFW"
 include "Rongine/vendor/Glad"
+include "Rongine/vendor/imgui"
 
 project "Rongine"
 	location "Rongine"
@@ -40,14 +42,16 @@ project "Rongine"
 		"%{prj.name}/src/Rongine/Events",
 		"%{prj.name}/src/Rongine/Core",
 		"%{includeDir.GLFW}",
-		"%{includeDir.Glad}"
+		"%{includeDir.Glad}",
+		"%{includeDir.ImGui}"
 	}
 
 	links
 	{
 		"GLFW",
 		"Glad",
-		"opengl32.lib"
+		"opengl32.lib",
+		"ImGUi"
 	}
 
 	filter "system:windows"

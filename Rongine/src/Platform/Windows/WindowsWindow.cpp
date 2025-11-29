@@ -173,7 +173,8 @@ namespace Rongine {
     void WindowsWindow::onUpdate()
     {
         glfwPollEvents();
-        // m_Context->SwapBuffers(); // 你未来会加回 OpenGL context
+        glfwSwapBuffers(m_window);
+        //m_Context->SwapBuffers(); // 你未来会加回 OpenGL context
     }
 
     void WindowsWindow::setVSync(bool enabled)

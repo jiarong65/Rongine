@@ -23,7 +23,8 @@ public:
 class Sandbox :public Rongine::Application {
 public:
 	Sandbox() {
-		pushLayer(new ExampleLayer());
+		//pushLayer(new ExampleLayer());
+		pushOverLayer(new Rongine::ImGuiLayer());
 	}
 	~Sandbox() {
 
