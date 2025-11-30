@@ -10,6 +10,10 @@
 	#error RONGINE ONLY SUPPORT WINDOWS 
 #endif 
 
+#ifdef RONG_DEBUG
+	#define RONG_ENABLE_ASSERTS
+#endif 
+
 #ifdef RONG_ENABLE_ASSERTS
 	#define RONG_ASSERT(x, ...) { if(!(x)) { RONG_CLIENT_ERROR("Assertion Failed: {0}", __VA_ARGS__); __debugbreak(); } }
 	#define RONG_CORE_ASSERT(x, ...) { if(!(x)) { RONG_CORE_ERROR("Assertion Failed: {0}", __VA_ARGS__); __debugbreak(); } }

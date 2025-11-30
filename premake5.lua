@@ -1,5 +1,6 @@
 workspace "Rongine"
 	architecture "x64"
+	startproject "Sandbox"
 
 	configurations
 	{
@@ -69,23 +70,22 @@ project "Rongine"
 
 		postbuildcommands
 		{
-			 "{COPY} %{cfg.buildtarget.relpath} ../bin/" .. outputdir .. "/Sandbox"
+			"{COPY} \"%{cfg.buildtarget.relpath}\" \"../bin/" .. outputdir .. "/Sandbox/\""
 		}
 
 	filter "configurations:Debug"
 		defines "RONG_DEBUG"
-		defines "RONG_ENABLE_ASSERTS"
-		buildoptions "/MDd"
+		runtime "Debug"
 		symbols "On"
 
 	filter "configurations:Release"
 		defines "RONG_RELEASE"
-		buildoptions "/MD"
+		runtime "Release"
 		optimize "On"
 
 	filter "configurations:Dist"
 		defines "RONG_DIST"
-		buildoptions "/MD"
+		runtime "Release"
 		optimize "On"
 
 project "Sandbox"
@@ -129,17 +129,17 @@ project "Sandbox"
 
 	filter "configurations:Debug"
 		defines "RONG_DEBUG"
-		buildoptions "/MDd"
+		runtime "Debug"
 		symbols "On"
 
 	filter "configurations:Release"
 		defines "RONG_RELEASE"
-		buildoptions "/MD"
+		runtime "Release"
 		optimize "On"
 
 	filter "configurations:Dist"
 		defines "RONG_DIST"
-		buildoptions "/MD"
+		runtime "Release"
 		optimize "On"
 
 
