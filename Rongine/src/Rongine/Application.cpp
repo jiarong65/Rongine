@@ -3,6 +3,7 @@
 #include "ApplicationEvent.h"
 #include "Log.h"
 #include "Platform/Windows/WindowsWindow.h"
+#include "Platform/Windows/WindowsInput.h"
 
 namespace Rongine {
 	Application* Application::s_instance = nullptr;
@@ -54,6 +55,7 @@ namespace Rongine {
 
 			for (Layer* layer : m_layerStack)
 				layer->onUpdate();
+
 			m_window->onUpdate();
 		}
 	}

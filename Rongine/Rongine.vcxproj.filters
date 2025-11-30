@@ -74,6 +74,8 @@
       <Filter>Rongine</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongpch.h" />
+    <ClInclude Include="src\Rongine\Input.h" />
+    <ClInclude Include="src\Platform\Windows\WindowsInput.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Platform\OpenGL\ImGuiOpenGLRenderer.cpp">
@@ -101,5 +103,6 @@
       <Filter>Rongine</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongpch.cpp" />
+    <ClCompile Include="src\Platform\Windows\WindowsInput.cpp" />
   </ItemGroup>
 </Project>
