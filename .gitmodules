@@ -7,3 +7,6 @@
 [submodule "Rongine/vendor/imgui"]
 	path = Rongine/vendor/imgui
 	url = https://github.com/TheCherno/imgui
+[submodule "Rongine/vendor/glm"]
+	path = Rongine/vendor/glm
+	url = https://github.com/g-truc/glm

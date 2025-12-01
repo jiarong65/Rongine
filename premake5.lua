@@ -15,6 +15,7 @@ includeDir={}
 includeDir["GLFW"]="Rongine/vendor/GLFW/include"
 includeDir["Glad"]="Rongine/vendor/Glad/include"
 includeDir["ImGui"]="Rongine/vendor/imgui"
+includeDir["glm"]="Rongine/vendor/glm"
 include "Rongine/vendor/GLFW"
 include "Rongine/vendor/Glad"
 include "Rongine/vendor/imgui"
@@ -33,7 +34,9 @@ project "Rongine"
 	files
 	{
 		"%{prj.name}/src/**.h",
-		"%{prj.name}/src/**.cpp"
+		"%{prj.name}/src/**.cpp",
+		"%{prj.name}/vendor/glm/glm/**.hpp",
+		"%{prj.name}/vendor/glm/glm/**.inl"
 	}
 
 	includedirs
@@ -44,7 +47,8 @@ project "Rongine"
 		"%{prj.name}/src/Rongine/Core",
 		"%{includeDir.GLFW}",
 		"%{includeDir.Glad}",
-		"%{includeDir.ImGui}"
+		"%{includeDir.ImGui}",
+		"%{includeDir.glm}"
 	}
 
 	links
@@ -109,7 +113,8 @@ project "Sandbox"
 	includedirs
 	{
 		"Rongine/vendor/spdlog/include",
-		"Rongine/src"
+		"Rongine/src",
+		"%{includeDir.glm}"
 	}
 
 	links
