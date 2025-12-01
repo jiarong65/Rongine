@@ -4,6 +4,7 @@
 #include "Log.h"
 #include "Platform/Windows/WindowsWindow.h"
 #include "Platform/Windows/WindowsInput.h"
+#include "Input.h"
 
 namespace Rongine {
 	Application* Application::s_instance = nullptr;
