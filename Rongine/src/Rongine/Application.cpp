@@ -38,13 +38,11 @@ namespace Rongine {
 	void Application::pushLayer(Layer* layer)
 	{
 		m_layerStack.pushLayer(layer);
-		layer->onAttach();
 	}
 
 	void Application::pushOverLayer(Layer* layer)
 	{
 		m_layerStack.pushOverLayer(layer);
-		layer->onAttach();
 	}
 
 	void Application::run() {

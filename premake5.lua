@@ -22,8 +22,10 @@ include "Rongine/vendor/imgui"
 
 project "Rongine"
 	location "Rongine"
-	kind "SharedLib"
+	kind "StaticLib"
 	language "C++"
+	cppdialect "C++17"
+	staticruntime "on"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir("bin-int/" ..outputdir .. "/%{prj.name}")
@@ -37,6 +39,11 @@ project "Rongine"
 		"%{prj.name}/src/**.cpp",
 		"%{prj.name}/vendor/glm/glm/**.hpp",
 		"%{prj.name}/vendor/glm/glm/**.inl"
+	}
+
+	defines
+	{
+		"_CRT_SECURE_NO_WARNINGS"
 	}
 
 	includedirs
@@ -60,8 +67,6 @@ project "Rongine"
 	}
 
 	filter "system:windows"
-		cppdialect "C++17"
-		staticruntime "Off"
 		systemversion "latest"
 		buildoptions { "/utf-8" }
 
@@ -72,30 +77,27 @@ project "Rongine"
 			"GLFW_INCLUDE_NONE"
 		}
 
-		postbuildcommands
-		{
-			"{COPY} \"%{cfg.buildtarget.relpath}\" \"../bin/" .. outputdir .. "/Sandbox/\""
-		}
-
 	filter "configurations:Debug"
 		defines "RONG_DEBUG"
 		runtime "Debug"
-		symbols "On"
+		symbols "on"
 
 	filter "configurations:Release"
 		defines "RONG_RELEASE"
 		runtime "Release"
-		optimize "On"
+		optimize "on"
 
 	filter "configurations:Dist"
 		defines "RONG_DIST"
 		runtime "Release"
-		optimize "On"
+		optimize "on"
 
 project "Sandbox"
 	location "Sandbox"
 	kind "ConsoleApp"
 	language "C++"
+	cppdialect "C++17"
+	staticruntime "on"
 	buildoptions "/utf-8"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
@@ -124,9 +126,7 @@ project "Sandbox"
 	}
 
 	filter "system:windows"
-		cppdialect "C++17"
-		staticruntime "Off"
-		systemversion "10.0"
+		systemversion "latest"
 
 		defines
 		{
@@ -136,17 +136,17 @@ project "Sandbox"
 	filter "configurations:Debug"
 		defines "RONG_DEBUG"
 		runtime "Debug"
-		symbols "On"
+		symbols "on"
 
 	filter "configurations:Release"
 		defines "RONG_RELEASE"
 		runtime "Release"
-		optimize "On"
+		optimize "on"
 
 	filter "configurations:Dist"
 		defines "RONG_DIST"
 		runtime "Release"
-		optimize "On"
+		optimize "on"
 
 
 

@@ -1,11 +1,15 @@
 #pragma once
 
 #ifdef RONG_PLATFORM_WINDOWS
+#if RONG_DYNAMIC_LINK
 	#ifdef RONG_BUILD_DLL
 		#define RONG_API __declspec(dllexport)
 	#else
 		#define RONG_API __declspec(dllimport)
 	#endif
+#else
+	#define RONG_API
+#endif
 #else
 	#error RONGINE ONLY SUPPORT WINDOWS 
 #endif 

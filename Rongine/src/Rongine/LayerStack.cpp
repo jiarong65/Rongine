@@ -16,11 +16,13 @@ namespace Rongine {
 	{
 		m_layers.emplace(m_layers.begin()+m_layerInsertIndex, layer);
 		m_layerInsertIndex++;
+		layer->onAttach();
 	}
 
 	void LayerStack::pushOverLayer(Layer* layer)
 	{
 		m_layers.emplace_back(layer);
+		layer->onAttach();
 	}
 
 	void LayerStack::popLayer(Layer* layer)
