@@ -1379,6 +1379,9 @@
     <ClCompile Include="src\Rongine\Application.cpp">
       <Filter>src\Rongine</Filter>
     </ClCompile>
+    <ClCompile Include="src\Rongine\ImGui\ImGuiBuild.cpp">
+      <Filter>src\Rongine\ImGui</Filter>
+    </ClCompile>
     <ClCompile Include="src\Rongine\ImGui\ImGuiLaeyr.cpp">
       <Filter>src\Rongine\ImGui</Filter>
     </ClCompile>

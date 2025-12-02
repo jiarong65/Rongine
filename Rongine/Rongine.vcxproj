@@ -155,7 +155,6 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\Platform\OpenGL\ImGuiOpenGLRenderer.h" />
     <ClInclude Include="src\Platform\Windows\WindowsInput.h" />
     <ClInclude Include="src\Platform\Windows\WindowsWindow.h" />
     <ClInclude Include="src\Rongine.h" />
@@ -168,7 +167,7 @@
     <ClInclude Include="src\Rongine\Events\Event.h" />
     <ClInclude Include="src\Rongine\Events\KeyEvent.h" />
     <ClInclude Include="src\Rongine\Events\MouseEvent.h" />
-    <ClInclude Include="src\Rongine\ImGui\ImGuiLaeyr.h" />
+    <ClInclude Include="src\Rongine\ImGui\ImGuiLayer.h" />
     <ClInclude Include="src\Rongine\Input.h" />
     <ClInclude Include="src\Rongine\Layer.h" />
     <ClInclude Include="src\Rongine\LayerStack.h" />
@@ -596,11 +595,11 @@
     <ClInclude Include="vendor\glm\glm\vector_relational.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Platform\OpenGL\ImGuiOpenGLRenderer.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsInput.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp" />
     <ClCompile Include="src\Rongine\Application.cpp" />
-    <ClCompile Include="src\Rongine\ImGui\ImGuiLaeyr.cpp" />
+    <ClCompile Include="src\Rongine\ImGui\ImGuiBuild.cpp" />
+    <ClCompile Include="src\Rongine\ImGui\ImGuiLayer.cpp" />
     <ClCompile Include="src\Rongine\Layer.cpp" />
     <ClCompile Include="src\Rongine\LayerStack.cpp" />
     <ClCompile Include="src\Rongine\Log.cpp" />

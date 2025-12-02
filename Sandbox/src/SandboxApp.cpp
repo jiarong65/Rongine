@@ -5,6 +5,8 @@
 #include <glm/vec4.hpp> // glm::vec4
 #include <glm/mat4x4.hpp> // glm::mat4
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale, glm::perspective
+
+#include "imgui/imgui.h"
 glm::mat4 camera(float Translate, glm::vec2 const& Rotate)
 {
 	glm::mat4 Projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.f);
@@ -44,13 +46,20 @@ public:
 			}
 		}
 	}
+
+	void onImGuiRender()
+	{
+		ImGui::Begin("test");
+		ImGui::Text("hello world!!");
+		ImGui::End();
+	}
 };
 
 class Sandbox :public Rongine::Application {
 public:
 	Sandbox() {
 		pushLayer(new ExampleLayer());
-		//pushOverLayer(new Rongine::ImGuiLayer());
+		pushOverLayer(new Rongine::ImGuiLayer());
 	}
 	~Sandbox() {
 

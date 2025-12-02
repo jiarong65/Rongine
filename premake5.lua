@@ -114,7 +114,8 @@ project "Sandbox"
 	{
 		"Rongine/vendor/spdlog/include",
 		"Rongine/src",
-		"%{includeDir.glm}"
+		"%{includeDir.glm}",
+		"Rongine/vendor"
 	}
 
 	links

@@ -7,6 +7,7 @@
 #include "Rongine/Events/KeyEvent.h"
 #include "Rongine/Events/MouseEvent.h"
 #include "Rongine/LayerStack.h"
+#include "Rongine/ImGui/ImGuiLayer.h"
 
 namespace Rongine {
 	class RONG_API  Application
@@ -32,6 +33,7 @@ namespace Rongine {
 		std::unique_ptr<Window> m_window;
 		bool m_running = true;
 		LayerStack m_layerStack;
+		ImGuiLayer* m_imguiLayer;
 	};
 
 	Application* createApplication();
