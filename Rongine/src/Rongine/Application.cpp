@@ -15,6 +15,29 @@ namespace Rongine {
 		m_window = std::unique_ptr<Window> (Window::create());
 		m_window->setEventCallBack(RONG_BIND_EVENT_FN(onEvent));
 		m_imguiLayer = new ImGuiLayer();
+
+		glGenVertexArrays(1, &m_vertexArray);
+		glBindVertexArray(m_vertexArray);
+
+		glGenBuffers(1, &m_vertexBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER,m_vertexBuffer);
+
+		float vertex[3 * 3] = {
+			-0.5f, -0.5f, 0.0f,
+			 0.5f, -0.5f, 0.0f,
+			 0.0f,  0.5f, 0.0f
+		};
+
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertex), vertex, GL_STATIC_DRAW);
+
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float), nullptr);
+
+		glGenBuffers(1, &m_indexBuffer);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indexBuffer);
+
+		unsigned int indices[3] = { 0,1,2 };
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices),indices,GL_STATIC_DRAW);
 	}
 
 	Application::~Application() {
@@ -52,6 +75,9 @@ namespace Rongine {
 		while (m_running) {
 			glClearColor(0.2f,0.2f,0.2f,0.8f);
 			glClear(GL_COLOR_BUFFER_BIT);
+
+			glBindVertexArray(m_vertexArray);
+			glDrawElements(GL_TRIANGLES,3,GL_UNSIGNED_INT,nullptr);
 
 			for (Layer* layer : m_layerStack)
 				layer->onUpdate();

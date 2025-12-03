@@ -34,6 +34,7 @@ namespace Rongine {
 		bool m_running = true;
 		LayerStack m_layerStack;
 		ImGuiLayer* m_imguiLayer;
+		unsigned int m_vertexArray, m_vertexBuffer, m_indexBuffer;
 	};
 
 	Application* createApplication();

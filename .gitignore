@@ -29,3 +29,5 @@ bin-int/
 *.log
 *.tmp
 *.cache
+
+Rongine/vendor/imgui/imgui.ini
