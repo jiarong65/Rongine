@@ -5,6 +5,7 @@
 #include "Rongine/Events/MouseEvent.h"
 #include "Rongine/Events/KeyEvent.h"
 #include "Rongine/Log.h"
+#include "Platform/OpenGL/OpenGLContext.h"
 
 namespace Rongine {
 
@@ -47,9 +48,9 @@ namespace Rongine {
             m_Data.Title.c_str(),
             nullptr, nullptr
         );
-        glfwMakeContextCurrent(m_window);
-        int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-        RONG_CORE_ASSERT(status, "Failed to initailize Glad");
+        
+        m_context = new OpenGLContext(m_window);
+		m_context->init();
 
         ++s_GLFWWindowCount;
 
@@ -173,8 +174,7 @@ namespace Rongine {
     void WindowsWindow::onUpdate()
     {
         glfwPollEvents();
-        glfwSwapBuffers(m_window);
-        //m_Context->SwapBuffers(); // 你未来会加回 OpenGL context
+        m_context->swapBuffers(); 
     }
 
     void WindowsWindow::setVSync(bool enabled)

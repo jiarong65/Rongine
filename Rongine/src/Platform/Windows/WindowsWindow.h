@@ -3,6 +3,7 @@
 #include "Rongine/Window.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include "Rongine/Renderer/GraphicsContext.h"
 
 namespace Rongine {
 
@@ -26,6 +27,7 @@ namespace Rongine {
 	private:
 		virtual void Init(const WindowProps& props);
 		virtual void Shutdown();
+
 	private:
 		GLFWwindow* m_window;
 		//Scope<GraphicsContext> m_Context;
@@ -40,6 +42,7 @@ namespace Rongine {
 		};
 
 		WindowData m_Data;
+		GraphicsContext* m_context;
 	};
 
 }

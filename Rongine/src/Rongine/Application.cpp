@@ -50,7 +50,7 @@ namespace Rongine {
 		RONG_CLIENT_TRACE( e.toString());
 
 		while (m_running) {
-			glClearColor(1,0,1,1);
+			glClearColor(0.2f,0.2f,0.2f,0.8f);
 			glClear(GL_COLOR_BUFFER_BIT);
 
 			for (Layer* layer : m_layerStack)
