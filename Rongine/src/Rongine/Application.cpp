@@ -9,26 +9,6 @@
 namespace Rongine {
 	Application* Application::s_instance = nullptr;
 
-	static GLenum shaderDateTypetoOpenGLBaseType(const Rongine::ShaderDataType& type)
-	{
-		switch (type)
-		{
-		case ShaderDataType::Float: 
-		case ShaderDataType::Float2:
-		case ShaderDataType::Float3:
-		case ShaderDataType::Float4: 
-		case ShaderDataType::Mat3: 
-		case ShaderDataType::Mat4: return GL_FLOAT;
-		case ShaderDataType::Int: 
-		case ShaderDataType::Int2: 
-		case ShaderDataType::Int3: 
-		case ShaderDataType::Int4: return GL_INT;
-		case ShaderDataType::Bool: return GL_BOOL;
-		}
-		RONG_CORE_ASSERT(false, "Unknown ShaderDataType!");
-		return 0;
-	}
-
 	Application::Application() {
 		RONG_CORE_ASSERT(!s_instance, "Application already exists!");
 		s_instance = this;
@@ -36,8 +16,7 @@ namespace Rongine {
 		m_window->setEventCallBack(RONG_BIND_EVENT_FN(onEvent));
 		m_imguiLayer = new ImGuiLayer();
 
-		glGenVertexArrays(1, &m_vertexArray);
-		glBindVertexArray(m_vertexArray);
+		m_vertexArray.reset(VertexArray::create());
 
 		float vertex[3 * 7] = {
 			-0.5f, -0.5f, 0.0f,0.0f,0.0f,1.0f,1.0f,
@@ -45,34 +24,49 @@ namespace Rongine {
 			 0.0f,  0.5f, 0.0f,1.0f,0.0f,1.0f,1.0f
 		};
 
-		m_vertexBuffer.reset(VertexBuffer::create(vertex, sizeof(vertex)));
-
-		/*glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), nullptr);*/
+		std::shared_ptr<VertexBuffer> vertexBuffer;
+		vertexBuffer.reset(VertexBuffer::create(vertex,sizeof(vertex)));
 
 		BufferLayout layout={
 			{ShaderDataType::Float3,"a_Positon"},
 			{ShaderDataType::Float4,"a_Color"}
 		};
-
-		uint32_t index = 0;
-		m_vertexBuffer->setLayout(layout);
-		for (const auto& element : m_vertexBuffer->getLayout())
-		{
-			glEnableVertexAttribArray(index);
-			glVertexAttribPointer(
-				index,
-				element.getComponentCount(),
-				shaderDateTypetoOpenGLBaseType(element.type),
-				element.normalized?GL_TRUE:GL_FALSE,
-				m_vertexBuffer->getLayout().getStride(),
-				(void *)element.offset
-			);
-			index++;
-		}
+		vertexBuffer->setLayout(layout);
+		m_vertexArray->addVertexBuffer(vertexBuffer);
+		
 
 		uint32_t indices[3] = { 0,1,2 };
-		m_indexBuffer.reset(IndexBuffer::create(indices, sizeof(indices) / sizeof(uint32_t)));
+
+		std::shared_ptr<IndexBuffer> indexBuffer;
+		indexBuffer.reset(IndexBuffer::create(indices, sizeof(indices)/sizeof(uint32_t)));
+		m_vertexArray->setIndexBuffer(indexBuffer);
+
+		//////////////////////////////start
+		m_squareVA.reset(VertexArray::create());
+
+		float squareVertices[3 * 4] = {
+			-0.75f, -0.75f, 0.0f,
+			 0.75f, -0.75f, 0.0f,
+			 0.75f,  0.75f, 0.0f,
+			-0.75f,  0.75f, 0.0f
+		};
+
+		std::shared_ptr<VertexBuffer> squareVB;
+		squareVB.reset(VertexBuffer::create(squareVertices, sizeof(squareVertices)));
+
+		squareVB->setLayout({
+			{ ShaderDataType::Float3, "a_Position" }
+			});
+		m_squareVA->addVertexBuffer(squareVB);
+
+
+		uint32_t squareIndices[6] = { 0, 1, 2, 2, 3, 0 };
+
+		std::shared_ptr<IndexBuffer> squareIB;
+		squareIB.reset(IndexBuffer::create(squareIndices, sizeof(squareIndices) / sizeof(uint32_t)));
+		m_squareVA->setIndexBuffer(squareIB);
+
+		//////////////////////////////////end
 
 		std::string vertexSrc = R"(
 			#version 330 core
@@ -106,6 +100,37 @@ namespace Rongine {
 		)";
 
 		m_shader.reset(new Shader(vertexSrc, fragmentSrc));
+
+		/////////////////////////////////start
+		std::string blueShaderVertexSrc = R"(
+			#version 330 core
+			
+			layout(location = 0) in vec3 a_Position;
+
+			out vec3 v_Position;
+
+			void main()
+			{
+				v_Position = a_Position;
+				gl_Position = vec4(a_Position, 1.0);	
+			}
+		)";
+
+		std::string blueShaderFragmentSrc = R"(
+			#version 330 core
+			
+			layout(location = 0) out vec4 color;
+
+			in vec3 v_Position;
+
+			void main()
+			{
+				color = vec4(0.2, 0.3, 0.8, 1.0);
+			}
+		)";
+
+		m_blueShader.reset(new Shader(blueShaderVertexSrc, blueShaderFragmentSrc));
+		/////////////////////////////////end
 	}
 
 	Application::~Application() {
@@ -144,10 +169,15 @@ namespace Rongine {
 			glClearColor(0.2f,0.2f,0.2f,0.8f);
 			glClear(GL_COLOR_BUFFER_BIT);
 
-			m_shader->bind();
+			//////////////////start
+			m_blueShader->bind();
+			m_squareVA->bind();
+			glDrawElements(GL_TRIANGLES, m_squareVA->getIndexBuffer()->getCount(), GL_UNSIGNED_INT, nullptr);
+			//////////////////end
 
-			glBindVertexArray(m_vertexArray);
-			glDrawElements(GL_TRIANGLES,m_indexBuffer->getCount(),GL_UNSIGNED_INT,nullptr);
+			m_shader->bind();
+			m_vertexArray->bind();
+			glDrawElements(GL_TRIANGLES,m_vertexArray->getIndexBuffer()->getCount(), GL_UNSIGNED_INT, nullptr);
 
 			for (Layer* layer : m_layerStack)
 				layer->onUpdate();

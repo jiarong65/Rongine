@@ -10,6 +10,7 @@
 #include "Rongine/ImGui/ImGuiLayer.h"
 #include "Rongine/Renderer/Shader.h"
 #include "Rongine/Renderer/Buffer.h"
+#include "Rongine/Renderer/VertexArray.h"
 
 namespace Rongine {
 	class RONG_API  Application
@@ -33,13 +34,14 @@ namespace Rongine {
 	private:
 		static Application* s_instance;
 		std::unique_ptr<Window> m_window;
-		std::unique_ptr<Shader> m_shader;
-		std::unique_ptr<VertexBuffer> m_vertexBuffer;
-		std::unique_ptr<IndexBuffer> m_indexBuffer;
+		std::shared_ptr<Shader> m_shader;
+		std::shared_ptr<VertexArray> m_vertexArray;
 		bool m_running = true;
 		LayerStack m_layerStack;
 		ImGuiLayer* m_imguiLayer;
-		unsigned int m_vertexArray;
+
+		std::shared_ptr<Shader> m_blueShader;
+		std::shared_ptr<VertexArray> m_squareVA;
 	};
 
 	Application* createApplication();

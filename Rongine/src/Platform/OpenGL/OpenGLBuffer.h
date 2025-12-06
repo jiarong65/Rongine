@@ -11,7 +11,7 @@ namespace Rongine {
 		virtual void bind() const override;
 		virtual void unbind() const override;
 		virtual const BufferLayout& getLayout()const override { return m_layout; }
-		virtual void setLayout(BufferLayout& layout) override { m_layout = layout; }
+		virtual void setLayout(const BufferLayout& layout) override { m_layout = layout; }
 	private:
 		uint32_t m_rendererID;
 		BufferLayout m_layout;
