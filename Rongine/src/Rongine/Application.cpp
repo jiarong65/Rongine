@@ -62,7 +62,7 @@ namespace Rongine {
 
 			void main()
 			{
-				color = vec4(v_Position * 0.5 + 0.5, 1.0);
+				color = vec4((v_Position +1)/2, 1.0);
 			}
 		)";
 
