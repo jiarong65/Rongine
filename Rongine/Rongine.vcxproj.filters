@@ -1362,6 +1362,9 @@
     <ClInclude Include="src\Rongine\Renderer\GraphicsContext.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLContext.h" />
     <ClInclude Include="src\Rongine\Renderer\Shader.h" />
+    <ClInclude Include="src\Rongine\Renderer\Renderer.h" />
+    <ClInclude Include="src\Rongine\Renderer\Buffer.h" />
+    <ClInclude Include="src\Platform\OpenGL\OpenGLBuffer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Platform\Windows\WindowsInput.cpp">
@@ -1396,5 +1399,8 @@
     </ClCompile>
     <ClCompile Include="src\Platform\OpenGL\OpenGLContext.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Shader.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\Renderer.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\Buffer.cpp" />
+    <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp" />
   </ItemGroup>
 </Project>
