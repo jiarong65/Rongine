@@ -1,18 +1,19 @@
 #pragma once
+#include "Rongine/Renderer/RendererAPI.h"
+#include "Rongine/Renderer/RenderCommand.h"
 
 namespace Rongine {
 
-	enum class RendererAPI
-	{
-		None = 0, OpenGL = 1
-	};
 
 	class Renderer
 	{
 	public:
-		inline static RendererAPI getAPI() { return s_rendererAPI; }
-	private:
-		static RendererAPI s_rendererAPI;
+		static void beginScene();
+		static void endScene();
+
+		static void submit(const std::shared_ptr<VertexArray>& vertexArray);
+
+		inline static RendererAPI::API getAPI() { return RendererAPI::getAPI(); }	
 	};
 
 }

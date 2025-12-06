@@ -5,6 +5,7 @@
 #include "Platform/Windows/WindowsWindow.h"
 #include "Platform/Windows/WindowsInput.h"
 #include "Input.h"
+#include "Rongine/Renderer/Renderer.h"
 
 namespace Rongine {
 	Application* Application::s_instance = nullptr;
@@ -166,18 +167,23 @@ namespace Rongine {
 		RONG_CLIENT_TRACE( e.toString());
 
 		while (m_running) {
-			glClearColor(0.2f,0.2f,0.2f,0.8f);
-			glClear(GL_COLOR_BUFFER_BIT);
+			RenderCommand::setColor({ 0.1f, 0.1f, 0.1f, 1 });
+			RenderCommand::clear();
+
+			Renderer::beginScene();
 
 			//////////////////start
 			m_blueShader->bind();
-			m_squareVA->bind();
-			glDrawElements(GL_TRIANGLES, m_squareVA->getIndexBuffer()->getCount(), GL_UNSIGNED_INT, nullptr);
+			/*m_squareVA->bind();
+			glDrawElements(GL_TRIANGLES, m_squareVA->getIndexBuffer()->getCount(), GL_UNSIGNED_INT, nullptr);*/
+
+			Renderer::submit(m_squareVA);
 			//////////////////end
 
 			m_shader->bind();
-			m_vertexArray->bind();
-			glDrawElements(GL_TRIANGLES,m_vertexArray->getIndexBuffer()->getCount(), GL_UNSIGNED_INT, nullptr);
+			Renderer::submit(m_vertexArray);
+
+			Renderer::endScene();
 
 			for (Layer* layer : m_layerStack)
 				layer->onUpdate();
