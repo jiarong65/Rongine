@@ -9,6 +9,26 @@
 namespace Rongine {
 	Application* Application::s_instance = nullptr;
 
+	static GLenum shaderDateTypetoOpenGLBaseType(const Rongine::ShaderDataType& type)
+	{
+		switch (type)
+		{
+		case ShaderDataType::Float: 
+		case ShaderDataType::Float2:
+		case ShaderDataType::Float3:
+		case ShaderDataType::Float4: 
+		case ShaderDataType::Mat3: 
+		case ShaderDataType::Mat4: return GL_FLOAT;
+		case ShaderDataType::Int: 
+		case ShaderDataType::Int2: 
+		case ShaderDataType::Int3: 
+		case ShaderDataType::Int4: return GL_INT;
+		case ShaderDataType::Bool: return GL_BOOL;
+		}
+		RONG_CORE_ASSERT(false, "Unknown ShaderDataType!");
+		return 0;
+	}
+
 	Application::Application() {
 		RONG_CORE_ASSERT(!s_instance, "Application already exists!");
 		s_instance = this;
@@ -19,16 +39,37 @@ namespace Rongine {
 		glGenVertexArrays(1, &m_vertexArray);
 		glBindVertexArray(m_vertexArray);
 
-		float vertex[3 * 3] = {
-			-0.5f, -0.5f, 0.0f,
-			 0.5f, -0.5f, 0.0f,
-			 0.0f,  0.5f, 0.0f
+		float vertex[3 * 7] = {
+			-0.5f, -0.5f, 0.0f,0.0f,0.0f,1.0f,1.0f,
+			 0.5f, -0.5f, 0.0f,0.0f,1.0f,0.0f,1.0f,
+			 0.0f,  0.5f, 0.0f,1.0f,0.0f,1.0f,1.0f
 		};
 
 		m_vertexBuffer.reset(VertexBuffer::create(vertex, sizeof(vertex)));
 
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), nullptr);
+		/*glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), nullptr);*/
+
+		BufferLayout layout={
+			{ShaderDataType::Float3,"a_Positon"},
+			{ShaderDataType::Float4,"a_Color"}
+		};
+
+		uint32_t index = 0;
+		m_vertexBuffer->setLayout(layout);
+		for (const auto& element : m_vertexBuffer->getLayout())
+		{
+			glEnableVertexAttribArray(index);
+			glVertexAttribPointer(
+				index,
+				element.getComponentCount(),
+				shaderDateTypetoOpenGLBaseType(element.type),
+				element.normalized?GL_TRUE:GL_FALSE,
+				m_vertexBuffer->getLayout().getStride(),
+				(void *)element.offset
+			);
+			index++;
+		}
 
 		uint32_t indices[3] = { 0,1,2 };
 		m_indexBuffer.reset(IndexBuffer::create(indices, sizeof(indices) / sizeof(uint32_t)));
@@ -37,12 +78,15 @@ namespace Rongine {
 			#version 330 core
 			
 			layout(location = 0) in vec3 a_Position;
+			layout(location = 1) in vec4 a_Color;
 
 			out vec3 v_Position;
+			out vec4 v_Color;
 
 			void main()
 			{
 				v_Position = a_Position;
+				v_Color=a_Color;
 				gl_Position = vec4(a_Position, 1.0);	
 			}
 		)";
@@ -53,10 +97,11 @@ namespace Rongine {
 			layout(location = 0) out vec4 color;
 
 			in vec3 v_Position;
+			in vec4 v_Color;
 
 			void main()
 			{
-				color = vec4((v_Position +1)/2, 1.0);
+				color = v_Color;
 			}
 		)";
 
