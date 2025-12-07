@@ -11,6 +11,7 @@
 #include "Rongine/Renderer/Shader.h"
 #include "Rongine/Renderer/Buffer.h"
 #include "Rongine/Renderer/VertexArray.h"
+#include "Rongine/Renderer/OrthographicCamera.h"
 
 namespace Rongine {
 	class RONG_API  Application
@@ -42,6 +43,8 @@ namespace Rongine {
 
 		std::shared_ptr<Shader> m_blueShader;
 		std::shared_ptr<VertexArray> m_squareVA;
+
+		OrthographicCamera m_camera;
 	};
 
 	Application* createApplication();

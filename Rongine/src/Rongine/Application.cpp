@@ -10,7 +10,9 @@
 namespace Rongine {
 	Application* Application::s_instance = nullptr;
 
-	Application::Application() {
+	Application::Application() 
+		:m_camera(-1.6f,1.6f,-0.9f,0.9f)
+	{
 		RONG_CORE_ASSERT(!s_instance, "Application already exists!");
 		s_instance = this;
 		m_window = std::unique_ptr<Window> (Window::create());
@@ -75,6 +77,8 @@ namespace Rongine {
 			layout(location = 0) in vec3 a_Position;
 			layout(location = 1) in vec4 a_Color;
 
+			uniform mat4 u_ViewProjection;
+
 			out vec3 v_Position;
 			out vec4 v_Color;
 
@@ -82,7 +86,7 @@ namespace Rongine {
 			{
 				v_Position = a_Position;
 				v_Color=a_Color;
-				gl_Position = vec4(a_Position, 1.0);	
+				gl_Position = u_ViewProjection*vec4(a_Position,1.0f);	
 			}
 		)";
 
@@ -108,12 +112,14 @@ namespace Rongine {
 			
 			layout(location = 0) in vec3 a_Position;
 
+			uniform mat4 u_ViewProjection;
+
 			out vec3 v_Position;
 
 			void main()
 			{
 				v_Position = a_Position;
-				gl_Position = vec4(a_Position, 1.0);	
+				gl_Position = u_ViewProjection*vec4(a_Position,1.0f);	
 			}
 		)";
 
@@ -170,18 +176,17 @@ namespace Rongine {
 			RenderCommand::setColor({ 0.1f, 0.1f, 0.1f, 1 });
 			RenderCommand::clear();
 
-			Renderer::beginScene();
+			m_camera.setRotation(45.0f);
+			m_camera.setPosition({ -0.5f,-0.5f,0.0f });
+			//m_camera.setRotation(45.0f);
+
+			Renderer::beginScene(m_camera);
 
 			//////////////////start
-			m_blueShader->bind();
-			/*m_squareVA->bind();
-			glDrawElements(GL_TRIANGLES, m_squareVA->getIndexBuffer()->getCount(), GL_UNSIGNED_INT, nullptr);*/
-
-			Renderer::submit(m_squareVA);
+			Renderer::submit(m_blueShader,m_squareVA);
 			//////////////////end
 
-			m_shader->bind();
-			Renderer::submit(m_vertexArray);
+			Renderer::submit(m_shader,m_vertexArray);
 
 			Renderer::endScene();
 
