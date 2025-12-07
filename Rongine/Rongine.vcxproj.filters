@@ -1371,6 +1371,7 @@
     <ClInclude Include="src\Platform\OpenGL\OpenGLVertexArray.h" />
     <ClInclude Include="src\Rongine\Renderer\VertexArray.h" />
     <ClInclude Include="src\Rongine\Renderer\OrthographicCamera.h" />
+    <ClInclude Include="src\Rongine\Core\Timestep.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Platform\Windows\WindowsInput.cpp">

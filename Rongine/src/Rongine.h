@@ -6,6 +6,8 @@
 //入口点
 #include "Rongine/EntryPoint.h"
 
+#include "Rongine/Core/Timestep.h"
+
 #include "Rongine/Log.h"
 #include "Rongine/Events/Event.h"
 #include "Rongine/Events/ApplicationEvent.h"

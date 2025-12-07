@@ -12,6 +12,7 @@
 #include "Rongine/Renderer/Buffer.h"
 #include "Rongine/Renderer/VertexArray.h"
 #include "Rongine/Renderer/OrthographicCamera.h"
+#include "Rongine/Core/Timestep.h"
 
 namespace Rongine {
 	class RONG_API  Application
@@ -39,6 +40,8 @@ namespace Rongine {
 		bool m_running = true;
 		LayerStack m_layerStack;
 		ImGuiLayer* m_imguiLayer;
+
+		float m_lastFrameTime = 0.0f;
 	};
 
 	Application* createApplication();

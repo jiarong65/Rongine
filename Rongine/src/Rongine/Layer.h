@@ -2,7 +2,7 @@
 
 #include "Rongine/Events/Event.h"
 #include "Rongine/Core.h"
-#include <string>
+#include "Rongine/Core/Timestep.h"
 
 namespace Rongine {
 
@@ -14,7 +14,7 @@ namespace Rongine {
 
 		virtual void onAttach() {};
 		virtual void onDetach() {};
-		virtual void onUpdate() {};
+		virtual void onUpdate(Timestep ts) {};
 		virtual void onImguiRender() {};
 		virtual void onImGuiRender() {};
 		virtual void onEvent(Event& event) {};

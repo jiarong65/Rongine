@@ -135,21 +135,23 @@ public:
 		/////////////////////////////////end
 	}
 
-	void onUpdate() override
+	void onUpdate(Rongine::Timestep ts) override
 	{
+		RONG_CLIENT_TRACE("Timestep is {0} ms", ts.getMilliseconds());
+
 		if (Rongine::Input::isKeyPressed(Rongine::Key::Left))
-			m_cameraPosition.x -= m_cameraMoveSpeed;
+			m_cameraPosition.x -= m_cameraMoveSpeed * ts;
 		else if (Rongine::Input::isKeyPressed(Rongine::Key::Right))
-			m_cameraPosition.x += m_cameraMoveSpeed;
+			m_cameraPosition.x += m_cameraMoveSpeed * ts;
 		if (Rongine::Input::isKeyPressed(Rongine::Key::Up))
-			m_cameraPosition.y += m_cameraMoveSpeed;
+			m_cameraPosition.y += m_cameraMoveSpeed * ts;
 		else if(Rongine::Input::isKeyPressed(Rongine::Key::Down))
-			m_cameraPosition.y -= m_cameraMoveSpeed;
+			m_cameraPosition.y -= m_cameraMoveSpeed * ts;
 
 		if(Rongine::Input::isKeyPressed(Rongine::Key::A))
-			m_cameraRotation -= m_cameraRotationSpeed;
+			m_cameraRotation -= m_cameraRotationSpeed * ts;
 		else if(Rongine::Input::isKeyPressed(Rongine::Key::D))
-			m_cameraRotation += m_cameraRotationSpeed;
+			m_cameraRotation += m_cameraRotationSpeed * ts;
 
 		Rongine::RenderCommand::setColor({ 0.1f, 0.1f, 0.1f, 1 });
 		Rongine::RenderCommand::clear();
@@ -198,9 +200,9 @@ private:
 	Rongine::OrthographicCamera m_camera;
 
 	glm::vec3 m_cameraPosition = { 0.0f,0.0f,0.0f };
-	float m_cameraMoveSpeed = 0.1f;
+	float m_cameraMoveSpeed = 3.0f;
 	float m_cameraRotation = 0.0f;
-	float m_cameraRotationSpeed = 2.0f;
+	float m_cameraRotationSpeed = 90.0f;
 };
 
 class Sandbox :public Rongine::Application {

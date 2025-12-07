@@ -16,6 +16,7 @@ namespace Rongine {
 		s_instance = this;
 		m_window = std::unique_ptr<Window> (Window::create());
 		m_window->setEventCallBack(RONG_BIND_EVENT_FN(onEvent));
+		m_window->setVSync(true);
 		m_imguiLayer = new ImGuiLayer();
 	}
 
@@ -52,10 +53,12 @@ namespace Rongine {
 		RONG_CLIENT_TRACE( e.toString());
 
 		while (m_running) {
-			
+			float time = (float)glfwGetTime();
+			Timestep ts = time - m_lastFrameTime;
+			m_lastFrameTime = time;
 
 			for (Layer* layer : m_layerStack)
-				layer->onUpdate();
+				layer->onUpdate(ts);
 
 			m_imguiLayer->begin();
 			for (Layer* layer : m_layerStack)
