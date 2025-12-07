@@ -35,16 +35,10 @@ namespace Rongine {
 	private:
 		static Application* s_instance;
 		std::unique_ptr<Window> m_window;
-		std::shared_ptr<Shader> m_shader;
-		std::shared_ptr<VertexArray> m_vertexArray;
+
 		bool m_running = true;
 		LayerStack m_layerStack;
 		ImGuiLayer* m_imguiLayer;
-
-		std::shared_ptr<Shader> m_blueShader;
-		std::shared_ptr<VertexArray> m_squareVA;
-
-		OrthographicCamera m_camera;
 	};
 
 	Application* createApplication();

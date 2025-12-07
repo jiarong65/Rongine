@@ -13,4 +13,14 @@
 #include "Rongine/Events/MouseEvent.h"
 #include "Rongine/Input.h"
 
+// ---Renderer------------------------
+#include "Rongine/Renderer/Renderer.h"
+#include "Rongine/Renderer/RenderCommand.h"
+
+#include "Rongine/Renderer/Buffer.h"
+#include "Rongine/Renderer/Shader.h"
+#include "Rongine/Renderer/VertexArray.h"
+
+#include "Rongine/Renderer/OrthographicCamera.h"
+
 #include "Rongine/ImGui/ImGuiLayer.h"

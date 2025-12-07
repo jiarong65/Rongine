@@ -7,31 +7,165 @@
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale, glm::perspective
 
 #include "imgui/imgui.h"
-glm::mat4 camera(float Translate, glm::vec2 const& Rotate)
-{
-	glm::mat4 Projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.f);
-	glm::mat4 View = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -Translate));
-	View = glm::rotate(View, Rotate.y, glm::vec3(-1.0f, 0.0f, 0.0f));
-	View = glm::rotate(View, Rotate.x, glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 Model = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f));
-	return Projection * View * Model;
-}
 
 class ExampleLayer :public Rongine::Layer
 {
 public:
 	ExampleLayer()
-		:Layer("example")
+		:Layer("example"), m_camera(-1.6f, 1.6f, -0.9f, 0.9f)
 	{
+		m_vertexArray.reset(Rongine::VertexArray::create());
+
+		float vertex[3 * 7] = {
+			-0.5f, -0.5f, 0.0f,0.0f,0.0f,1.0f,1.0f,
+			 0.5f, -0.5f, 0.0f,0.0f,1.0f,0.0f,1.0f,
+			 0.0f,  0.5f, 0.0f,1.0f,0.0f,1.0f,1.0f
+		};
+
+		std::shared_ptr<Rongine::VertexBuffer> vertexBuffer;
+		vertexBuffer.reset(Rongine::VertexBuffer::create(vertex, sizeof(vertex)));
+
+		Rongine::BufferLayout layout = {
+			{Rongine::ShaderDataType::Float3,"a_Positon"},
+			{Rongine::ShaderDataType::Float4,"a_Color"}
+		};
+		vertexBuffer->setLayout(layout);
+		m_vertexArray->addVertexBuffer(vertexBuffer);
+
+
+		uint32_t indices[3] = { 0,1,2 };
+
+		std::shared_ptr<Rongine::IndexBuffer> indexBuffer;
+		indexBuffer.reset(Rongine::IndexBuffer::create(indices, sizeof(indices) / sizeof(uint32_t)));
+		m_vertexArray->setIndexBuffer(indexBuffer);
+
+		//////////////////////////////start
+		m_squareVA.reset(Rongine::VertexArray::create());
+
+		float squareVertices[3 * 4] = {
+			-0.75f, -0.75f, 0.0f,
+			 0.75f, -0.75f, 0.0f,
+			 0.75f,  0.75f, 0.0f,
+			-0.75f,  0.75f, 0.0f
+		};
+
+		std::shared_ptr<Rongine::VertexBuffer> squareVB;
+		squareVB.reset(Rongine::VertexBuffer::create(squareVertices, sizeof(squareVertices)));
+
+		squareVB->setLayout({
+			{ Rongine::ShaderDataType::Float3, "a_Position" }
+			});
+		m_squareVA->addVertexBuffer(squareVB);
+
+
+		uint32_t squareIndices[6] = { 0, 1, 2, 2, 3, 0 };
+
+		std::shared_ptr<Rongine::IndexBuffer> squareIB;
+		squareIB.reset(Rongine::IndexBuffer::create(squareIndices, sizeof(squareIndices) / sizeof(uint32_t)));
+		m_squareVA->setIndexBuffer(squareIB);
+
+		//////////////////////////////////end
+
+		std::string vertexSrc = R"(
+			#version 330 core
+			
+			layout(location = 0) in vec3 a_Position;
+			layout(location = 1) in vec4 a_Color;
+
+			uniform mat4 u_ViewProjection;
+
+			out vec3 v_Position;
+			out vec4 v_Color;
+
+			void main()
+			{
+				v_Position = a_Position;
+				v_Color=a_Color;
+				gl_Position = u_ViewProjection*vec4(a_Position,1.0f);	
+			}
+		)";
+
+		std::string fragmentSrc = R"(
+			#version 330 core
+			
+			layout(location = 0) out vec4 color;
+
+			in vec3 v_Position;
+			in vec4 v_Color;
+
+			void main()
+			{
+				color = v_Color;
+			}
+		)";
+
+		m_shader.reset(new Rongine::Shader(vertexSrc, fragmentSrc));
+
+		/////////////////////////////////start
+		std::string blueShaderVertexSrc = R"(
+			#version 330 core
+			
+			layout(location = 0) in vec3 a_Position;
+
+			uniform mat4 u_ViewProjection;
+
+			out vec3 v_Position;
+
+			void main()
+			{
+				v_Position = a_Position;
+				gl_Position = u_ViewProjection*vec4(a_Position,1.0f);	
+			}
+		)";
+
+		std::string blueShaderFragmentSrc = R"(
+			#version 330 core
+			
+			layout(location = 0) out vec4 color;
+
+			in vec3 v_Position;
+
+			void main()
+			{
+				color = vec4(0.2, 0.3, 0.8, 1.0);
+			}
+		)";
+
+		m_blueShader.reset(new Rongine::Shader(blueShaderVertexSrc, blueShaderFragmentSrc));
+		/////////////////////////////////end
 	}
 
 	void onUpdate() override
 	{
-		//RONG_CLIENT_INFO("exampleLayer onUpdate");
-		if (Rongine::Input::isKeyPressed(Rongine::Key::A))
-		{
-			RONG_CLIENT_TRACE("A key is pressed(POLLING)!");
-		}
+		if (Rongine::Input::isKeyPressed(Rongine::Key::Left))
+			m_cameraPosition.x -= m_cameraMoveSpeed;
+		else if (Rongine::Input::isKeyPressed(Rongine::Key::Right))
+			m_cameraPosition.x += m_cameraMoveSpeed;
+		if (Rongine::Input::isKeyPressed(Rongine::Key::Up))
+			m_cameraPosition.y += m_cameraMoveSpeed;
+		else if(Rongine::Input::isKeyPressed(Rongine::Key::Down))
+			m_cameraPosition.y -= m_cameraMoveSpeed;
+
+		if(Rongine::Input::isKeyPressed(Rongine::Key::A))
+			m_cameraRotation -= m_cameraRotationSpeed;
+		else if(Rongine::Input::isKeyPressed(Rongine::Key::D))
+			m_cameraRotation += m_cameraRotationSpeed;
+
+		Rongine::RenderCommand::setColor({ 0.1f, 0.1f, 0.1f, 1 });
+		Rongine::RenderCommand::clear();
+
+		m_camera.setPosition(m_cameraPosition);
+		m_camera.setRotation(m_cameraRotation);
+
+		Rongine::Renderer::beginScene(m_camera);
+
+		//////////////////start
+		Rongine::Renderer::submit(m_blueShader, m_squareVA);
+		//////////////////end
+
+		Rongine::Renderer::submit(m_shader, m_vertexArray);
+
+		Rongine::Renderer::endScene();
 	}
 
 	void onEvent(Rongine::Event& event)
@@ -53,6 +187,20 @@ public:
 		ImGui::Text("hello world!!");
 		ImGui::End();
 	}
+
+private:
+	std::shared_ptr<Rongine::Shader> m_shader;
+	std::shared_ptr<Rongine::VertexArray> m_vertexArray;
+
+	std::shared_ptr<Rongine::Shader> m_blueShader;
+	std::shared_ptr<Rongine::VertexArray> m_squareVA;
+
+	Rongine::OrthographicCamera m_camera;
+
+	glm::vec3 m_cameraPosition = { 0.0f,0.0f,0.0f };
+	float m_cameraMoveSpeed = 0.1f;
+	float m_cameraRotation = 0.0f;
+	float m_cameraRotationSpeed = 2.0f;
 };
 
 class Sandbox :public Rongine::Application {
