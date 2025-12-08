@@ -160,6 +160,15 @@ public:
 		else if(Rongine::Input::isKeyPressed(Rongine::Key::D))
 			m_cameraRotation += m_cameraRotationSpeed * ts;
 
+		if (Rongine::Input::isKeyPressed(Rongine::Key::J))
+			m_squarePosition.x -= m_cameraMoveSpeed * ts;
+		else if (Rongine::Input::isKeyPressed(Rongine::Key::L))
+			m_squarePosition.x += m_cameraMoveSpeed * ts;
+		if (Rongine::Input::isKeyPressed(Rongine::Key::I))
+			m_squarePosition.y += m_cameraMoveSpeed * ts;
+		else if (Rongine::Input::isKeyPressed(Rongine::Key::K))
+			m_squarePosition.y -= m_cameraMoveSpeed * ts;
+
 		Rongine::RenderCommand::setColor({ 0.1f, 0.1f, 0.1f, 1 });
 		Rongine::RenderCommand::clear();
 
@@ -180,7 +189,8 @@ public:
 		{
 			for (int x = 0; x < 20; x++)
 			{
-				glm::vec3 pos(x * 0.11f, y * 0.11f, 0.0f);
+				glm::vec3 gridOffset(x * 0.11f, y * 0.11f, 0.0f);
+				glm::vec3 pos = m_squarePosition + gridOffset;
 				glm::mat4 transform = glm::translate(glm::mat4(1.0f) ,pos)*scale;
 				Rongine::Renderer::submit(std::dynamic_pointer_cast<Rongine::OpenGLShader>(m_flatColorShader), m_squareVA, transform);
 			}
@@ -226,9 +236,9 @@ private:
 	float m_cameraMoveSpeed = 3.0f;
 	float m_cameraRotation = 0.0f;
 	float m_cameraRotationSpeed = 90.0f;
-	float m_position;
 
 	glm::vec3 m_squareColor = { 0.2f, 0.3f, 0.8f };
+	glm::vec3 m_squarePosition = {0.0f,0.0f,0.0f};
 };
 
 class Sandbox :public Rongine::Application {
