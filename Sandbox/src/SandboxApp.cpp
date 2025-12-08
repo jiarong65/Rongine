@@ -6,6 +6,9 @@
 #include <glm/mat4x4.hpp> // glm::mat4
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale, glm::perspective
 
+#include "Platform/OpenGL/OpenGLShader.h"
+#include <glm/gtc/type_ptr.hpp>
+
 #include "imgui/imgui.h"
 
 class ExampleLayer :public Rongine::Layer
@@ -100,10 +103,10 @@ public:
 			}
 		)";
 
-		m_shader.reset(new Rongine::Shader(vertexSrc, fragmentSrc));
+		m_shader.reset(Rongine::Shader::create(vertexSrc, fragmentSrc));
 
 		/////////////////////////////////start
-		std::string blueShaderVertexSrc = R"(
+		std::string flatColorShaderVertexSrc = R"(
 			#version 330 core
 			
 			layout(location = 0) in vec3 a_Position;
@@ -120,20 +123,22 @@ public:
 			}
 		)";
 
-		std::string blueShaderFragmentSrc = R"(
+		std::string flatColorShaderFragmentSrc = R"(
 			#version 330 core
 			
 			layout(location = 0) out vec4 color;
 
 			in vec3 v_Position;
 
+			uniform vec3 u_Color;
+
 			void main()
 			{
-				color = vec4(0.2, 0.3, 0.8, 1.0);
+				color = vec4(u_Color, 1.0);
 			}
 		)";
 
-		m_blueShader.reset(new Rongine::Shader(blueShaderVertexSrc, blueShaderFragmentSrc));
+		m_flatColorShader.reset(Rongine::Shader::create(flatColorShaderVertexSrc, flatColorShaderFragmentSrc));
 		/////////////////////////////////end
 	}
 
@@ -166,16 +171,21 @@ public:
 		glm::mat4 scale=glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
 
 		//////////////////start
+
+		std::shared_ptr<Rongine::OpenGLShader> shader_ptr = std::dynamic_pointer_cast<Rongine::OpenGLShader>(m_flatColorShader);
+		shader_ptr->bind();
+		shader_ptr->uploadUniformFloat3("u_Color", m_squareColor);
+
 		for (int y = 0; y < 20; y++)
 		{
 			for (int x = 0; x < 20; x++)
 			{
 				glm::vec3 pos(x * 0.11f, y * 0.11f, 0.0f);
 				glm::mat4 transform = glm::translate(glm::mat4(1.0f) ,pos)*scale;
-				Rongine::Renderer::submit(m_blueShader, m_squareVA, transform);
+				Rongine::Renderer::submit(std::dynamic_pointer_cast<Rongine::OpenGLShader>(m_flatColorShader), m_squareVA, transform);
 			}
 		}
-		Rongine::Renderer::submit(m_blueShader, m_squareVA,scale);
+		Rongine::Renderer::submit(m_flatColorShader, m_squareVA,scale);
 		//////////////////end
 
 		Rongine::Renderer::submit(m_shader, m_vertexArray);
@@ -198,8 +208,8 @@ public:
 
 	void onImGuiRender()
 	{
-		ImGui::Begin("test");
-		ImGui::Text("hello world!!");
+		ImGui::Begin("Setting");
+		ImGui::ColorEdit3("Square Color", glm::value_ptr(m_squareColor));
 		ImGui::End();
 	}
 
@@ -207,7 +217,7 @@ private:
 	std::shared_ptr<Rongine::Shader> m_shader;
 	std::shared_ptr<Rongine::VertexArray> m_vertexArray;
 
-	std::shared_ptr<Rongine::Shader> m_blueShader;
+	std::shared_ptr<Rongine::Shader> m_flatColorShader;
 	std::shared_ptr<Rongine::VertexArray> m_squareVA;
 
 	Rongine::OrthographicCamera m_camera;
@@ -217,6 +227,8 @@ private:
 	float m_cameraRotation = 0.0f;
 	float m_cameraRotationSpeed = 90.0f;
 	float m_position;
+
+	glm::vec3 m_squareColor = { 0.2f, 0.3f, 0.8f };
 };
 
 class Sandbox :public Rongine::Application {

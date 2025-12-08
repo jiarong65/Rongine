@@ -146,6 +146,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Platform\OpenGL\OpenGLShader.h" />
     <ClInclude Include="src\Rongine\Core\Timestep.h" />
     <ClInclude Include="src\Rongine\Renderer\OrthographicCamera.h" />
     <ClInclude Include="src\Rongine\Renderer\RenderCommand.h" />
@@ -599,6 +600,7 @@
     <ClInclude Include="src\Rongine\Renderer\VertexArray.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Platform\OpenGL\OpenGLShader.cpp" />
     <ClCompile Include="src\Rongine\Renderer\OrthographicCamera.cpp" />
     <ClCompile Include="src\Rongine\Renderer\RenderCommand.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLRendererAPI.cpp" />
