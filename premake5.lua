@@ -16,6 +16,7 @@ includeDir["GLFW"]="Rongine/vendor/GLFW/include"
 includeDir["Glad"]="Rongine/vendor/Glad/include"
 includeDir["ImGui"]="Rongine/vendor/imgui"
 includeDir["glm"]="Rongine/vendor/glm"
+includeDir["stb_image"]="Rongine/vendor/stb_image"
 include "Rongine/vendor/GLFW"
 include "Rongine/vendor/Glad"
 include "Rongine/vendor/imgui"
@@ -38,7 +39,9 @@ project "Rongine"
 		"%{prj.name}/src/**.h",
 		"%{prj.name}/src/**.cpp",
 		"%{prj.name}/vendor/glm/glm/**.hpp",
-		"%{prj.name}/vendor/glm/glm/**.inl"
+		"%{prj.name}/vendor/glm/glm/**.inl",
+		"%{prj.name}/vendor/stb_image/**.h",
+		"%{prj.name}/vendor/stb_image/**.cpp"
 	}
 
 	defines
@@ -55,7 +58,8 @@ project "Rongine"
 		"%{includeDir.GLFW}",
 		"%{includeDir.Glad}",
 		"%{includeDir.ImGui}",
-		"%{includeDir.glm}"
+		"%{includeDir.glm}",
+		"%{includeDir.stb_image}"
 	}
 
 	links
@@ -99,6 +103,8 @@ project "Sandbox"
 	cppdialect "C++17"
 	staticruntime "on"
 	buildoptions "/utf-8"
+
+	debugdir "Sandbox"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir("bin-int/" ..outputdir .. "%{prj.name}")

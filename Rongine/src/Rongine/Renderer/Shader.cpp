@@ -26,6 +26,8 @@ namespace Rongine {
 		RONG_CORE_ASSERT(false, "Unknown RendererAPI!");
 		return nullptr;
 		}
+		RONG_CORE_ASSERT(false, "UnKnown RendererAPI!");
+		return nullptr;
 	}
 
 

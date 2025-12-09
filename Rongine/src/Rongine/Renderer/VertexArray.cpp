@@ -18,6 +18,8 @@ namespace Rongine {
 			return new OpenGLVertexArray();
 		}
 		}
+		RONG_CORE_ASSERT(false, "UnKnown RendererAPI!");
+		return nullptr;
 	}
 }
 

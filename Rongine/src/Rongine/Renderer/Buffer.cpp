@@ -22,6 +22,8 @@ namespace Rongine {
 			return new OpenGLVertexBuffer(vertex, size);
 		}
 		}
+		RONG_CORE_ASSERT(false, "UnKnown RendererAPI!");
+		return nullptr;
 	}
 
 	////////////////////////IndexBuffer/////////////////////////////
@@ -38,7 +40,8 @@ namespace Rongine {
 			return new OpenGLIndexBuffer(indices, count);
 		}
 		}
-
+		RONG_CORE_ASSERT(false, "UnKnown RendererAPI!");
+		return nullptr;
 	} 
 
 }

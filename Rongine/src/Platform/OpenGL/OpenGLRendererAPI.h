@@ -8,7 +8,7 @@ namespace Rongine {
 		virtual void setColor(const glm::vec4& color) override;
 		virtual void clear()  override;
 
-		virtual void drawIndexed(const std::shared_ptr<VertexArray>& vertexArray) override;
+		virtual void drawIndexed(const Ref<VertexArray>& vertexArray) override;
 	};
 
 }

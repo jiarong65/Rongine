@@ -19,26 +19,27 @@ public:
 	{
 		m_vertexArray.reset(Rongine::VertexArray::create());
 
-		float vertex[3 * 7] = {
-			-0.5f, -0.5f, 0.0f,0.0f,0.0f,1.0f,1.0f,
-			 0.5f, -0.5f, 0.0f,0.0f,1.0f,0.0f,1.0f,
-			 0.0f,  0.5f, 0.0f,1.0f,0.0f,1.0f,1.0f
+		float vertices[5 * 4] = {
+			-0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
+			 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
+			 0.5f,  0.5f, 0.0f, 1.0f, 1.0f,
+			-0.5f,  0.5f, 0.0f, 0.0f, 1.0f
 		};
 
-		std::shared_ptr<Rongine::VertexBuffer> vertexBuffer;
-		vertexBuffer.reset(Rongine::VertexBuffer::create(vertex, sizeof(vertex)));
+		Rongine::Ref<Rongine::VertexBuffer> vertexBuffer;
+		vertexBuffer.reset(Rongine::VertexBuffer::create(vertices, sizeof(vertices)));
 
 		Rongine::BufferLayout layout = {
 			{Rongine::ShaderDataType::Float3,"a_Positon"},
-			{Rongine::ShaderDataType::Float4,"a_Color"}
+			{Rongine::ShaderDataType::Float2,"a_TexCoord"}
 		};
 		vertexBuffer->setLayout(layout);
 		m_vertexArray->addVertexBuffer(vertexBuffer);
 
 
-		uint32_t indices[3] = { 0,1,2 };
+		uint32_t indices[6] = { 0,1,2,2,3,0 };
 
-		std::shared_ptr<Rongine::IndexBuffer> indexBuffer;
+		Rongine::Ref<Rongine::IndexBuffer> indexBuffer;
 		indexBuffer.reset(Rongine::IndexBuffer::create(indices, sizeof(indices) / sizeof(uint32_t)));
 		m_vertexArray->setIndexBuffer(indexBuffer);
 
@@ -52,7 +53,7 @@ public:
 			-0.5f,  0.5f, 0.0f
 		};
 
-		std::shared_ptr<Rongine::VertexBuffer> squareVB;
+		Rongine::Ref<Rongine::VertexBuffer> squareVB;
 		squareVB.reset(Rongine::VertexBuffer::create(squareVertices, sizeof(squareVertices)));
 
 		squareVB->setLayout({
@@ -63,47 +64,55 @@ public:
 
 		uint32_t squareIndices[6] = { 0, 1, 2, 2, 3, 0 };
 
-		std::shared_ptr<Rongine::IndexBuffer> squareIB;
+		Rongine::Ref<Rongine::IndexBuffer> squareIB;
 		squareIB.reset(Rongine::IndexBuffer::create(squareIndices, sizeof(squareIndices) / sizeof(uint32_t)));
 		m_squareVA->setIndexBuffer(squareIB);
 
 		//////////////////////////////////end
 
-		std::string vertexSrc = R"(
+		std::string textureShaderVertexSrc = R"(
 			#version 330 core
 			
 			layout(location = 0) in vec3 a_Position;
-			layout(location = 1) in vec4 a_Color;
+			layout(location = 1) in vec2 a_TexCoord;
 
 			uniform mat4 u_ViewProjection;
 			uniform mat4 u_Transform;
 
 			out vec3 v_Position;
-			out vec4 v_Color;
+			out vec2 v_TexCoord;
 
 			void main()
 			{
 				v_Position = a_Position;
-				v_Color=a_Color;
+				v_TexCoord=a_TexCoord;
 				gl_Position = u_ViewProjection*u_Transform*vec4(a_Position,1.0f);	
 			}
 		)";
 
-		std::string fragmentSrc = R"(
+		std::string textureShaderfragmentSrc = R"(
 			#version 330 core
 			
 			layout(location = 0) out vec4 color;
 
 			in vec3 v_Position;
-			in vec4 v_Color;
+			in vec2 v_TexCoord;
+
+			uniform sampler2D u_Texture;
 
 			void main()
 			{
-				color = v_Color;
+				color = texture(u_Texture,v_TexCoord);
 			}
 		)";
 
-		m_shader.reset(Rongine::Shader::create(vertexSrc, fragmentSrc));
+		m_textureShader.reset(Rongine::Shader::create(textureShaderVertexSrc, textureShaderfragmentSrc));
+
+		m_texture = Rongine::Texture2D::create("assets/textures/Checkerboard.png");
+
+		std::dynamic_pointer_cast<Rongine::OpenGLShader>(m_textureShader)->bind();
+		std::dynamic_pointer_cast<Rongine::OpenGLShader>(m_textureShader)->uploadUniformInt("u_Texture", 0);
+
 
 		/////////////////////////////////start
 		std::string flatColorShaderVertexSrc = R"(
@@ -181,7 +190,7 @@ public:
 
 		//////////////////start
 
-		std::shared_ptr<Rongine::OpenGLShader> shader_ptr = std::dynamic_pointer_cast<Rongine::OpenGLShader>(m_flatColorShader);
+		Rongine::Ref<Rongine::OpenGLShader> shader_ptr = std::dynamic_pointer_cast<Rongine::OpenGLShader>(m_flatColorShader);
 		shader_ptr->bind();
 		shader_ptr->uploadUniformFloat3("u_Color", m_squareColor);
 
@@ -198,7 +207,10 @@ public:
 		Rongine::Renderer::submit(m_flatColorShader, m_squareVA,scale);
 		//////////////////end
 
-		Rongine::Renderer::submit(m_shader, m_vertexArray);
+		m_texture->bind();
+		Rongine::Renderer::submit(m_textureShader, m_vertexArray, glm::scale(glm::mat4(1.0f), glm::vec3(1.5f)));
+
+		//Rongine::Renderer::submit(m_shader, m_vertexArray);
 
 		Rongine::Renderer::endScene();
 	}
@@ -224,11 +236,13 @@ public:
 	}
 
 private:
-	std::shared_ptr<Rongine::Shader> m_shader;
-	std::shared_ptr<Rongine::VertexArray> m_vertexArray;
+	Rongine::Ref<Rongine::Shader> m_shader;
+	Rongine::Ref<Rongine::VertexArray> m_vertexArray;
 
-	std::shared_ptr<Rongine::Shader> m_flatColorShader;
-	std::shared_ptr<Rongine::VertexArray> m_squareVA;
+	Rongine::Ref<Rongine::Shader> m_flatColorShader,m_textureShader;
+	Rongine::Ref<Rongine::VertexArray> m_squareVA;
+
+	Rongine::Ref<Rongine::Texture2D> m_texture;
 
 	Rongine::OrthographicCamera m_camera;
 
