@@ -6,6 +6,11 @@ namespace Rongine {
 
 	Renderer::SceneData* Renderer::s_sceneData = new SceneData;
 
+	void Renderer::init()
+	{
+		RenderCommand::init();
+	}
+
 	void Renderer::beginScene(const OrthographicCamera& camera)
 	{
 		s_sceneData->viewProjectionMatrix = camera.getViewProjectionMatrix();
@@ -13,6 +18,7 @@ namespace Rongine {
 
 	void Renderer::endScene()
 	{
+
 	}
 
 	void Renderer::submit(const Ref<Shader>& shader,const Ref<VertexArray>& vertexArray,const glm::mat4& transform)

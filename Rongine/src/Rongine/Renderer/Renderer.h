@@ -10,6 +10,8 @@ namespace Rongine {
 	class Renderer
 	{
 	public:
+		static void init();
+
 		static void beginScene(const OrthographicCamera& camera);
 		static void endScene();
 

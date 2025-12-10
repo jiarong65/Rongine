@@ -5,6 +5,11 @@ namespace Rongine {
 	class RenderCommand
 	{
 	public:
+		inline static void init()
+		{
+			s_rendererAPI->init();
+		}
+
 		inline static void setColor(const glm::vec4& color)
 		{
 			s_rendererAPI->setColor(color);

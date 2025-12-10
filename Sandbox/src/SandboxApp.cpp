@@ -109,6 +109,7 @@ public:
 		m_textureShader.reset(Rongine::Shader::create(textureShaderVertexSrc, textureShaderfragmentSrc));
 
 		m_texture = Rongine::Texture2D::create("assets/textures/Checkerboard.png");
+		m_chernoLogoTexture = Rongine::Texture2D::create("assets/textures/ChernoLogo.png");
 
 		std::dynamic_pointer_cast<Rongine::OpenGLShader>(m_textureShader)->bind();
 		std::dynamic_pointer_cast<Rongine::OpenGLShader>(m_textureShader)->uploadUniformInt("u_Texture", 0);
@@ -210,6 +211,9 @@ public:
 		m_texture->bind();
 		Rongine::Renderer::submit(m_textureShader, m_vertexArray, glm::scale(glm::mat4(1.0f), glm::vec3(1.5f)));
 
+		m_chernoLogoTexture->bind();
+		Rongine::Renderer::submit(m_textureShader, m_vertexArray, glm::scale(glm::mat4(1.0f), glm::vec3(1.5f)));
+
 		//Rongine::Renderer::submit(m_shader, m_vertexArray);
 
 		Rongine::Renderer::endScene();
@@ -242,7 +246,7 @@ private:
 	Rongine::Ref<Rongine::Shader> m_flatColorShader,m_textureShader;
 	Rongine::Ref<Rongine::VertexArray> m_squareVA;
 
-	Rongine::Ref<Rongine::Texture2D> m_texture;
+	Rongine::Ref<Rongine::Texture2D> m_texture, m_chernoLogoTexture;
 
 	Rongine::OrthographicCamera m_camera;
 

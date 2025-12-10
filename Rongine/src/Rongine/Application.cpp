@@ -17,6 +17,9 @@ namespace Rongine {
 		m_window = std::unique_ptr<Window> (Window::create());
 		m_window->setEventCallBack(RONG_BIND_EVENT_FN(onEvent));
 		m_window->setVSync(true);
+
+		Renderer::init();
+
 		m_imguiLayer = new ImGuiLayer();
 	}
 
