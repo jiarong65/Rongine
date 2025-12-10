@@ -115,7 +115,8 @@ project "Sandbox"
 	files
 	{
 		"%{prj.name}/src/**.h",
-		"%{prj.name}/src/**.cpp"
+		"%{prj.name}/src/**.cpp",
+		"%{prj.name}/assets/**"
 	}
 
 	includedirs
@@ -123,7 +124,8 @@ project "Sandbox"
 		"Rongine/vendor/spdlog/include",
 		"Rongine/src",
 		"%{includeDir.glm}",
-		"Rongine/vendor"
+		"Rongine/vendor",
+		"%{includeDir.Glad}"
 	}
 
 	links

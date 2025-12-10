@@ -1,11 +1,13 @@
 #pragma once
 #include "Rongine/Renderer/Shader.h"
+#include <glad/glad.h>
 
 namespace Rongine {
 
 	class OpenGLShader:public Shader
 	{
 	public:
+		OpenGLShader(const std::string& filepath);
 		OpenGLShader(const std::string& vertexSrc, const std::string& fragmentSrc);
 		virtual ~OpenGLShader() override;
 
@@ -21,6 +23,10 @@ namespace Rongine {
 
 		void uploadUniformMat3(const std::string& name, const glm::mat3& matrix);
 		void uploadUniformMat4(const std::string& name, const glm::mat4& matrix);
+	private:
+		std::string readFile(const std::string& filepath);
+		std::unordered_map<GLenum, std::string> preProcess(const std::string& source);
+		void compile(const std::unordered_map<GLenum, std::string>& shaderSources);
 	private:
 		uint32_t m_rendererID;
 	};
