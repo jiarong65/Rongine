@@ -12,6 +12,7 @@ namespace Rongine {
 
 		const glm::vec3& getPosition() const { return m_position; }
 		void setPosition(const glm::vec3& position) { recalculateViewMatrix(); m_position = position; }
+		void setProjection(float left, float right, float bottom, float top);
 
 		float getRotation() const { return m_rotation; }
 		void setRotation(float rotation) { recalculateViewMatrix(); m_rotation = rotation; }

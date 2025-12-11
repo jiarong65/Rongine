@@ -15,7 +15,7 @@ class ExampleLayer :public Rongine::Layer
 {
 public:
 	ExampleLayer()
-		:Layer("example"), m_camera(-1.6f, 1.6f, -0.9f, 0.9f)
+		:Layer("example"),m_cameraContorller(1280.0f / 720.0f)
 	{
 		m_vertexArray.reset(Rongine::VertexArray::create());
 
@@ -121,38 +121,21 @@ public:
 
 	void onUpdate(Rongine::Timestep ts) override
 	{
-		RONG_CLIENT_TRACE("Timestep is {0} ms", ts.getMilliseconds());
-
-		if (Rongine::Input::isKeyPressed(Rongine::Key::Left))
-			m_cameraPosition.x -= m_cameraMoveSpeed * ts;
-		else if (Rongine::Input::isKeyPressed(Rongine::Key::Right))
-			m_cameraPosition.x += m_cameraMoveSpeed * ts;
-		if (Rongine::Input::isKeyPressed(Rongine::Key::Up))
-			m_cameraPosition.y += m_cameraMoveSpeed * ts;
-		else if(Rongine::Input::isKeyPressed(Rongine::Key::Down))
-			m_cameraPosition.y -= m_cameraMoveSpeed * ts;
-
-		if(Rongine::Input::isKeyPressed(Rongine::Key::A))
-			m_cameraRotation -= m_cameraRotationSpeed * ts;
-		else if(Rongine::Input::isKeyPressed(Rongine::Key::D))
-			m_cameraRotation += m_cameraRotationSpeed * ts;
+		m_cameraContorller.onUpdate(ts);
 
 		if (Rongine::Input::isKeyPressed(Rongine::Key::J))
-			m_squarePosition.x -= m_cameraMoveSpeed * ts;
+			m_squarePosition.x -= m_squareMovedSpeed * ts;
 		else if (Rongine::Input::isKeyPressed(Rongine::Key::L))
-			m_squarePosition.x += m_cameraMoveSpeed * ts;
+			m_squarePosition.x += m_squareMovedSpeed * ts;
 		if (Rongine::Input::isKeyPressed(Rongine::Key::I))
-			m_squarePosition.y += m_cameraMoveSpeed * ts;
+			m_squarePosition.y += m_squareMovedSpeed * ts;
 		else if (Rongine::Input::isKeyPressed(Rongine::Key::K))
-			m_squarePosition.y -= m_cameraMoveSpeed * ts;
+			m_squarePosition.y -= m_squareMovedSpeed * ts;
 
 		Rongine::RenderCommand::setColor({ 0.1f, 0.1f, 0.1f, 1 });
 		Rongine::RenderCommand::clear();
 
-		m_camera.setPosition(m_cameraPosition);
-		m_camera.setRotation(m_cameraRotation);
-
-		Rongine::Renderer::beginScene(m_camera);
+		Rongine::Renderer::beginScene(m_cameraContorller.getCamera());
 
 		glm::mat4 scale=glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
 
@@ -188,17 +171,9 @@ public:
 		Rongine::Renderer::endScene();
 	}
 
-	void onEvent(Rongine::Event& event)
+	void onEvent(Rongine::Event& e) override
 	{
-		//RONG_CLIENT_TRACE(event.toString());
-		if (event.getEventType() == Rongine::EventType::KeyPressed)
-		{
-			Rongine::KeyPressedEvent& e = (Rongine::KeyPressedEvent&)event;
-			if (e.getKeyCode() == Rongine::Key::A)
-			{
-				RONG_CLIENT_TRACE("A key event received(EVENT)!");
-			}
-		}
+		m_cameraContorller.onEvent(e);
 	}
 
 	void onImGuiRender()
@@ -217,15 +192,13 @@ private:
 
 	Rongine::Ref<Rongine::Texture2D> m_texture, m_chernoLogoTexture;
 
-	Rongine::OrthographicCamera m_camera;
 
-	glm::vec3 m_cameraPosition = { 0.0f,0.0f,0.0f };
-	float m_cameraMoveSpeed = 3.0f;
-	float m_cameraRotation = 0.0f;
-	float m_cameraRotationSpeed = 90.0f;
+	Rongine::OrthographicCameraController m_cameraContorller;
 
 	glm::vec3 m_squareColor = { 0.2f, 0.3f, 0.8f };
 	glm::vec3 m_squarePosition = {0.0f,0.0f,0.0f};
+
+	float m_squareMovedSpeed = 3.0f;
 };
 
 class Sandbox :public Rongine::Application {

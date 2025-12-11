@@ -14,6 +14,7 @@
 #include "Rongine/Events/KeyEvent.h"
 #include "Rongine/Events/MouseEvent.h"
 #include "Rongine/Input.h"
+#include "Rongine/OrthographicCameraController.h"
 
 // ---Renderer------------------------
 #include "Rongine/Renderer/Renderer.h"
