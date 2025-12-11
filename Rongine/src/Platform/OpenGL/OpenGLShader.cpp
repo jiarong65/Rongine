@@ -27,8 +27,16 @@ namespace Rongine {
 		std::string source = readFile(filepath);
 		auto shaderSources = preProcess(source);
 		compile(shaderSources);
+
+		//从文件路径截取文件名
+		auto lastSlash = filepath.find_last_of("/\\");
+		lastSlash = lastSlash == std::string::npos ? 0 : lastSlash + 1;
+		auto lastDot = filepath.rfind(".");
+		size_t count = lastDot == std::string::npos ? filepath.size() - lastSlash : lastDot - lastSlash;
+		m_name = filepath.substr(lastSlash, count);
 	}
-	OpenGLShader::OpenGLShader(const std::string& vertexSrc, const std::string& fragmentSrc)
+	OpenGLShader::OpenGLShader(const std::string& name,const std::string& vertexSrc, const std::string& fragmentSrc)
+		:m_name(name)
 	{
 		std::unordered_map<GLenum, std::string> shaderSources;
 		shaderSources[GL_VERTEX_SHADER] = vertexSrc;
@@ -97,7 +105,7 @@ namespace Rongine {
 		std::string result;
 
 		std::fstream in;
-		in.open(filepath, std::fstream::in, std::fstream::binary);
+		in.open(filepath, std::fstream::in| std::fstream::binary);
 		if (in)
 		{
 			in.seekg(0, std::fstream::end);
@@ -142,8 +150,10 @@ namespace Rongine {
 	void OpenGLShader::compile(const std::unordered_map<GLenum, std::string>& shaderSources)
 	{
 		GLuint program = glCreateProgram();
-		std::vector<GLenum> glShaderIDs;
-		glShaderIDs.reserve(shaderSources.size());
+
+		RONG_CORE_ASSERT(shaderSources.size() <= 2, "We only support 2 shaders for now");
+		std::array<GLenum,2> glShaderIDs;
+		int glShaderIDIndex = 0;
 
 		for (auto& kv : shaderSources)
 		{
@@ -152,7 +162,7 @@ namespace Rongine {
 
 			GLuint shader = glCreateShader(type);
 
-			glShaderIDs.push_back(shader);
+			glShaderIDs[glShaderIDIndex++] = shader;
 
 			const GLchar* sourceCStr = source.c_str();
 			glShaderSource(shader, 1, &sourceCStr,0);
@@ -207,5 +217,7 @@ namespace Rongine {
 		for (auto& id : glShaderIDs)
 			glDetachShader(program, id);
 	}
+
+
 
 }

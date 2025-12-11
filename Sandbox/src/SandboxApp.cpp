@@ -71,13 +71,15 @@ public:
 		//////////////////////////////////end
 
 
-		m_textureShader.reset(Rongine::Shader::create("assets/shaders/Texture.glsl"));
+		m_shaderLibrary.load("assets/shaders/Texture.glsl");
 
 		m_texture = Rongine::Texture2D::create("assets/textures/Checkerboard.png");
 		m_chernoLogoTexture = Rongine::Texture2D::create("assets/textures/ChernoLogo.png");
 
-		std::dynamic_pointer_cast<Rongine::OpenGLShader>(m_textureShader)->bind();
-		std::dynamic_pointer_cast<Rongine::OpenGLShader>(m_textureShader)->uploadUniformInt("u_Texture", 0);
+		auto& textureShader = m_shaderLibrary.get("Texture");
+
+		std::dynamic_pointer_cast<Rongine::OpenGLShader>(textureShader)->bind();
+		std::dynamic_pointer_cast<Rongine::OpenGLShader>(textureShader)->uploadUniformInt("u_Texture", 0);
 
 
 		/////////////////////////////////start
@@ -113,7 +115,7 @@ public:
 			}
 		)";
 
-		m_flatColorShader.reset(Rongine::Shader::create(flatColorShaderVertexSrc, flatColorShaderFragmentSrc));
+		m_flatColorShader=Rongine::Shader::create("FlatColor",flatColorShaderVertexSrc, flatColorShaderFragmentSrc);
 		/////////////////////////////////end
 	}
 
@@ -173,11 +175,13 @@ public:
 		Rongine::Renderer::submit(m_flatColorShader, m_squareVA,scale);
 		//////////////////end
 
+		auto& textureShader = m_shaderLibrary.get("Texture");
+
 		m_texture->bind();
-		Rongine::Renderer::submit(m_textureShader, m_vertexArray, glm::scale(glm::mat4(1.0f), glm::vec3(1.5f)));
+		Rongine::Renderer::submit(textureShader, m_vertexArray, glm::scale(glm::mat4(1.0f), glm::vec3(1.5f)));
 
 		m_chernoLogoTexture->bind();
-		Rongine::Renderer::submit(m_textureShader, m_vertexArray, glm::scale(glm::mat4(1.0f), glm::vec3(1.5f)));
+		Rongine::Renderer::submit(textureShader, m_vertexArray, glm::scale(glm::mat4(1.0f), glm::vec3(1.5f)));
 
 		//Rongine::Renderer::submit(m_shader, m_vertexArray);
 
@@ -205,10 +209,10 @@ public:
 	}
 
 private:
-	Rongine::Ref<Rongine::Shader> m_shader;
+	Rongine::ShaderLibray m_shaderLibrary;
 	Rongine::Ref<Rongine::VertexArray> m_vertexArray;
 
-	Rongine::Ref<Rongine::Shader> m_flatColorShader,m_textureShader;
+	Rongine::Ref<Rongine::Shader> m_flatColorShader;
 	Rongine::Ref<Rongine::VertexArray> m_squareVA;
 
 	Rongine::Ref<Rongine::Texture2D> m_texture, m_chernoLogoTexture;

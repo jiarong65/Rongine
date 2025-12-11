@@ -1,6 +1,7 @@
 #pragma once
 #include "Rongine/Renderer/Shader.h"
 #include <glad/glad.h>
+#include <unordered_map>
 
 namespace Rongine {
 
@@ -8,14 +9,15 @@ namespace Rongine {
 	{
 	public:
 		OpenGLShader(const std::string& filepath);
-		OpenGLShader(const std::string& vertexSrc, const std::string& fragmentSrc);
+		OpenGLShader(const std::string& name,const std::string& vertexSrc, const std::string& fragmentSrc);
 		virtual ~OpenGLShader() override;
 
 		virtual void bind() const override;
 		virtual void unbind() const override;
 
-		void uploadUniformInt(const std::string& name, int value);
+		virtual const std::string& getName() const override { return m_name; }
 
+		void uploadUniformInt(const std::string& name, int value);
 		void uploadUniformFloat(const std::string& name, float value);
 		void uploadUniformFloat2(const std::string& name, const glm::vec2& value);
 		void uploadUniformFloat3(const std::string& name, const glm::vec3& value);
@@ -29,7 +31,10 @@ namespace Rongine {
 		void compile(const std::unordered_map<GLenum, std::string>& shaderSources);
 	private:
 		uint32_t m_rendererID;
+		std::string m_name;
 	};
+
+
 }
 
 

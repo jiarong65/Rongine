@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <stdint.h>
+#include <array>
 
 #ifdef RONG_PLATFORM_WINDOWS
 	#include <Windows.h>
