@@ -146,7 +146,6 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\Rongine\OrthographicCameraController.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLBuffer.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLContext.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLRendererAPI.h" />
@@ -156,31 +155,32 @@
     <ClInclude Include="src\Platform\Windows\WindowsInput.h" />
     <ClInclude Include="src\Platform\Windows\WindowsWindow.h" />
     <ClInclude Include="src\Rongine.h" />
-    <ClInclude Include="src\Rongine\Application.h" />
-    <ClInclude Include="src\Rongine\Core.h" />
+    <ClInclude Include="src\Rongine\Core\Application.h" />
+    <ClInclude Include="src\Rongine\Core\Core.h" />
+    <ClInclude Include="src\Rongine\Core\EntryPoint.h" />
+    <ClInclude Include="src\Rongine\Core\Input.h" />
     <ClInclude Include="src\Rongine\Core\KeyCodes.h" />
+    <ClInclude Include="src\Rongine\Core\Layer.h" />
+    <ClInclude Include="src\Rongine\Core\LayerStack.h" />
+    <ClInclude Include="src\Rongine\Core\Log.h" />
     <ClInclude Include="src\Rongine\Core\MouseCodes.h" />
     <ClInclude Include="src\Rongine\Core\Timestep.h" />
-    <ClInclude Include="src\Rongine\EntryPoint.h" />
+    <ClInclude Include="src\Rongine\Core\Window.h" />
     <ClInclude Include="src\Rongine\Events\ApplicationEvent.h" />
     <ClInclude Include="src\Rongine\Events\Event.h" />
     <ClInclude Include="src\Rongine\Events\KeyEvent.h" />
     <ClInclude Include="src\Rongine\Events\MouseEvent.h" />
     <ClInclude Include="src\Rongine\ImGui\ImGuiLayer.h" />
-    <ClInclude Include="src\Rongine\Input.h" />
-    <ClInclude Include="src\Rongine\Layer.h" />
-    <ClInclude Include="src\Rongine\LayerStack.h" />
-    <ClInclude Include="src\Rongine\Log.h" />
     <ClInclude Include="src\Rongine\Renderer\Buffer.h" />
     <ClInclude Include="src\Rongine\Renderer\GraphicsContext.h" />
     <ClInclude Include="src\Rongine\Renderer\OrthographicCamera.h" />
+    <ClInclude Include="src\Rongine\Renderer\OrthographicCameraController.h" />
     <ClInclude Include="src\Rongine\Renderer\RenderCommand.h" />
     <ClInclude Include="src\Rongine\Renderer\Renderer.h" />
     <ClInclude Include="src\Rongine\Renderer\RendererAPI.h" />
     <ClInclude Include="src\Rongine\Renderer\Shader.h" />
     <ClInclude Include="src\Rongine\Renderer\Texture.h" />
     <ClInclude Include="src\Rongine\Renderer\VertexArray.h" />
-    <ClInclude Include="src\Rongine\Window.h" />
     <ClInclude Include="src\Rongpch.h" />
     <ClInclude Include="vendor\glm\glm\common.hpp" />
     <ClInclude Include="vendor\glm\glm\detail\_fixes.hpp" />
@@ -604,7 +604,6 @@
     <ClInclude Include="vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Rongine\OrthographicCameraController.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLContext.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLRendererAPI.cpp" />
@@ -613,21 +612,22 @@
     <ClCompile Include="src\Platform\OpenGL\OpenGLVertexArray.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsInput.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp" />
-    <ClCompile Include="src\Rongine\Application.cpp" />
+    <ClCompile Include="src\Rongine\Core\Application.cpp" />
+    <ClCompile Include="src\Rongine\Core\Layer.cpp" />
+    <ClCompile Include="src\Rongine\Core\LayerStack.cpp" />
+    <ClCompile Include="src\Rongine\Core\Log.cpp" />
+    <ClCompile Include="src\Rongine\Core\Window.cpp" />
     <ClCompile Include="src\Rongine\ImGui\ImGuiBuild.cpp" />
     <ClCompile Include="src\Rongine\ImGui\ImGuiLayer.cpp" />
-    <ClCompile Include="src\Rongine\Layer.cpp" />
-    <ClCompile Include="src\Rongine\LayerStack.cpp" />
-    <ClCompile Include="src\Rongine\Log.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Buffer.cpp" />
     <ClCompile Include="src\Rongine\Renderer\OrthographicCamera.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\OrthographicCameraController.cpp" />
     <ClCompile Include="src\Rongine\Renderer\RenderCommand.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Renderer.cpp" />
     <ClCompile Include="src\Rongine\Renderer\RendererAPI.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Shader.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Texture.cpp" />
     <ClCompile Include="src\Rongine\Renderer\VertexArray.cpp" />
-    <ClCompile Include="src\Rongine\Window.cpp" />
     <ClCompile Include="src\Rongpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

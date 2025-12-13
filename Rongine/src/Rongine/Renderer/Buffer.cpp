@@ -1,7 +1,7 @@
 #include "Rongpch.h"
 #include "Buffer.h"
 #include "Renderer.h"
-#include "Rongine/Log.h"
+#include "Rongine/Core/Log.h"
 #include "Platform/OpenGL/OpenGLBuffer.h"
 
 

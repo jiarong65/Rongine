@@ -1,5 +1,5 @@
 #pragma once
-#include "Rongine/Log.h"
+#include "Rongine/Core/Log.h"
 
 namespace Rongine {
 

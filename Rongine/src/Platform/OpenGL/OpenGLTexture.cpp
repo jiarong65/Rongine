@@ -1,6 +1,6 @@
 #include "Rongpch.h"
 #include "OpenGLTexture.h"
-#include "Rongine/Log.h"
+#include "Rongine/Core/Log.h"
 #include <glad/glad.h>
 
 namespace Rongine {

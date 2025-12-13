@@ -1,20 +1,20 @@
 #pragma once
 
-#include "Rongine/Core.h"
-#include "Rongine/Application.h"
+#include "Rongine/Core/Core.h"
+#include "Rongine/Core/Application.h"
 
 //入口点
-#include "Rongine/EntryPoint.h"
+#include "Rongine/Core/EntryPoint.h"
 
 #include "Rongine/Core/Timestep.h"
 
-#include "Rongine/Log.h"
+#include "Rongine/Core/Log.h"
 #include "Rongine/Events/Event.h"
 #include "Rongine/Events/ApplicationEvent.h"
 #include "Rongine/Events/KeyEvent.h"
 #include "Rongine/Events/MouseEvent.h"
-#include "Rongine/Input.h"
-#include "Rongine/OrthographicCameraController.h"
+#include "Rongine/Core/Input.h"
+#include "Rongine/Renderer/OrthographicCameraController.h"
 
 // ---Renderer------------------------
 #include "Rongine/Renderer/Renderer.h"

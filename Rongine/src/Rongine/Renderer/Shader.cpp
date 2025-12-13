@@ -2,7 +2,7 @@
 #include "Shader.h"
 
 
-#include "Rongine/Log.h"
+#include "Rongine/Core/Log.h"
 #include "Rongine/Renderer/Renderer.h"
 #include "Platform/OpenGL/OpenGLShader.h"
 

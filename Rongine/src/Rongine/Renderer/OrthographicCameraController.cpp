@@ -1,7 +1,7 @@
 #include "Rongpch.h"
 #include "OrthographicCameraController.h"
-#include "Rongine/Log.h"
-#include "Rongine/Input.h"
+#include "Rongine/Core/Log.h"
+#include "Rongine/Core/Input.h"
 #include "Rongine/Core/KeyCodes.h"
 
 

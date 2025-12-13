@@ -1,6 +1,6 @@
 #pragma once
 #include "Rongine/Renderer/GraphicsContext.h"
-#include "Rongine/Log.h"
+#include "Rongine/Core/Log.h"
 
 struct GLFWwindow;
 

@@ -5,7 +5,7 @@
 #include "examples/imgui_impl_opengl3.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include "Rongine/Application.h"
+#include "Rongine/Core/Application.h"
 
 namespace Rongine {
 	ImGuiLayer::ImGuiLayer()

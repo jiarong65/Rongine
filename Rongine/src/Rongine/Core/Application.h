@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Core.h"
-#include "Rongine/Window.h"
+#include "Rongine/Core/Window.h"
 #include "Rongine/Events/Event.h"
 #include "Rongine/Events/ApplicationEvent.h"
 #include "Rongine/Events/KeyEvent.h"
 #include "Rongine/Events/MouseEvent.h"
-#include "Rongine/LayerStack.h"
+#include "Rongine/Core/LayerStack.h"
 #include "Rongine/ImGui/ImGuiLayer.h"
 #include "Rongine/Renderer/Shader.h"
 #include "Rongine/Renderer/Buffer.h"

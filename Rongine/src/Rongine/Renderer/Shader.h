@@ -2,7 +2,7 @@
 #include <glm/glm.hpp>
 #include <string>
 #include <unordered_map>
-#include "Rongine/Core.h"
+#include "Rongine/Core/Core.h"
 
 namespace Rongine {
 	class Shader

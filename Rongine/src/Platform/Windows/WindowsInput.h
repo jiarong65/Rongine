@@ -1,5 +1,5 @@
 #pragma once
-#include "Rongine/Input.h"
+#include "Rongine/Core/Input.h"
 
 namespace Rongine {
 	class WindowsInput:public Input

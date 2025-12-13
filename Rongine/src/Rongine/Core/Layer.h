@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Rongine/Events/Event.h"
-#include "Rongine/Core.h"
+#include "Rongine/Core/Core.h"
 #include "Rongine/Core/Timestep.h"
 
 namespace Rongine {
