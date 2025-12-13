@@ -38,6 +38,7 @@ namespace Rongine {
 		std::unique_ptr<Window> m_window;
 
 		bool m_running = true;
+		bool m_minimized = false;
 		LayerStack m_layerStack;
 		ImGuiLayer* m_imguiLayer;
 

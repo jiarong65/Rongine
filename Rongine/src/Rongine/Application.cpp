@@ -32,6 +32,7 @@ namespace Rongine {
 		EventDispatcher dispatcher(event);
 
 		dispatcher.dispatch<WindowCloseEvent>(RONG_BIND_EVENT_FN(onWindowClose));
+		dispatcher.dispatch<WindowResizeEvent>(RONG_BIND_EVENT_FN(onWindowResize));
 
 		for (auto& it = m_layerStack.rbegin(); it != m_layerStack.rend();++it)
 		{
@@ -60,8 +61,10 @@ namespace Rongine {
 			Timestep ts = time - m_lastFrameTime;
 			m_lastFrameTime = time;
 
-			for (Layer* layer : m_layerStack)
-				layer->onUpdate(ts);
+			if (!m_minimized) {
+				for (Layer* layer : m_layerStack)
+					layer->onUpdate(ts);
+			}
 
 			m_imguiLayer->begin();
 			for (Layer* layer : m_layerStack)
@@ -74,10 +77,19 @@ namespace Rongine {
 
 	bool Application::onWindowClose(WindowCloseEvent& event){
 		m_running = false;
-		return true;
+		return false;
 	}
 
 	bool Application::onWindowResize(WindowResizeEvent& event) {
-		return true;
+		if (event.getWidth() == 0 || event.getHeight() == 0)
+		{
+			m_minimized = true;
+			return false;
+		}
+
+		m_minimized = false;
+		Renderer::onWindowResize(event.getWidth(), event.getHeight());
+		
+		return false;
 	}
 }
