@@ -28,7 +28,7 @@ namespace Rongine {
 		auto shaderSources = preProcess(source);
 		compile(shaderSources);
 
-		//从文件路径截取文件名
+		//浠庢枃浠惰矾寰勬埅鍙栨枃浠跺悕
 		auto lastSlash = filepath.find_last_of("/\\");
 		lastSlash = lastSlash == std::string::npos ? 0 : lastSlash + 1;
 		auto lastDot = filepath.rfind(".");
@@ -57,6 +57,26 @@ namespace Rongine {
 	void OpenGLShader::unbind() const
 	{
 		glUseProgram(0);
+	}
+
+	void OpenGLShader::setInt(const std::string& name, int value)
+	{
+		uploadUniformInt(name, value);
+	}
+
+	void OpenGLShader::setFloat3(const std::string& name, const glm::vec3& value)
+	{
+		uploadUniformFloat3(name, value);
+	}
+
+	void OpenGLShader::setFloat4(const std::string& name, const glm::vec4& value)
+	{
+		uploadUniformFloat4(name, value);
+	}
+
+	void OpenGLShader::setMat4(const std::string& name, const glm::mat4& value)
+	{
+		uploadUniformMat4(name, value);
 	}
 
 	void OpenGLShader::uploadUniformInt(const std::string& name, int value)

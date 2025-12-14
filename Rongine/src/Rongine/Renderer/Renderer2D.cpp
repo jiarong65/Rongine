@@ -55,8 +55,8 @@ namespace Rongine {
 
 	void Renderer2D::beginScene(const OrthographicCamera& camera)
 	{
-		std::dynamic_pointer_cast<OpenGLShader>(s_data->FlatColorShader)->bind();
-		std::dynamic_pointer_cast<OpenGLShader>(s_data->FlatColorShader)->uploadUniformMat4("u_ViewProjection",camera.getViewProjectionMatrix());
+		s_data->FlatColorShader->bind();
+		s_data->FlatColorShader->setMat4("u_ViewProjection",camera.getViewProjectionMatrix());
 	}
 
 	void Renderer2D::endScene()
@@ -70,12 +70,12 @@ namespace Rongine {
 
 	void Renderer2D::drawQuad(const glm::vec3& position, const glm::vec2& size, const glm::vec4& color)
 	{
-		std::dynamic_pointer_cast<OpenGLShader>(s_data->FlatColorShader)->bind();
-		std::dynamic_pointer_cast<OpenGLShader>(s_data->FlatColorShader)->uploadUniformFloat4("u_Color", color);
-		std::dynamic_pointer_cast<OpenGLShader>(s_data->FlatColorShader)->uploadUniformFloat3("a_Position", position);
+		s_data->FlatColorShader->bind();
+		s_data->FlatColorShader->setFloat4("u_Color", color);
+		s_data->FlatColorShader->setFloat3("a_Position", position);
 
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f),position)* glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
-		std::dynamic_pointer_cast<OpenGLShader>(s_data->FlatColorShader)->uploadUniformMat4("u_Transform", transform);
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f),position)* glm::scale(glm::mat4(1.0f), glm::vec3(size.x,size.y,1.0f));
+		s_data->FlatColorShader->setMat4("u_Transform", transform);
 
 		s_data->QuadVertexArray->bind();
 		RenderCommand::drawIndexed(s_data->QuadVertexArray);

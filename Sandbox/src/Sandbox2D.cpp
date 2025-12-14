@@ -15,12 +15,10 @@ Sandbox2D::Sandbox2D()
 
 void Sandbox2D::onAttach()
 {
-	Rongine::Renderer2D::init();
 }
 
 void Sandbox2D::onDetach()
 {
-	Rongine::Renderer2D::shutdown();
 }
 
 void Sandbox2D::onUpdate(Rongine::Timestep ts)
@@ -41,6 +39,7 @@ void Sandbox2D::onUpdate(Rongine::Timestep ts)
 
 	Rongine::Renderer2D::beginScene(m_cameraContorller.getCamera());
 	Rongine::Renderer2D::drawQuad(m_squarePosition, { 1.0f, 1.0f }, m_squareColor);
+	Rongine::Renderer2D::drawQuad({ 0.5f, -0.5f }, { 0.5f, 0.75f }, { 0.2f, 0.3f, 0.8f, 1.0f });
 	Rongine::Renderer2D::endScene();
 }
 
