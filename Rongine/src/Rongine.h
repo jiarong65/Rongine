@@ -15,6 +15,7 @@
 
 // ---Renderer------------------------
 #include "Rongine/Renderer/Renderer.h"
+#include "Rongine/Renderer/Renderer2D.h"
 #include "Rongine/Renderer/RenderCommand.h"
 
 #include "Rongine/Renderer/Buffer.h"
