@@ -7,9 +7,11 @@
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale, glm::perspective
 
 #include "Platform/OpenGL/OpenGLShader.h"
+#include "Rongine/Core/EntryPoint.h"
 #include <glm/gtc/type_ptr.hpp>
 
 #include "imgui/imgui.h"
+#include "Sandbox2D.h"
 
 class ExampleLayer :public Rongine::Layer
 {
@@ -17,7 +19,7 @@ public:
 	ExampleLayer()
 		:Layer("example"),m_cameraContorller(1280.0f / 720.0f)
 	{
-		m_vertexArray.reset(Rongine::VertexArray::create());
+		m_vertexArray=Rongine::VertexArray::create();
 
 		float vertices[5 * 4] = {
 			-0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
@@ -27,7 +29,7 @@ public:
 		};
 
 		Rongine::Ref<Rongine::VertexBuffer> vertexBuffer;
-		vertexBuffer.reset(Rongine::VertexBuffer::create(vertices, sizeof(vertices)));
+		vertexBuffer=Rongine::VertexBuffer::create(vertices, sizeof(vertices));
 
 		Rongine::BufferLayout layout = {
 			{Rongine::ShaderDataType::Float3,"a_Positon"},
@@ -40,11 +42,11 @@ public:
 		uint32_t indices[6] = { 0,1,2,2,3,0 };
 
 		Rongine::Ref<Rongine::IndexBuffer> indexBuffer;
-		indexBuffer.reset(Rongine::IndexBuffer::create(indices, sizeof(indices) / sizeof(uint32_t)));
+		indexBuffer=Rongine::IndexBuffer::create(indices, sizeof(indices) / sizeof(uint32_t));
 		m_vertexArray->setIndexBuffer(indexBuffer);
 
 		//////////////////////////////start
-		m_squareVA.reset(Rongine::VertexArray::create());
+		m_squareVA=Rongine::VertexArray::create();
 
 		float squareVertices[3 * 4] = {
 			-0.5f, -0.5f, 0.0f,
@@ -54,7 +56,7 @@ public:
 		};
 
 		Rongine::Ref<Rongine::VertexBuffer> squareVB;
-		squareVB.reset(Rongine::VertexBuffer::create(squareVertices, sizeof(squareVertices)));
+		squareVB=Rongine::VertexBuffer::create(squareVertices, sizeof(squareVertices));
 
 		squareVB->setLayout({
 			{ Rongine::ShaderDataType::Float3, "a_Position" }
@@ -65,7 +67,7 @@ public:
 		uint32_t squareIndices[6] = { 0, 1, 2, 2, 3, 0 };
 
 		Rongine::Ref<Rongine::IndexBuffer> squareIB;
-		squareIB.reset(Rongine::IndexBuffer::create(squareIndices, sizeof(squareIndices) / sizeof(uint32_t)));
+		squareIB=Rongine::IndexBuffer::create(squareIndices, sizeof(squareIndices) / sizeof(uint32_t));
 		m_squareVA->setIndexBuffer(squareIB);
 
 		//////////////////////////////////end
@@ -204,7 +206,8 @@ private:
 class Sandbox :public Rongine::Application {
 public:
 	Sandbox() {
-		pushLayer(new ExampleLayer());
+		//pushLayer(new ExampleLayer());
+		pushLayer(new Sandbox2D());
 		pushOverLayer(new Rongine::ImGuiLayer());
 	}
 	~Sandbox() {

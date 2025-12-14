@@ -10,7 +10,7 @@ namespace Rongine {
 	////////////////////////VertexBuffer/////////////////////////////
 
 
-	VertexBuffer* VertexBuffer::create(float* vertex, uint32_t size)
+	Ref<VertexBuffer> VertexBuffer::create(float* vertex, uint32_t size)
 	{
 		switch (Renderer::getAPI())
 		{
@@ -19,7 +19,7 @@ namespace Rongine {
 			return nullptr;
 		}
 		case RendererAPI::API::OpenGL: {
-			return new OpenGLVertexBuffer(vertex, size);
+			return std::make_shared<OpenGLVertexBuffer>(vertex, size);
 		}
 		}
 		RONG_CORE_ASSERT(false, "UnKnown RendererAPI!");
@@ -28,7 +28,7 @@ namespace Rongine {
 
 	////////////////////////IndexBuffer/////////////////////////////
 
-	IndexBuffer* IndexBuffer::create(uint32_t* indices, uint32_t count)
+	Ref<IndexBuffer> IndexBuffer::create(uint32_t* indices, uint32_t count)
 	{
 		switch (Renderer::getAPI())
 		{
@@ -37,7 +37,7 @@ namespace Rongine {
 			return nullptr;
 		}
 		case RendererAPI::API::OpenGL: {
-			return new OpenGLIndexBuffer(indices, count);
+			return std::make_shared<OpenGLIndexBuffer>(indices, count);
 		}
 		}
 		RONG_CORE_ASSERT(false, "UnKnown RendererAPI!");

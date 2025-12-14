@@ -4,7 +4,7 @@
 #include "Platform/OpenGL/OpenGLVertexArray.h"
 
 namespace Rongine {
-	VertexArray* Rongine::VertexArray::create()
+	Ref<VertexArray> Rongine::VertexArray::create()
 	{
 		switch (Renderer::getAPI())
 		{
@@ -15,7 +15,7 @@ namespace Rongine {
 		}
 		case RendererAPI::API::OpenGL:
 		{
-			return new OpenGLVertexArray();
+			return std::make_shared<OpenGLVertexArray>();
 		}
 		}
 		RONG_CORE_ASSERT(false, "UnKnown RendererAPI!");

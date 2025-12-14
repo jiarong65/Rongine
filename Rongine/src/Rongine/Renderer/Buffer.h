@@ -114,7 +114,7 @@ namespace Rongine {
 		virtual const BufferLayout& getLayout() const =0;
 		virtual void setLayout(const BufferLayout& layout) = 0;
 		
-		static VertexBuffer* create(float* vertex,uint32_t size);
+		static Ref<VertexBuffer> create(float* vertex,uint32_t size);
 	};
 
 	class IndexBuffer
@@ -127,7 +127,7 @@ namespace Rongine {
 
 		virtual inline uint32_t getCount() const = 0;
 
-		static IndexBuffer* create(uint32_t* indices, uint32_t count);
+		static Ref<IndexBuffer> create(uint32_t* indices, uint32_t count);
 	};
 }
 

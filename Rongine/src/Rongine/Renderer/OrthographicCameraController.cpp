@@ -16,7 +16,7 @@ namespace Rongine {
 
 	void OrthographicCameraController::onUpdate(Timestep ts)
 	{
-		RONG_CORE_TRACE("Timestep is {0} ms", ts.getMilliseconds());
+		//RONG_CORE_TRACE("Timestep is {0} ms", ts.getMilliseconds());
 
 		if (Input::isKeyPressed(Key::A))
 			m_position.x -= m_cameraTranslationSpeed * ts;
@@ -65,7 +65,5 @@ namespace Rongine {
 		m_camera.setProjection(-m_aspectRatio * m_zoomLevel, m_aspectRatio * m_zoomLevel, -m_zoomLevel, m_zoomLevel);
 		return false;
 	}
-
-
 }
 

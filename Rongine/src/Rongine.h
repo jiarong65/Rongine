@@ -3,9 +3,6 @@
 #include "Rongine/Core/Core.h"
 #include "Rongine/Core/Application.h"
 
-//入口点
-#include "Rongine/Core/EntryPoint.h"
-
 #include "Rongine/Core/Timestep.h"
 
 #include "Rongine/Core/Log.h"
