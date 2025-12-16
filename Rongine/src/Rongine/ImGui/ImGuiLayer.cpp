@@ -51,12 +51,6 @@ namespace Rongine {
 		ImGui::DestroyContext();
 	}
 
-	void ImGuiLayer::onImGuiRender()
-	{
-		static bool show = true;
-		ImGui::ShowDemoWindow(&show);
-	}
-
 	void ImGuiLayer::begin()
 	{
 		ImGui_ImplOpenGL3_NewFrame();
