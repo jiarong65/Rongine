@@ -12,6 +12,7 @@ namespace Rongine {
 	struct Renderer2DStorage {
 		Ref<VertexArray> QuadVertexArray;
 		Ref<Shader> FlatColorShader;
+		Ref<Shader> TextureShader;
 	};
 
 	Renderer2DStorage* s_data =nullptr;
@@ -22,18 +23,19 @@ namespace Rongine {
 
 		s_data->QuadVertexArray = VertexArray::create();
 
-		float squareVertices[3 * 4] = {
-			-0.5f, -0.5f, 0.0f,
-			 0.5f, -0.5f, 0.0f,
-			 0.5f,  0.5f, 0.0f,
-			-0.5f,  0.5f, 0.0f
+		float squareVertices[5* 4] = {
+			-0.5f, -0.5f, 0.0f,0.0f,0.0f,
+			 0.5f, -0.5f, 0.0f,1.0f,0.0f,
+			 0.5f,  0.5f, 0.0f,1.0f,1.0f,
+			-0.5f,  0.5f, 0.0f,0.0f,1.0f
 		};
 
 		Ref<VertexBuffer> squareVB;
 		squareVB = VertexBuffer::create(squareVertices, sizeof(squareVertices));
 
 		BufferLayout layout = {
-			{ShaderDataType::Float3,"a_Positon"}
+			{ShaderDataType::Float3,"a_Position"},
+			{ShaderDataType::Float2,"a_TexCoord"}
 		};
 		squareVB->setLayout(layout);
 		s_data->QuadVertexArray->addVertexBuffer(squareVB);
@@ -46,6 +48,10 @@ namespace Rongine {
 		s_data->QuadVertexArray->setIndexBuffer(squareIB);
 
 		s_data->FlatColorShader = Shader::create("assets/shaders/FlatColor.glsl");
+		s_data->TextureShader = Shader::create("assets/shaders/Texture.glsl");
+
+		s_data->TextureShader->bind();
+		s_data->TextureShader->setInt("u_Texture", 0);
 	}
 
 	void Renderer2D::shutdown()
@@ -57,6 +63,10 @@ namespace Rongine {
 	{
 		s_data->FlatColorShader->bind();
 		s_data->FlatColorShader->setMat4("u_ViewProjection",camera.getViewProjectionMatrix());
+
+		s_data->TextureShader->bind();
+		s_data->TextureShader->setMat4("u_ViewProjection", camera.getViewProjectionMatrix());
+
 	}
 
 	void Renderer2D::endScene()
@@ -81,6 +91,22 @@ namespace Rongine {
 		RenderCommand::drawIndexed(s_data->QuadVertexArray);
 	}
 
+	void Renderer2D::drawQuad(const glm::vec2& position, const glm::vec2& size, const Ref<Texture2D>& texture)
+	{
+		drawQuad(glm::vec3(position, 1.0f), size, texture);
+	}
 
+	void Renderer2D::drawQuad(const glm::vec3& position, const glm::vec2& size, const Ref<Texture2D>& texture)
+	{
+		s_data->TextureShader->bind();
+		s_data->TextureShader->setFloat3("a_Position", position);
+
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(size.x, size.y, 1.0f));
+		s_data->TextureShader->setMat4("u_Transform", transform);
+
+		s_data->QuadVertexArray->bind();
+		texture->bind();
+		RenderCommand::drawIndexed(s_data->QuadVertexArray);
+	}
 }
 

@@ -25,6 +25,8 @@ private:
 	Rongine::OrthographicCameraController m_cameraContorller;
 
 	Rongine::Ref<Rongine::VertexArray> m_vertexArray;
+	Rongine::Ref<Rongine::Texture2D> m_checkerboardTexture;
+
 	glm::vec4 m_squareColor = { 0.2f, 0.3f, 0.8f, 1.0f };
 	glm::vec3 m_squarePosition = { 0.0f,0.0f,0.0f };
 

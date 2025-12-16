@@ -15,6 +15,7 @@ Sandbox2D::Sandbox2D()
 
 void Sandbox2D::onAttach()
 {
+	m_checkerboardTexture = Rongine::Texture2D::create("assets/textures/Checkerboard.png");
 }
 
 void Sandbox2D::onDetach()
@@ -38,6 +39,7 @@ void Sandbox2D::onUpdate(Rongine::Timestep ts)
 	Rongine::RenderCommand::clear();
 
 	Rongine::Renderer2D::beginScene(m_cameraContorller.getCamera());
+	Rongine::Renderer2D::drawQuad({ 0.0f, 0.0f, -0.1f }, { 10.0f, 10.0f }, m_checkerboardTexture);
 	Rongine::Renderer2D::drawQuad(m_squarePosition, { 1.0f, 1.0f }, m_squareColor);
 	Rongine::Renderer2D::drawQuad({ 0.5f, -0.5f }, { 0.5f, 0.75f }, { 0.2f, 0.3f, 0.8f, 1.0f });
 	Rongine::Renderer2D::endScene();
