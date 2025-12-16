@@ -19,7 +19,7 @@ namespace Rongine {
 			return nullptr;
 		}
 		case RendererAPI::API::OpenGL: {
-			return std::make_shared<OpenGLVertexBuffer>(vertex, size);
+			return CreateRef<OpenGLVertexBuffer>(vertex, size);
 		}
 		}
 		RONG_CORE_ASSERT(false, "UnKnown RendererAPI!");
@@ -37,7 +37,7 @@ namespace Rongine {
 			return nullptr;
 		}
 		case RendererAPI::API::OpenGL: {
-			return std::make_shared<OpenGLIndexBuffer>(indices, count);
+			return CreateRef<OpenGLIndexBuffer>(indices, count);
 		}
 		}
 		RONG_CORE_ASSERT(false, "UnKnown RendererAPI!");

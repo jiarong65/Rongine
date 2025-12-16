@@ -11,8 +11,8 @@ namespace Rongine {
 	
 	struct Renderer2DStorage {
 		Ref<VertexArray> QuadVertexArray;
-		Ref<Shader> FlatColorShader;
 		Ref<Shader> TextureShader;
+		Ref<Texture> WhiteTexture;
 	};
 
 	Renderer2DStorage* s_data =nullptr;
@@ -47,11 +47,14 @@ namespace Rongine {
 		squareIB = IndexBuffer::create(squareIndices, sizeof(squareIndices) / sizeof(uint32_t));
 		s_data->QuadVertexArray->setIndexBuffer(squareIB);
 
-		s_data->FlatColorShader = Shader::create("assets/shaders/FlatColor.glsl");
 		s_data->TextureShader = Shader::create("assets/shaders/Texture.glsl");
 
 		s_data->TextureShader->bind();
 		s_data->TextureShader->setInt("u_Texture", 0);
+
+		s_data->WhiteTexture = Texture2D::create(1, 1);
+		uint32_t whiteTextureData = 0xffffffff;
+		s_data->WhiteTexture->setData(&whiteTextureData, sizeof(uint32_t));
 	}
 
 	void Renderer2D::shutdown()
@@ -61,9 +64,6 @@ namespace Rongine {
 
 	void Renderer2D::beginScene(const OrthographicCamera& camera)
 	{
-		s_data->FlatColorShader->bind();
-		s_data->FlatColorShader->setMat4("u_ViewProjection",camera.getViewProjectionMatrix());
-
 		s_data->TextureShader->bind();
 		s_data->TextureShader->setMat4("u_ViewProjection", camera.getViewProjectionMatrix());
 
@@ -80,12 +80,14 @@ namespace Rongine {
 
 	void Renderer2D::drawQuad(const glm::vec3& position, const glm::vec2& size, const glm::vec4& color)
 	{
-		s_data->FlatColorShader->bind();
-		s_data->FlatColorShader->setFloat4("u_Color", color);
-		s_data->FlatColorShader->setFloat3("a_Position", position);
+		s_data->TextureShader->bind();
+		s_data->TextureShader->setFloat4("u_Color", color);
+		s_data->TextureShader->setFloat3("a_Position", position);
+
+		s_data->WhiteTexture->bind();
 
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f),position)* glm::scale(glm::mat4(1.0f), glm::vec3(size.x,size.y,1.0f));
-		s_data->FlatColorShader->setMat4("u_Transform", transform);
+		s_data->TextureShader->setMat4("u_Transform", transform);
 
 		s_data->QuadVertexArray->bind();
 		RenderCommand::drawIndexed(s_data->QuadVertexArray);
@@ -100,6 +102,7 @@ namespace Rongine {
 	{
 		s_data->TextureShader->bind();
 		s_data->TextureShader->setFloat3("a_Position", position);
+		s_data->TextureShader->setFloat4("u_Color", glm::vec4(1.0f));
 
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(size.x, size.y, 1.0f));
 		s_data->TextureShader->setMat4("u_Transform", transform);
