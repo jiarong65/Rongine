@@ -111,12 +111,12 @@ namespace Rongine {
 		RenderCommand::drawIndexed(s_data->QuadVertexArray);
 	}
 
-	void Renderer2D::drawQuad(const glm::vec2& position, const glm::vec2& size, float rotation, const glm::vec4& color)
+	void Renderer2D::drawRotatedQuad(const glm::vec2& position, const glm::vec2& size, float rotation, const glm::vec4& color)
 	{
-		drawQuad(glm::vec3(position, 1.0f), size, rotation, color);
+		drawRotatedQuad(glm::vec3(position, 1.0f), size, rotation, color);
 	}
 
-	void Renderer2D::drawQuad(const glm::vec3& position, const glm::vec2& size, float rotation, const glm::vec4& color)
+	void Renderer2D::drawRotatedQuad(const glm::vec3& position, const glm::vec2& size, float rotation, const glm::vec4& color)
 	{
 		s_data->TextureShader->bind();
 		s_data->WhiteTexture->bind();
@@ -132,12 +132,12 @@ namespace Rongine {
 		RenderCommand::drawIndexed(s_data->QuadVertexArray);
 	}
 
-	void Renderer2D::drawQuad(const glm::vec2& position, const glm::vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& tintColor)
+	void Renderer2D::drawRotatedQuad(const glm::vec2& position, const glm::vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& tintColor)
 	{
-		drawQuad(glm::vec3(position, 1.0f), size, rotation, texture, tilingFactor, tintColor);
+		drawRotatedQuad(glm::vec3(position, 1.0f), size, rotation, texture, tilingFactor, tintColor);
 	}
 
-	void Renderer2D::drawQuad(const glm::vec3& position, const glm::vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& tintColor)
+	void Renderer2D::drawRotatedQuad(const glm::vec3& position, const glm::vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& tintColor)
 	{
 		s_data->TextureShader->bind();
 		s_data->TextureShader->setFloat("u_TilingFactor", tilingFactor);
