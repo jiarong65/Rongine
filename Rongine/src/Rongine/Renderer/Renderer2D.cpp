@@ -82,7 +82,6 @@ namespace Rongine {
 	{
 		s_data->TextureShader->bind();
 		s_data->TextureShader->setFloat4("u_Color", color);
-		s_data->TextureShader->setFloat3("a_Position", position);
 
 		s_data->WhiteTexture->bind();
 
@@ -93,18 +92,60 @@ namespace Rongine {
 		RenderCommand::drawIndexed(s_data->QuadVertexArray);
 	}
 
-	void Renderer2D::drawQuad(const glm::vec2& position, const glm::vec2& size, const Ref<Texture2D>& texture)
+	void Renderer2D::drawQuad(const glm::vec2& position, const glm::vec2& size, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4 & tintColor )
 	{
-		drawQuad(glm::vec3(position, 1.0f), size, texture);
+		drawQuad(glm::vec3(position, 1.0f), size, texture,tilingFactor,tintColor);
 	}
 
-	void Renderer2D::drawQuad(const glm::vec3& position, const glm::vec2& size, const Ref<Texture2D>& texture)
+	void Renderer2D::drawQuad(const glm::vec3& position, const glm::vec2& size, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4 & tintColor )
 	{
 		s_data->TextureShader->bind();
-		s_data->TextureShader->setFloat3("a_Position", position);
-		s_data->TextureShader->setFloat4("u_Color", glm::vec4(1.0f));
-
+		s_data->TextureShader->setFloat("u_TilingFactor", tilingFactor);
+		s_data->TextureShader->setFloat4("u_Color", tintColor);
+		
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(size.x, size.y, 1.0f));
+		s_data->TextureShader->setMat4("u_Transform", transform);
+
+		s_data->QuadVertexArray->bind();
+		texture->bind();
+		RenderCommand::drawIndexed(s_data->QuadVertexArray);
+	}
+
+	void Renderer2D::drawQuad(const glm::vec2& position, const glm::vec2& size, float rotation, const glm::vec4& color)
+	{
+		drawQuad(glm::vec3(position, 1.0f), size, rotation, color);
+	}
+
+	void Renderer2D::drawQuad(const glm::vec3& position, const glm::vec2& size, float rotation, const glm::vec4& color)
+	{
+		s_data->TextureShader->bind();
+		s_data->WhiteTexture->bind();
+		s_data->TextureShader->setFloat("u_TilingFactor", 1.0f);
+		s_data->TextureShader->setFloat4("u_Color", color);
+
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * 
+			glm::rotate(glm::mat4(1.0f), rotation, {0.0f,0.0f,1.0f}) *
+			glm::scale(glm::mat4(1.0f), glm::vec3(size.x, size.y, 1.0f));
+		s_data->TextureShader->setMat4("u_Transform", transform);
+
+		s_data->QuadVertexArray->bind();
+		RenderCommand::drawIndexed(s_data->QuadVertexArray);
+	}
+
+	void Renderer2D::drawQuad(const glm::vec2& position, const glm::vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& tintColor)
+	{
+		drawQuad(glm::vec3(position, 1.0f), size, rotation, texture, tilingFactor, tintColor);
+	}
+
+	void Renderer2D::drawQuad(const glm::vec3& position, const glm::vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& tintColor)
+	{
+		s_data->TextureShader->bind();
+		s_data->TextureShader->setFloat("u_TilingFactor", tilingFactor);
+		s_data->TextureShader->setFloat4("u_Color", tintColor);
+
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * 
+			glm::rotate(glm::mat4(1.0f), rotation, {0.0f,0.0f,1.0f})*
+			glm::scale(glm::mat4(1.0f), glm::vec3(size.x, size.y, 1.0f));
 		s_data->TextureShader->setMat4("u_Transform", transform);
 
 		s_data->QuadVertexArray->bind();

@@ -147,6 +147,9 @@
     <ClInclude Include="src\Rongine\Renderer\Renderer.h">
       <Filter>src\Rongine\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Rongine\Renderer\Renderer2D.h">
+      <Filter>src\Rongine\Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="src\Rongine\Renderer\RendererAPI.h">
       <Filter>src\Rongine\Renderer</Filter>
     </ClInclude>
@@ -1422,7 +1425,6 @@
     <ClInclude Include="vendor\stb_image\stb_image.h">
       <Filter>vendor\stb_image</Filter>
     </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\Renderer2D.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp">
@@ -1485,6 +1487,9 @@
     <ClCompile Include="src\Rongine\Renderer\Renderer.cpp">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\Rongine\Renderer\Renderer2D.cpp">
+      <Filter>src\Rongine\Renderer</Filter>
+    </ClCompile>
     <ClCompile Include="src\Rongine\Renderer\RendererAPI.cpp">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
@@ -1503,6 +1508,5 @@
     <ClCompile Include="vendor\stb_image\stb_image.cpp">
       <Filter>vendor\stb_image</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\Renderer2D.cpp" />
   </ItemGroup>
 </Project>

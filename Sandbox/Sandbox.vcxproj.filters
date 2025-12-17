@@ -15,6 +15,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\ExampleLayer.h">
+      <Filter>src</Filter>
+    </ClInclude>
     <ClInclude Include="src\Rongpch.h">
       <Filter>src</Filter>
     </ClInclude>
@@ -23,6 +26,9 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\ExampleLayer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
     <ClCompile Include="src\Rongpch.cpp">
       <Filter>src</Filter>
     </ClCompile>
