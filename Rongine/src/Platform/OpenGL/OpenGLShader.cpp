@@ -84,6 +84,11 @@ namespace Rongine {
 		uploadUniformMat4(name, value);
 	}
 
+	void OpenGLShader::setIntArray(const std::string& name, int* value, uint32_t count)
+	{
+		uploadUniformIntArray(name, value, count);
+	}
+
 	void OpenGLShader::uploadUniformInt(const std::string& name, int value)
 	{
 		GLint location = glGetUniformLocation(m_rendererID, name.c_str());
@@ -123,6 +128,12 @@ namespace Rongine {
 	{
 		GLint location = glGetUniformLocation(m_rendererID, name.c_str());
 		glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix));
+	}
+
+	void OpenGLShader::uploadUniformIntArray(const std::string& name, int* values, uint32_t count)
+	{
+		GLint location = glGetUniformLocation(m_rendererID, name.c_str());
+		glUniform1iv(location, count,values);
 	}
 
 	std::string OpenGLShader::readFile(const std::string& filepath)

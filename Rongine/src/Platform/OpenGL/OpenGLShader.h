@@ -22,6 +22,7 @@ namespace Rongine {
 		virtual void setFloat3(const std::string& name, const glm::vec3& value) override;
 		virtual void setFloat4(const std::string& name, const glm::vec4& value) override;
 		virtual void setMat4(const std::string& name, const glm::mat4& value) override;
+		virtual void setIntArray(const std::string& name, int* value, uint32_t count) override;
 
 
 		void uploadUniformInt(const std::string& name, int value);
@@ -32,6 +33,7 @@ namespace Rongine {
 
 		void uploadUniformMat3(const std::string& name, const glm::mat3& matrix);
 		void uploadUniformMat4(const std::string& name, const glm::mat4& matrix);
+		void uploadUniformIntArray(const std::string& name, int* values, uint32_t count);
 	private:
 		std::string readFile(const std::string& filepath);
 		std::unordered_map<GLenum, std::string> preProcess(const std::string& source);

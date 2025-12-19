@@ -14,6 +14,8 @@ namespace Rongine {
 		virtual void bind(uint32_t slot=0) = 0;
 
 		virtual void setData(void* data, uint32_t size) = 0;
+
+		virtual bool operator==(const Texture& texture) const = 0;
 	};
 
 	class Texture2D : public Texture
