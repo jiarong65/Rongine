@@ -37,6 +37,8 @@ namespace Rongine {
 
 		std::array<Ref<Texture2D>, MaxTextureSlots> TextureSlots;
 		uint32_t TextureSlotsIndex = 1;//0=whiteTexture;
+
+		glm::vec4 QuadVertexPositions[4];
 	};
 	
 
@@ -100,6 +102,11 @@ namespace Rongine {
 		s_data.TextureShader->setIntArray("u_Textures", samplers,s_data.MaxTextureSlots);
 
 		s_data.TextureSlots[0] = s_data.WhiteTexture;
+
+		s_data.QuadVertexPositions[0] = { -0.5f, -0.5f, 0.0f, 1.0f };
+		s_data.QuadVertexPositions[1] = { 0.5f, -0.5f, 0.0f, 1.0f };
+		s_data.QuadVertexPositions[2] = { 0.5f,  0.5f, 0.0f, 1.0f };
+		s_data.QuadVertexPositions[3] = { -0.5f,  0.5f, 0.0f, 1.0f };
 	}
 
 	void Renderer2D::shutdown()
@@ -145,7 +152,10 @@ namespace Rongine {
 		const float texIndex = 0.0f;
 		const float tilingFactor = 1.0f;
 
-		s_data.QuadVertexBufferPtr->Position = position;
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) *
+			glm::scale(glm::mat4(1.0f), {size.x,size.y,1.0f});
+
+		s_data.QuadVertexBufferPtr->Position = transform* s_data.QuadVertexPositions[0];
 		s_data.QuadVertexBufferPtr->Color = color;
 		s_data.QuadVertexBufferPtr->TexCoord = { 0.0f, 0.0f };
 		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
@@ -153,7 +163,7 @@ namespace Rongine {
 		s_data.QuadVertexBufferPtr++;
 
 		// 顶点 2：右下
-		s_data.QuadVertexBufferPtr->Position = { position.x + size.x, position.y, position.z };
+		s_data.QuadVertexBufferPtr->Position = transform * s_data.QuadVertexPositions[1];
 		s_data.QuadVertexBufferPtr->Color = color;
 		s_data.QuadVertexBufferPtr->TexCoord = { 1.0f, 0.0f };
 		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
@@ -161,7 +171,7 @@ namespace Rongine {
 		s_data.QuadVertexBufferPtr++;
 
 		// 顶点 3：右上
-		s_data.QuadVertexBufferPtr->Position = { position.x + size.x, position.y + size.y, position.z };
+		s_data.QuadVertexBufferPtr->Position = transform * s_data.QuadVertexPositions[2];
 		s_data.QuadVertexBufferPtr->Color = color;
 		s_data.QuadVertexBufferPtr->TexCoord = { 1.0f, 1.0f };
 		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
@@ -169,7 +179,7 @@ namespace Rongine {
 		s_data.QuadVertexBufferPtr++;
 
 		// 顶点 4：左上
-		s_data.QuadVertexBufferPtr->Position = { position.x, position.y + size.y, position.z };
+		s_data.QuadVertexBufferPtr->Position = transform * s_data.QuadVertexPositions[3];
 		s_data.QuadVertexBufferPtr->Color = color;
 		s_data.QuadVertexBufferPtr->TexCoord = { 0.0f, 1.0f };
 		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
@@ -213,7 +223,10 @@ namespace Rongine {
 			s_data.TextureSlotsIndex++;
 		}
 
-		s_data.QuadVertexBufferPtr->Position = position;
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) *
+			glm::scale(glm::mat4(1.0f), { size.x,size.y,1.0f });
+
+		s_data.QuadVertexBufferPtr->Position = transform* s_data.QuadVertexPositions[0];
 		s_data.QuadVertexBufferPtr->Color = tintColor;
 		s_data.QuadVertexBufferPtr->TexCoord = { 0.0f, 0.0f };
 		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
@@ -221,7 +234,7 @@ namespace Rongine {
 		s_data.QuadVertexBufferPtr++;
 
 		// 顶点 2：右下
-		s_data.QuadVertexBufferPtr->Position = { position.x + size.x, position.y, position.z };
+		s_data.QuadVertexBufferPtr->Position = transform * s_data.QuadVertexPositions[1];
 		s_data.QuadVertexBufferPtr->Color = tintColor;
 		s_data.QuadVertexBufferPtr->TexCoord = { 1.0f, 0.0f };
 		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
@@ -229,7 +242,7 @@ namespace Rongine {
 		s_data.QuadVertexBufferPtr++;
 
 		// 顶点 3：右上
-		s_data.QuadVertexBufferPtr->Position = { position.x + size.x, position.y + size.y, position.z };
+		s_data.QuadVertexBufferPtr->Position = transform * s_data.QuadVertexPositions[2];
 		s_data.QuadVertexBufferPtr->Color = tintColor;
 		s_data.QuadVertexBufferPtr->TexCoord = { 1.0f, 1.0f };
 		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
@@ -237,7 +250,7 @@ namespace Rongine {
 		s_data.QuadVertexBufferPtr++;
 
 		// 顶点 4：左上
-		s_data.QuadVertexBufferPtr->Position = { position.x, position.y + size.y, position.z };
+		s_data.QuadVertexBufferPtr->Position = transform * s_data.QuadVertexPositions[3];
 		s_data.QuadVertexBufferPtr->Color = tintColor;
 		s_data.QuadVertexBufferPtr->TexCoord = { 0.0f, 1.0f };
 		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
@@ -245,19 +258,6 @@ namespace Rongine {
 		s_data.QuadVertexBufferPtr++;
 
 		s_data.QuadIndexCount += 6;
-
-#if 0
-		s_data.TextureShader->bind();
-		s_data.TextureShader->setFloat("u_TilingFactor", tilingFactor);
-		s_data.TextureShader->setFloat4("u_Color", tintColor);
-		
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(size.x, size.y, 1.0f));
-		s_data.TextureShader->setMat4("u_Transform", transform);
-
-		s_data.QuadVertexArray->bind();
-		texture->bind();
-		RenderCommand::drawIndexed(s_data.QuadVertexArray);
-#endif
 	}
 
 	void Renderer2D::drawRotatedQuad(const glm::vec2& position, const glm::vec2& size, float rotation, const glm::vec4& color)
@@ -267,18 +267,45 @@ namespace Rongine {
 
 	void Renderer2D::drawRotatedQuad(const glm::vec3& position, const glm::vec2& size, float rotation, const glm::vec4& color)
 	{
-		s_data.TextureShader->bind();
-		s_data.WhiteTexture->bind();
-		s_data.TextureShader->setFloat("u_TilingFactor", 1.0f);
-		s_data.TextureShader->setFloat4("u_Color", color);
+		const float texIndex = 0.0f;
+		const float tilingFactor = 1.0f;
 
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * 
-			glm::rotate(glm::mat4(1.0f), rotation, {0.0f,0.0f,1.0f}) *
-			glm::scale(glm::mat4(1.0f), glm::vec3(size.x, size.y, 1.0f));
-		s_data.TextureShader->setMat4("u_Transform", transform);
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) *
+			glm::rotate(glm::mat4(1.0f), glm::radians(rotation), {0.0f,0.0f,1.0f})*
+			glm::scale(glm::mat4(1.0f), { size.x,size.y,1.0f });
 
-		s_data.QuadVertexArray->bind();
-		RenderCommand::drawIndexed(s_data.QuadVertexArray);
+		s_data.QuadVertexBufferPtr->Position = transform * s_data.QuadVertexPositions[0];
+		s_data.QuadVertexBufferPtr->Color = color;
+		s_data.QuadVertexBufferPtr->TexCoord = { 0.0f, 0.0f };
+		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
+		s_data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+		s_data.QuadVertexBufferPtr++;
+
+		// 顶点 2：右下
+		s_data.QuadVertexBufferPtr->Position = transform * s_data.QuadVertexPositions[1];
+		s_data.QuadVertexBufferPtr->Color = color;
+		s_data.QuadVertexBufferPtr->TexCoord = { 1.0f, 0.0f };
+		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
+		s_data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+		s_data.QuadVertexBufferPtr++;
+
+		// 顶点 3：右上
+		s_data.QuadVertexBufferPtr->Position = transform * s_data.QuadVertexPositions[2];
+		s_data.QuadVertexBufferPtr->Color = color;
+		s_data.QuadVertexBufferPtr->TexCoord = { 1.0f, 1.0f };
+		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
+		s_data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+		s_data.QuadVertexBufferPtr++;
+
+		// 顶点 4：左上
+		s_data.QuadVertexBufferPtr->Position = transform * s_data.QuadVertexPositions[3];
+		s_data.QuadVertexBufferPtr->Color = color;
+		s_data.QuadVertexBufferPtr->TexCoord = { 0.0f, 1.0f };
+		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
+		s_data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+		s_data.QuadVertexBufferPtr++;
+
+		s_data.QuadIndexCount += 6;
 	}
 
 	void Renderer2D::drawRotatedQuad(const glm::vec2& position, const glm::vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& tintColor)
@@ -288,18 +315,58 @@ namespace Rongine {
 
 	void Renderer2D::drawRotatedQuad(const glm::vec3& position, const glm::vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& tintColor)
 	{
-		s_data.TextureShader->bind();
-		s_data.TextureShader->setFloat("u_TilingFactor", tilingFactor);
-		s_data.TextureShader->setFloat4("u_Color", tintColor);
+		float texIndex = 0.0f;
+		for (uint32_t i = 0; i < s_data.TextureSlotsIndex; i++)
+		{
+			if (*texture.get() == *s_data.TextureSlots[i].get()) {
+				texIndex = (float)i;
+				break;
+			}
+		}
 
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * 
-			glm::rotate(glm::mat4(1.0f), rotation, {0.0f,0.0f,1.0f})*
-			glm::scale(glm::mat4(1.0f), glm::vec3(size.x, size.y, 1.0f));
-		s_data.TextureShader->setMat4("u_Transform", transform);
+		if (texIndex == 0.0f)
+		{
+			texIndex = (float)s_data.TextureSlotsIndex;
+			s_data.TextureSlots[s_data.TextureSlotsIndex] = texture;
+			s_data.TextureSlotsIndex++;
+		}
 
-		s_data.QuadVertexArray->bind();
-		texture->bind();
-		RenderCommand::drawIndexed(s_data.QuadVertexArray);
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) *
+			glm::rotate(glm::mat4(1.0f), glm::radians(rotation), { 0.0f,0.0f,1.0f }) *
+			glm::scale(glm::mat4(1.0f), { size.x,size.y,1.0f });
+
+		s_data.QuadVertexBufferPtr->Position = transform * s_data.QuadVertexPositions[0];
+		s_data.QuadVertexBufferPtr->Color = tintColor;
+		s_data.QuadVertexBufferPtr->TexCoord = { 0.0f, 0.0f };
+		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
+		s_data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+		s_data.QuadVertexBufferPtr++;
+
+		// 顶点 2：右下
+		s_data.QuadVertexBufferPtr->Position = transform * s_data.QuadVertexPositions[1];
+		s_data.QuadVertexBufferPtr->Color = tintColor;
+		s_data.QuadVertexBufferPtr->TexCoord = { 1.0f, 0.0f };
+		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
+		s_data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+		s_data.QuadVertexBufferPtr++;
+
+		// 顶点 3：右上
+		s_data.QuadVertexBufferPtr->Position = transform * s_data.QuadVertexPositions[2];
+		s_data.QuadVertexBufferPtr->Color = tintColor;
+		s_data.QuadVertexBufferPtr->TexCoord = { 1.0f, 1.0f };
+		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
+		s_data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+		s_data.QuadVertexBufferPtr++;
+
+		// 顶点 4：左上
+		s_data.QuadVertexBufferPtr->Position = transform * s_data.QuadVertexPositions[3];
+		s_data.QuadVertexBufferPtr->Color = tintColor;
+		s_data.QuadVertexBufferPtr->TexCoord = { 0.0f, 1.0f };
+		s_data.QuadVertexBufferPtr->TexIndex = texIndex;
+		s_data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+		s_data.QuadVertexBufferPtr++;
+
+		s_data.QuadIndexCount += 6;
 	}
 }
 

@@ -88,12 +88,17 @@ void Sandbox2D::onUpdate(Rongine::Timestep ts)
 	
 
 	{
+		static float rotation = 0.0f;
+		rotation += ts * 50.0f;
+
 		PROFILE_SCOPE("Renderer Draw");
 		Rongine::Renderer2D::beginScene(m_cameraContorller.getCamera());
+		Rongine::Renderer2D::drawRotatedQuad({ 1.0f, 0.0f }, { 0.8f, 0.8f }, -45.0f, { 0.8f, 0.2f, 0.3f, 1.0f });
 		Rongine::Renderer2D::drawQuad({ 0.0f, 0.0f, -0.1f }, { 10.0f, 10.0f }, m_checkerboardTexture,10.0f,glm::vec4(1.0f,0.8f,0.8f,0.5f));
 		//Rongine::Renderer2D::drawRotatedQuad(m_squarePosition, { 1.0f, 1.0f }, 60.0f,m_squareColor);
 		Rongine::Renderer2D::drawQuad({ 0.5f, -0.5f }, { 0.5f, 0.75f }, { 0.2f, 0.3f, 0.8f, 1.0f });
 		Rongine::Renderer2D::drawQuad(m_squarePosition, { 1.0f, 1.0f },  m_squareColor);
+		Rongine::Renderer2D::drawRotatedQuad({ -2.0f, 0.0f, 1.0f }, { 1.0f, 1.0f }, rotation, m_checkerboardTexture, 20.0f);
 		Rongine::Renderer2D::endScene();
 	}
 
