@@ -20,9 +20,9 @@ namespace Rongine {
 
 	struct Renderer2DData
 	{
-		const uint32_t MaxQuads = 10000;
-		const uint32_t MaxVertices = MaxQuads * 4;
-		const uint32_t MaxIndices = MaxQuads * 6;
+		static const uint32_t MaxQuads = 10000;
+		static const uint32_t MaxVertices = MaxQuads * 4;
+		static const uint32_t MaxIndices = MaxQuads * 6;
 		static const uint32_t MaxTextureSlots = 32;
 
 		Ref<VertexArray> QuadVertexArray;
@@ -39,6 +39,8 @@ namespace Rongine {
 		uint32_t TextureSlotsIndex = 1;//0=whiteTexture;
 
 		glm::vec4 QuadVertexPositions[4];
+
+		Renderer2D::Statistics Stats;
 	};
 	
 
@@ -100,6 +102,7 @@ namespace Rongine {
 			samplers[i] = i;
 
 		s_data.TextureShader->setIntArray("u_Textures", samplers,s_data.MaxTextureSlots);
+		s_data.TextureShader->bind();
 
 		s_data.TextureSlots[0] = s_data.WhiteTexture;
 
@@ -116,7 +119,6 @@ namespace Rongine {
 
 	void Renderer2D::beginScene(const OrthographicCamera& camera)
 	{
-		s_data.TextureShader->bind();
 		s_data.TextureShader->setMat4("u_ViewProjection", camera.getViewProjectionMatrix());
 
 		s_data.QuadIndexCount = 0;
@@ -140,6 +142,19 @@ namespace Rongine {
 		for (uint32_t i = 0; i < s_data.TextureSlotsIndex; i++)
 			s_data.TextureSlots[i]->bind(i);
 		RenderCommand::drawIndexed(s_data.QuadVertexArray, s_data.QuadIndexCount);
+
+		s_data.Stats.DrawCalls++;
+	}
+
+
+
+	void Renderer2D::flushAndReset()
+	{
+		Renderer2D::endScene();
+
+		s_data.QuadIndexCount = 0;
+		s_data.QuadVertexBufferPtr = s_data.QuadVertexBufferBase;
+		s_data.TextureSlotsIndex = 1;
 	}
 
 	void Renderer2D::drawQuad(const glm::vec2& position, const glm::vec2& size, const glm::vec4& color)
@@ -149,6 +164,9 @@ namespace Rongine {
 
 	void Renderer2D::drawQuad(const glm::vec3& position, const glm::vec2& size, const glm::vec4& color)
 	{
+		if (s_data.QuadIndexCount >= Renderer2DData::MaxIndices)
+			flushAndReset();
+
 		const float texIndex = 0.0f;
 		const float tilingFactor = 1.0f;
 
@@ -188,6 +206,8 @@ namespace Rongine {
 
 		s_data.QuadIndexCount += 6;
 
+		s_data.Stats.QuadCounts++;
+
 		//s_data.TextureShader->bind();
 		//s_data.TextureShader->setFloat4("u_Color", color);
 		//	  
@@ -207,6 +227,9 @@ namespace Rongine {
 
 	void Renderer2D::drawQuad(const glm::vec3& position, const glm::vec2& size, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4 & tintColor )
 	{
+		if(s_data.QuadIndexCount>=Renderer2DData::MaxIndices)
+			flushAndReset();
+
 		float texIndex = 0.0f;
 		for (uint32_t i = 0; i < s_data.TextureSlotsIndex; i++)
 		{
@@ -258,6 +281,8 @@ namespace Rongine {
 		s_data.QuadVertexBufferPtr++;
 
 		s_data.QuadIndexCount += 6;
+
+		s_data.Stats.QuadCounts++;
 	}
 
 	void Renderer2D::drawRotatedQuad(const glm::vec2& position, const glm::vec2& size, float rotation, const glm::vec4& color)
@@ -267,6 +292,9 @@ namespace Rongine {
 
 	void Renderer2D::drawRotatedQuad(const glm::vec3& position, const glm::vec2& size, float rotation, const glm::vec4& color)
 	{
+		if (s_data.QuadIndexCount >= Renderer2DData::MaxIndices)
+			flushAndReset();
+
 		const float texIndex = 0.0f;
 		const float tilingFactor = 1.0f;
 
@@ -306,6 +334,8 @@ namespace Rongine {
 		s_data.QuadVertexBufferPtr++;
 
 		s_data.QuadIndexCount += 6;
+
+		s_data.Stats.QuadCounts++;
 	}
 
 	void Renderer2D::drawRotatedQuad(const glm::vec2& position, const glm::vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& tintColor)
@@ -315,6 +345,9 @@ namespace Rongine {
 
 	void Renderer2D::drawRotatedQuad(const glm::vec3& position, const glm::vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& tintColor)
 	{
+		if (s_data.QuadIndexCount >= Renderer2DData::MaxIndices)
+			flushAndReset();
+
 		float texIndex = 0.0f;
 		for (uint32_t i = 0; i < s_data.TextureSlotsIndex; i++)
 		{
@@ -367,6 +400,18 @@ namespace Rongine {
 		s_data.QuadVertexBufferPtr++;
 
 		s_data.QuadIndexCount += 6;
+
+		s_data.Stats.QuadCounts++;
+	}
+
+	Renderer2D::Statistics Renderer2D::getStatistics()
+	{
+		return s_data.Stats;
+	}
+
+	void Renderer2D::resetStatistics()
+	{
+		memset(&s_data.Stats, 0, sizeof(Statistics));
 	}
 }
 
