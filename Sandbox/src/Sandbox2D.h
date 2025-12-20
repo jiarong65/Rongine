@@ -26,6 +26,7 @@ private:
 
 	Rongine::Ref<Rongine::VertexArray> m_vertexArray;
 	Rongine::Ref<Rongine::Texture2D> m_checkerboardTexture;
+	Rongine::Ref<Rongine::Texture2D> m_logoTexture;
 
 	struct ProfileResult
 	{

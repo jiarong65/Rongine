@@ -75,6 +75,11 @@ namespace Rongine {
 		}
 	}
 
+	void Application::close()
+	{
+		m_running = false;
+	}
+
 	bool Application::onWindowClose(WindowCloseEvent& event){
 		m_running = false;
 		return false;

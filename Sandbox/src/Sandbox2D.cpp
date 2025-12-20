@@ -53,6 +53,7 @@ Sandbox2D::Sandbox2D()
 void Sandbox2D::onAttach()
 {
 	m_checkerboardTexture = Rongine::Texture2D::create("assets/textures/Checkerboard.png");
+	m_logoTexture = Rongine::Texture2D::create("assets/textures/ChernoLogo.png");
 }
 
 void Sandbox2D::onDetach()
@@ -99,7 +100,7 @@ void Sandbox2D::onUpdate(Rongine::Timestep ts)
 		//Rongine::Renderer2D::drawRotatedQuad(m_squarePosition, { 1.0f, 1.0f }, 60.0f,m_squareColor);
 		Rongine::Renderer2D::drawQuad({ 0.5f, -0.5f }, { 0.5f, 0.75f }, { 0.2f, 0.3f, 0.8f, 1.0f });
 		Rongine::Renderer2D::drawQuad(m_squarePosition, { 1.0f, 1.0f },  m_squareColor);
-		Rongine::Renderer2D::drawRotatedQuad({ -2.0f, 0.0f, 1.0f }, { 1.0f, 1.0f }, rotation, m_checkerboardTexture, 20.0f);
+		Rongine::Renderer2D::drawRotatedQuad({ -2.0f, 0.0f, 1.0f }, { 1.0f, 1.0f }, rotation, m_logoTexture, 20.0f);
 
 		for (float x = -5.0f; x < 5.0f; x += 0.5f) {
 			for (float y = -5.0f; y < 5.0f; y += 0.5f) {
@@ -113,10 +114,76 @@ void Sandbox2D::onUpdate(Rongine::Timestep ts)
 
 }
 
+//void Sandbox2D::onImGuiRender()
+//{
+//	ImGui::Begin("Setting");
+//	ImGui::ColorEdit3("Square Color", glm::value_ptr(m_squareColor));
+//
+//	auto stats = Rongine::Renderer2D::getStatistics();
+//	ImGui::Text("Renderer2D Stats:");
+//	ImGui::Text("Draw Calls: %d", stats.DrawCalls);
+//	ImGui::Text("Quads: %d", stats.QuadCounts);
+//	ImGui::Text("Vertices: %d", stats.getTotalVertexCounts());
+//	ImGui::Text("Indices: %d", stats.getTotalIndexCounts());
+//
+//	for (auto& result : m_profileResult)
+//	{
+//		char label[50];
+//		strcpy(label, "%.3fms  ");
+//		strcat(label, result.name);
+//		ImGui::Text(label, result.time);
+//	}
+//	m_profileResult.clear();
+//	ImGui::End();
+//}
+
 void Sandbox2D::onImGuiRender()
 {
-	ImGui::Begin("Setting");
-	ImGui::ColorEdit3("Square Color", glm::value_ptr(m_squareColor));
+	// --- DockSpace 核心开始 ---
+	static bool dockspaceOpen = true;
+	static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
+
+	// 设置主窗口标志（全屏、无标题、不可移动等）
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(viewport->Pos);
+	ImGui::SetNextWindowSize(viewport->Size);
+	ImGui::SetNextWindowViewport(viewport->ID);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+	window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+	// 创建底层的 DockSpace 宿主窗口
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::Begin("DockSpace Demo", &dockspaceOpen, window_flags);
+	ImGui::PopStyleVar();
+	ImGui::PopStyleVar(2); // 弹出之前 Push 的两个 StyleVar
+
+	// 激活 DockSpace
+	ImGuiIO& io = ImGui::GetIO();
+	if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
+	{
+		ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
+		ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+	}
+
+	// 顶部菜单栏
+	if (ImGui::BeginMenuBar())
+	{
+		if (ImGui::BeginMenu("File"))
+		{
+			if (ImGui::MenuItem("Exit")) Rongine::Application::get().close();
+			ImGui::EndMenu();
+		}
+		ImGui::EndMenuBar();
+	}
+	// --- DockSpace 核心结束 ---
+
+	// 真正的 Settings 窗口（现在它可以被停靠到任何地方）
+	ImGui::Begin("Settings");
+
+	ImGui::ColorEdit4("Square Color", glm::value_ptr(m_squareColor));
 
 	auto stats = Rongine::Renderer2D::getStatistics();
 	ImGui::Text("Renderer2D Stats:");
@@ -125,15 +192,21 @@ void Sandbox2D::onImGuiRender()
 	ImGui::Text("Vertices: %d", stats.getTotalVertexCounts());
 	ImGui::Text("Indices: %d", stats.getTotalIndexCounts());
 
+	// 渲染性能监控
+	ImGui::Separator();
 	for (auto& result : m_profileResult)
 	{
-		char label[50];
-		strcpy(label, "%.3fms  ");
-		strcat(label, result.name);
-		ImGui::Text(label, result.time);
+		ImGui::Text("%.3fms  %s", result.time, result.name);
 	}
 	m_profileResult.clear();
-	ImGui::End();
+
+	// 模拟视口预览（将纹理渲染在窗口里）
+	uint32_t textureID = m_checkerboardTexture->getRendererID();
+	ImGui::Image((void*)(uintptr_t)textureID, ImVec2{ 256.0f, 256.0f }, { 0, 1 }, { 1, 0 });
+
+	ImGui::End(); // 结束 Settings 窗口
+
+	ImGui::End(); // 结束 DockSpace 宿主窗口
 }
 
 void Sandbox2D::onEvent(Rongine::Event& e)

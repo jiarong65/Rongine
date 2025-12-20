@@ -20,6 +20,7 @@ namespace Rongine {
 	public:
 		virtual ~Application();
 		void run();
+		void close();
 
 		void onEvent(Event& event);
 
