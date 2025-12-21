@@ -54,6 +54,11 @@ void Sandbox2D::onAttach()
 {
 	m_checkerboardTexture = Rongine::Texture2D::create("assets/textures/Checkerboard.png");
 	m_logoTexture = Rongine::Texture2D::create("assets/textures/ChernoLogo.png");
+
+	Rongine::FrameSpecification fbSpec;
+	fbSpec.width = 1280;
+	fbSpec.height = 720;
+	m_framebuffer = Rongine::Framebuffer::create(fbSpec);
 }
 
 void Sandbox2D::onDetach()
@@ -83,6 +88,9 @@ void Sandbox2D::onUpdate(Rongine::Timestep ts)
 
 	{
 		PROFILE_SCOPE("Renderer Prep");
+
+		m_framebuffer->bind();
+
 		Rongine::RenderCommand::setColor({ 0.1f, 0.1f, 0.1f, 1 });
 		Rongine::RenderCommand::clear();
 	}
@@ -110,6 +118,8 @@ void Sandbox2D::onUpdate(Rongine::Timestep ts)
 		}
 
 		Rongine::Renderer2D::endScene();
+
+		m_framebuffer->unbind();
 	}
 
 }
@@ -205,6 +215,18 @@ void Sandbox2D::onImGuiRender()
 	ImGui::Image((void*)(uintptr_t)textureID, ImVec2{ 256.0f, 256.0f }, { 0, 1 }, { 1, 0 });
 
 	ImGui::End(); // 结束 Settings 窗口
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 }); // 让图片铺满窗口
+	ImGui::Begin("Viewport");
+
+	// 拿到 FBO 里的纹理 ID
+	textureID = m_framebuffer->getColorAttachmentRendererID();
+	// 将 FBO 的内容绘制到 ImGui 窗口中
+	// 注意：OpenGL 的 UV 坐标是 y 轴向上，ImGui 是向下，所以需要翻转 UV：{0, 1}, {1, 0}
+	ImGui::Image((void*)(uintptr_t)textureID, ImVec2{ 1280, 720 }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+
+	ImGui::End();
+	ImGui::PopStyleVar();
 
 	ImGui::End(); // 结束 DockSpace 宿主窗口
 }

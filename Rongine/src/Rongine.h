@@ -22,6 +22,7 @@
 #include "Rongine/Renderer/Shader.h"
 #include "Rongine/Renderer/VertexArray.h"
 #include "Rongine/Renderer/Texture.h"
+#include "Rongine/Renderer/Framebuffer.h"
 
 #include "Rongine/Renderer/OrthographicCamera.h"
 

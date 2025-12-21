@@ -28,6 +28,8 @@ private:
 	Rongine::Ref<Rongine::Texture2D> m_checkerboardTexture;
 	Rongine::Ref<Rongine::Texture2D> m_logoTexture;
 
+	Rongine::Ref<Rongine::Framebuffer> m_framebuffer;
+
 	struct ProfileResult
 	{
 		const char* name;
