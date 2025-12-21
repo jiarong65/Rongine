@@ -8,11 +8,11 @@
 
 #include <glm/glm.hpp>
 
-class Sandbox2D:public Rongine::Layer
+class EditorLayer :public Rongine::Layer
 {
 public:
-	Sandbox2D();
-	virtual ~Sandbox2D() = default;
+	EditorLayer();
+	virtual ~EditorLayer() = default;
 
 	virtual void onAttach() override;
 	virtual void onDetach() override;
@@ -25,6 +25,18 @@ private:
 	Rongine::OrthographicCameraController m_cameraContorller;
 
 	Rongine::Ref<Rongine::VertexArray> m_vertexArray;
+	Rongine::Ref<Rongine::Texture2D> m_checkerboardTexture;
+	Rongine::Ref<Rongine::Texture2D> m_logoTexture;
+
+	Rongine::Ref<Rongine::Framebuffer> m_framebuffer;
+
+	struct ProfileResult
+	{
+		const char* name;
+		float time;
+	};
+	std::vector<ProfileResult> m_profileResult;
+
 	glm::vec4 m_squareColor = { 0.2f, 0.3f, 0.8f, 1.0f };
 	glm::vec3 m_squarePosition = { 0.0f,0.0f,0.0f };
 

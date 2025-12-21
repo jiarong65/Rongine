@@ -157,4 +157,62 @@ project "Sandbox"
 		optimize "on"
 
 
+project "Rongine-Editor"
+	location "Rongine-Editor"
+	kind "ConsoleApp"
+	language "C++"
+	cppdialect "C++17"
+	staticruntime "on"
+	buildoptions "/utf-8"
 
+	debugdir "Sandbox"
+
+	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+	objdir("bin-int/" ..outputdir .. "/%{prj.name}")
+
+	pchheader("Rongpch.h")
+	pchsource("Rongine-Editor/src/Rongpch.cpp")
+
+	files
+	{
+		"%{prj.name}/src/**.h",
+		"%{prj.name}/src/**.cpp",
+		"%{prj.name}/assets/**"
+	}
+
+	includedirs
+	{
+		"Rongine/vendor/spdlog/include",
+		"Rongine/src",
+		"%{includeDir.glm}",
+		"Rongine/vendor",
+		"%{includeDir.Glad}"
+	}
+
+	links
+	{
+		"Rongine"
+	}
+
+	filter "system:windows"
+		systemversion "latest"
+
+		defines
+		{
+			"RONG_PLATFORM_WINDOWS"
+		}
+
+	filter "configurations:Debug"
+		defines "RONG_DEBUG"
+		runtime "Debug"
+		symbols "on"
+
+	filter "configurations:Release"
+		defines "RONG_RELEASE"
+		runtime "Release"
+		optimize "on"
+
+	filter "configurations:Dist"
+		defines "RONG_DIST"
+		runtime "Release"
+		optimize "on"
