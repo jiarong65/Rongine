@@ -1,46 +1,46 @@
 #include "Rongpch.h"
-#include "WindowsInput.h"
+#include "Rongine/Core/Input.h"
 #include "Rongine/Core/Application.h"
+#include "Rongine/Core/KeyCodes.h"
+#include "Rongine/Core/MouseCodes.h"
 #include <GLFW/glfw3.h>
 
 namespace Rongine
 {
-	Input* Input::s_instance = new WindowsInput();
+    // 直接实现 Input 类中的静态方法
+    bool Input::isKeyPressed(KeyCode key)
+    {
+        // 获取原生窗口句柄
+        auto window = static_cast<GLFWwindow*>(Application::get().getWindow().getNativeWindow());
+        auto state = glfwGetKey(window, static_cast<int32_t>(key));
+        return state == GLFW_PRESS || state == GLFW_REPEAT;
+    }
 
-	bool WindowsInput::isKeyPressedImpl(int keycode)
-	{
-		auto window = static_cast<GLFWwindow*>(Application::get().getWindow().getNativeWindow());
-		int state = glfwGetKey(window,keycode);
-		return state == GLFW_PRESS || state == GLFW_REPEAT;
-	}
+    bool Input::isMouseButtonPressed(MouseCode button)
+    {
+        auto window = static_cast<GLFWwindow*>(Application::get().getWindow().getNativeWindow());
+        auto state = glfwGetMouseButton(window, static_cast<int32_t>(button));
+        return state == GLFW_PRESS;
+    }
 
-	bool WindowsInput::isMouseButtonPressedImpl(int button)
-	{
-		auto window = static_cast<GLFWwindow*>(Application::get().getWindow().getNativeWindow());
-		int state = glfwGetMouseButton(window, button);
+    std::pair<float, float> Input::getMousePosition()
+    {
+        auto window = static_cast<GLFWwindow*>(Application::get().getWindow().getNativeWindow());
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
 
-		return state == GLFW_PRESS;
-	}
+        return { (float)xpos, (float)ypos };
+    }
 
-	std::pair<float, float> WindowsInput::getMousePositionImpl()
-	{
-		auto window = static_cast<GLFWwindow*>(Application::get().getWindow().getNativeWindow());
-		double xPos, yPos;
-		glfwGetCursorPos(window,&xPos,&yPos);
+    float Input::getMouseX()
+    {
+        auto [x, y] = getMousePosition(); // 使用 C++17 结构化绑定
+        return x;
+    }
 
-		return std::make_pair((float)xPos, (float)yPos);
-	}
-
-	float WindowsInput::getMouseXImpl()
-	{
-		auto [x, y] = getMousePositionImpl();
-		return x;
-	}
-
-	float WindowsInput::getMouseYImpl()
-	{
-		auto [x, y] = getMousePositionImpl();
-		return y;
-	}
-
+    float Input::getMouseY()
+    {
+        auto [x, y] = getMousePosition();
+        return y;
+    }
 }
