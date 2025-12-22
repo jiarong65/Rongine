@@ -71,7 +71,8 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 
 	{
 		PROFILE_SCOPE("CameraContorller::OnUpdate");
-		m_cameraContorller.onUpdate(ts);
+		if(m_viewportFocused)
+			m_cameraContorller.onUpdate(ts);
 	}
 
 	{
@@ -218,6 +219,10 @@ void EditorLayer::onImGuiRender()
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 }); // 让图片铺满窗口
 	ImGui::Begin("Viewport");
+
+	m_viewportFocused = ImGui::IsWindowFocused();
+	m_viewportHovered = ImGui::IsWindowHovered();
+	Rongine::Application::get().getImGuiLayer()->blockEvents(!m_viewportFocused && !m_viewportHovered);
 
 	// 拿到 FBO 里的纹理 ID
 	textureID = m_framebuffer->getColorAttachmentRendererID();

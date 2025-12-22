@@ -41,5 +41,7 @@ private:
 	glm::vec3 m_squarePosition = { 0.0f,0.0f,0.0f };
 
 	float m_squareMovedSpeed = 3.0f;
+
+	bool m_viewportFocused = false, m_viewportHovered = false;
 };
 

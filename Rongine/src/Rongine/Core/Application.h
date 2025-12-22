@@ -22,6 +22,8 @@ namespace Rongine {
 		void run();
 		void close();
 
+		ImGuiLayer* getImGuiLayer() { return m_imguiLayer; }
+
 		void onEvent(Event& event);
 
 		void pushLayer(Layer* layer);

@@ -18,7 +18,7 @@ public:
 	RongEditorApp() {
 		//pushLayer(new ExampleLayer());
 		pushLayer(new EditorLayer());
-		pushOverLayer(new Rongine::ImGuiLayer());
+		pushOverLayer(Rongine::Application::getImGuiLayer());
 	}
 	~RongEditorApp() {
 

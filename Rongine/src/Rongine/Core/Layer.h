@@ -16,7 +16,7 @@ namespace Rongine {
 		virtual void onDetach() {};
 		virtual void onUpdate(Timestep ts) {};
 		virtual void onImGuiRender() {};
-		virtual void onEvent(Event& event) {};
+		virtual void onEvent(Event& e) {};
 
 		const std::string& getName() { return m_debugName; }
 	protected:

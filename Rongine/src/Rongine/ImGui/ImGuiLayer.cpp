@@ -51,6 +51,24 @@ namespace Rongine {
 		ImGui::DestroyContext();
 	}
 
+	void ImGuiLayer::onEvent(Event& e)
+	{
+		if (m_blockEvents)
+		{
+			ImGuiIO& io = ImGui::GetIO();
+			if (e.isInCateGory(EventCategoryMouse))
+			{
+				// 如果 e.handled 变成 true，事件就不会传给下层的 EditorLayer
+				e.handled |= io.WantCaptureMouse;
+			}
+
+			if (e.isInCateGory(EventCategoryKeyboard))
+			{
+				e.handled |= io.WantCaptureKeyboard;
+			}
+		}
+	}
+
 	void ImGuiLayer::begin()
 	{
 		ImGui_ImplOpenGL3_NewFrame();
