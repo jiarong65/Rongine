@@ -12,6 +12,7 @@
 #include "Rongine/Events/MouseEvent.h"
 #include "Rongine/Core/Input.h"
 #include "Rongine/Renderer/OrthographicCameraController.h"
+#include "Rongine/Renderer/PerspectiveCameraController.h"
 
 // ---Renderer------------------------
 #include "Rongine/Renderer/Renderer.h"

@@ -16,6 +16,7 @@ includeDir["GLFW"]="Rongine/vendor/GLFW/include"
 includeDir["Glad"]="Rongine/vendor/Glad/include"
 includeDir["ImGui"]="Rongine/vendor/imgui"
 includeDir["glm"]="Rongine/vendor/glm"
+includeDir["entt"]="Rongine/vendor/entt/include"
 includeDir["stb_image"]="Rongine/vendor/stb_image"
 include "Rongine/vendor/GLFW"
 include "Rongine/vendor/Glad"
@@ -59,7 +60,8 @@ project "Rongine"
 		"%{includeDir.Glad}",
 		"%{includeDir.ImGui}",
 		"%{includeDir.glm}",
-		"%{includeDir.stb_image}"
+		"%{includeDir.stb_image}",
+		"%{includeDir.entt}"
 	}
 
 	links
@@ -186,7 +188,8 @@ project "Rongine-Editor"
 		"Rongine/src",
 		"%{includeDir.glm}",
 		"Rongine/vendor",
-		"%{includeDir.Glad}"
+		"%{includeDir.Glad}",
+		"%{includeDir.entt}"
 	}
 
 	links

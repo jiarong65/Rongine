@@ -1,8 +1,10 @@
 #pragma once
+#include <Rongine.h>
 #include "Rongine/Core/Layer.h"
 #include "Rongine/Renderer/Shader.h"
 #include "Rongine/Renderer/VertexArray.h"
 #include "Rongine/Renderer/OrthographicCameraController.h"
+#include "Rongine/Renderer/PerspectiveCameraController.h"
 #include "Rongine/Renderer/Renderer.h"
 #include "Rongine/Core/Timestep.h"
 
@@ -22,7 +24,8 @@ public:
 
 private:
 	Rongine::Ref<Rongine::Shader> m_shader;
-	Rongine::OrthographicCameraController m_cameraContorller;
+	//Rongine::OrthographicCameraController m_cameraContorller;
+	Rongine::PerspectiveCameraController m_cameraContorller;
 
 	Rongine::Ref<Rongine::VertexArray> m_vertexArray;
 	Rongine::Ref<Rongine::Texture2D> m_checkerboardTexture;

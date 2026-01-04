@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Rongine/Renderer/OrthographicCamera.h"
+#include "PerspectiveCamera.h"
 #include "Texture.h"
 
 namespace Rongine {
@@ -12,6 +13,7 @@ namespace Rongine {
 		static void shutdown();
 
 		static void beginScene(const OrthographicCamera& camera);
+		static void beginScene(const PerspectiveCamera& camera);
 		static void endScene();
 
 		static void flush();

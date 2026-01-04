@@ -126,6 +126,16 @@ namespace Rongine {
 		s_data.TextureSlotsIndex = 1;
 	}
 
+	void Renderer2D::beginScene(const PerspectiveCamera& camera)
+	{
+		s_data.TextureShader->bind();
+		s_data.TextureShader->setMat4("u_ViewProjection", camera.getViewProjectionMatrix());
+
+		s_data.QuadIndexCount = 0;
+		s_data.QuadVertexBufferPtr = s_data.QuadVertexBufferBase;
+		s_data.TextureSlotsIndex = 1;
+	}
+
 	void Renderer2D::endScene()
 	{
 		uint32_t dataSize = (uint32_t)((uint8_t*)s_data.QuadVertexBufferPtr - (uint8_t*)s_data.QuadVertexBufferBase);
