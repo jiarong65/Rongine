@@ -95,30 +95,44 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		Rongine::RenderCommand::setColor({ 0.1f, 0.1f, 0.1f, 1 });
 		Rongine::RenderCommand::clear();
 	}
+
+	{
+		PROFILE_SCOPE("Renderer 3D");
+
+		Rongine::Renderer3D::beginScene(m_cameraContorller.getCamera());
+
+		// 绘制中心红块
+		Rongine::Renderer3D::drawCube({ 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 0.8f, 0.2f, 0.3f, 1.0f });
+
+		// 绘制一个“地面” (扁平的大块)
+		Rongine::Renderer3D::drawCube({ 0.0f, -1.0f, 0.0f }, { 10.0f, 0.1f, 10.0f }, { 0.3f, 0.3f, 0.3f, 1.0f });
+
+		Rongine::Renderer3D::endScene();
+	}
 	
 
 	Rongine::Renderer2D::resetStatistics();
 	{
-		static float rotation = 0.0f;
-		rotation += ts * 50.0f;
+		//static float rotation = 0.0f;
+		//rotation += ts * 50.0f;
 
-		PROFILE_SCOPE("Renderer Draw");
-		Rongine::Renderer2D::beginScene(m_cameraContorller.getCamera());
-		Rongine::Renderer2D::drawRotatedQuad({ 1.0f, 0.0f }, { 0.8f, 0.8f }, -45.0f, { 0.8f, 0.2f, 0.3f, 1.0f });
-		Rongine::Renderer2D::drawQuad({ 0.0f, 0.0f, -0.1f }, { 20.0f, 20.0f }, m_checkerboardTexture,10.0f,glm::vec4(1.0f,0.8f,0.8f,0.5f));
-		//Rongine::Renderer2D::drawRotatedQuad(m_squarePosition, { 1.0f, 1.0f }, 60.0f,m_squareColor);
-		Rongine::Renderer2D::drawQuad({ 0.5f, -0.5f }, { 0.5f, 0.75f }, { 0.2f, 0.3f, 0.8f, 1.0f });
-		Rongine::Renderer2D::drawQuad(m_squarePosition, { 1.0f, 1.0f },  m_squareColor);
-		Rongine::Renderer2D::drawRotatedQuad({ -2.0f, 0.0f, 1.0f }, { 1.0f, 1.0f }, rotation, m_logoTexture, 20.0f);
+		//PROFILE_SCOPE("Renderer Draw");
+		//Rongine::Renderer2D::beginScene(m_cameraContorller.getCamera());
+		//Rongine::Renderer2D::drawRotatedQuad({ 1.0f, 0.0f }, { 0.8f, 0.8f }, -45.0f, { 0.8f, 0.2f, 0.3f, 1.0f });
+		//Rongine::Renderer2D::drawQuad({ 0.0f, 0.0f, -0.1f }, { 20.0f, 20.0f }, m_checkerboardTexture,10.0f,glm::vec4(1.0f,0.8f,0.8f,0.5f));
+		////Rongine::Renderer2D::drawRotatedQuad(m_squarePosition, { 1.0f, 1.0f }, 60.0f,m_squareColor);
+		//Rongine::Renderer2D::drawQuad({ 0.5f, -0.5f }, { 0.5f, 0.75f }, { 0.2f, 0.3f, 0.8f, 1.0f });
+		//Rongine::Renderer2D::drawQuad(m_squarePosition, { 1.0f, 1.0f },  m_squareColor);
+		//Rongine::Renderer2D::drawRotatedQuad({ -2.0f, 0.0f, 1.0f }, { 1.0f, 1.0f }, rotation, m_logoTexture, 20.0f);
 
-		for (float x = -5.0f; x < 5.0f; x += 0.5f) {
-			for (float y = -5.0f; y < 5.0f; y += 0.5f) {
-				glm::vec4 color = { (x + 5.0f) / 10.0f,0.4f,(y + 5.0f) / 10.0f,0.7f };
-				Rongine::Renderer2D::drawQuad({ x, y }, { 0.45f, 0.45f }, color);
-			}
-		}
+		//for (float x = -5.0f; x < 5.0f; x += 0.5f) {
+		//	for (float y = -5.0f; y < 5.0f; y += 0.5f) {
+		//		glm::vec4 color = { (x + 5.0f) / 10.0f,0.4f,(y + 5.0f) / 10.0f,0.7f };
+		//		Rongine::Renderer2D::drawQuad({ x, y }, { 0.45f, 0.45f }, color);
+		//	}
+		//}
 
-		Rongine::Renderer2D::endScene();
+		//Rongine::Renderer2D::endScene();
 
 		m_framebuffer->unbind();
 	}
@@ -238,11 +252,28 @@ void EditorLayer::onImGuiRender()
 	m_viewportHovered = ImGui::IsWindowHovered();
 	Rongine::Application::get().getImGuiLayer()->blockEvents(!m_viewportFocused && !m_viewportHovered);
 
+	// 1. 获取当前 ImGui 视口窗口的可用大小
+	ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
+
+	// 2. 检查是否需要 Resize
+	// 如果尺寸变了，且尺寸有效（大于0）
+	if (m_viewportSize != *((glm::vec2*)&viewportPanelSize) && viewportPanelSize.x > 0 && viewportPanelSize.y > 0)
+	{
+		m_viewportSize = { viewportPanelSize.x, viewportPanelSize.y };
+
+		// A. 调整 Framebuffer 大小 (重新生成纹理附件)
+		// 注意：你需要确保你的 Framebuffer 类实现了 resize() 方法
+		m_framebuffer->resize((uint32_t)m_viewportSize.x, (uint32_t)m_viewportSize.y);
+
+		// B. 调整相机宽高比 (防止物体被拉伸变形)
+		m_cameraContorller.onResize(m_viewportSize.x, m_viewportSize.y);
+	}
+
 	// 拿到 FBO 里的纹理 ID
 	textureID = m_framebuffer->getColorAttachmentRendererID();
 	// 将 FBO 的内容绘制到 ImGui 窗口中
 	// 注意：OpenGL 的 UV 坐标是 y 轴向上，ImGui 是向下，所以需要翻转 UV：{0, 1}, {1, 0}
-	ImGui::Image((void*)(uintptr_t)textureID, ImVec2{ 1280, 720 }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+	ImGui::Image((void*)(uintptr_t)textureID, ImVec2{ m_viewportSize.x, m_viewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 
 	ImGui::End();
 	ImGui::PopStyleVar();

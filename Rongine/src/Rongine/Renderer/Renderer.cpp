@@ -2,6 +2,7 @@
 #include "Renderer.h"
 #include "Platform/OpenGL/OpenGLShader.h"
 #include "Rongine/Renderer/Renderer2D.h"
+#include "Rongine/Renderer/Renderer3D.h"
 
 namespace Rongine {
 
@@ -11,6 +12,7 @@ namespace Rongine {
 	{
 		RenderCommand::init();
 		Renderer2D::init();
+		Renderer3D::init();
 	}
 
 	void Renderer::beginScene(const OrthographicCamera& camera)

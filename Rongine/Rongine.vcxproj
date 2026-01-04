@@ -146,6 +146,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Rongine\Renderer\Renderer3D.h" />
     <ClInclude Include="src\Rongine\Renderer\PerspectiveCameraController.h" />
     <ClInclude Include="src\Rongine\Renderer\PerspectiveCamera.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLBuffer.h" />
@@ -608,6 +609,7 @@
     <ClInclude Include="vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Rongine\Renderer\Renderer3D.cpp" />
     <ClCompile Include="src\Rongine\Renderer\PerspectiveCameraController.cpp" />
     <ClCompile Include="src\Rongine\Renderer\PerspectiveCamera.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp" />

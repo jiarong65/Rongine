@@ -16,6 +16,7 @@ namespace Rongine {
 
 		void onUpdate(Timestep ts);
 		void onEvent(Event& e);
+		void onResize(float width, float height);
 
 		PerspectiveCamera& getCamera() { return m_camera; }
 		const PerspectiveCamera& getCamera() const { return m_camera; }

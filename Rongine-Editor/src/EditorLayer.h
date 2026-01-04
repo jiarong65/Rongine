@@ -46,5 +46,7 @@ private:
 	float m_squareMovedSpeed = 3.0f;
 
 	bool m_viewportFocused = false, m_viewportHovered = false;
+
+	glm::vec2 m_viewportSize = { 0.0f, 0.0f };
 };
 

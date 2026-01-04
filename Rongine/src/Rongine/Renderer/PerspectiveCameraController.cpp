@@ -112,6 +112,14 @@ namespace Rongine {
 		return false;
 	}
 
+	void PerspectiveCameraController::onResize(float width, float height)
+	{
+		m_viewportWidth = width;
+		m_viewportHeight = height;
+		m_aspectRatio = width / height;
+		m_camera.setProjection(m_FOV, m_aspectRatio, m_nearClip, m_farClip);
+	}
+
 	// ---------------- 核心功能实现 ----------------
 
 	// 注意：虽然旋转不再调用此函数，但保留它用于后续开发（如选择物体）

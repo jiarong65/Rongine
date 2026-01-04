@@ -52,4 +52,18 @@ namespace Rongine {
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
+	void OpenGLFramebuffer::resize(uint32_t width, uint32_t height)
+	{
+		if (width == 0 || height == 0 || width > 8192 || height > 8192)
+		{
+			// 防止无效尺寸导致崩溃
+			return;
+		}
+
+		m_specification.width = width;
+		m_specification.height = height;
+
+		invalidate(); // 销毁旧的 texture/renderbuffer，按新尺寸重新创建
+	}
+
 }
