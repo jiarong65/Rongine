@@ -16,20 +16,20 @@ namespace Rongine {
 		glm::vec2 TexCoord;
 		float TexIndex;
 		float TilingFactor;
-		// 如果需要光照，以后在这里加 glm::vec3 Normal;
+		// 预留法线位置: glm::vec3 Normal;
 	};
 
 	// 2. 渲染器数据结构
 	struct Renderer3DData
 	{
-		static const uint32_t MaxCubes = 10000;             // 最大支持 10000 个立方体一次提交
-		static const uint32_t MaxVertices = MaxCubes * 8;   // 每个立方体 8 个顶点
-		static const uint32_t MaxIndices = MaxCubes * 36;   // 每个立方体 6个面 * 2个三角形 * 3个点 = 36 索引
+		static const uint32_t MaxCubes = 10000;
+		static const uint32_t MaxVertices = MaxCubes * 24; // 24 个顶点 (6面 * 4点)
+		static const uint32_t MaxIndices = MaxCubes * 36;  // 36 个索引 (6面 * 6索引)
 		static const uint32_t MaxTextureSlots = 32;
 
 		Ref<VertexArray> CubeVA;
 		Ref<VertexBuffer> CubeVB;
-		Ref<Shader> TextureShader; // 复用支持纹理的 Shader
+		Ref<Shader> TextureShader;
 		Ref<Texture2D> WhiteTexture;
 
 		uint32_t CubeIndexCount = 0;
@@ -37,9 +37,10 @@ namespace Rongine {
 		CubeVertex* CubeVertexBufferPtr = nullptr;
 
 		std::array<Ref<Texture2D>, MaxTextureSlots> TextureSlots;
-		uint32_t TextureSlotIndex = 1; // 0留给白纹理
+		uint32_t TextureSlotIndex = 1; // 0 是白色纹理
 
-		glm::vec4 CubeVertexPositions[8]; // 标准立方体的8个顶点位置缓存
+		// 缓存 24 个标准顶点位置 (6个面 x 4个顶点)
+		glm::vec4 CubeVertexPositions[24];
 
 		Renderer3D::Statistics Stats;
 	};
@@ -65,32 +66,20 @@ namespace Rongine {
 		s_Data.CubeVertexBufferBase = new CubeVertex[s_Data.MaxVertices];
 
 		// --- 预计算索引缓冲 (Batch Index Buffer) ---
-		// 我们需要填满 MaxIndices 这么多索引
+		// 这里的逻辑变成了简单的 Quad 批处理逻辑 (每4个顶点组成一个面)
 		uint32_t* cubeIndices = new uint32_t[s_Data.MaxIndices];
 		uint32_t offset = 0;
-		for (uint32_t i = 0; i < s_Data.MaxIndices; i += 36)
+		for (uint32_t i = 0; i < s_Data.MaxIndices; i += 6)
 		{
-			// 这种索引顺序对应 8 顶点的立方体
-			// 前面
-			cubeIndices[i + 0] = offset + 0; cubeIndices[i + 1] = offset + 1; cubeIndices[i + 2] = offset + 2;
-			cubeIndices[i + 3] = offset + 2; cubeIndices[i + 4] = offset + 3; cubeIndices[i + 5] = offset + 0;
-			// 右面
-			cubeIndices[i + 6] = offset + 1; cubeIndices[i + 7] = offset + 5; cubeIndices[i + 8] = offset + 6;
-			cubeIndices[i + 9] = offset + 6; cubeIndices[i + 10] = offset + 2; cubeIndices[i + 11] = offset + 1;
-			// 后面
-			cubeIndices[i + 12] = offset + 7; cubeIndices[i + 13] = offset + 6; cubeIndices[i + 14] = offset + 5;
-			cubeIndices[i + 15] = offset + 5; cubeIndices[i + 16] = offset + 4; cubeIndices[i + 17] = offset + 7;
-			// 左面
-			cubeIndices[i + 18] = offset + 4; cubeIndices[i + 19] = offset + 0; cubeIndices[i + 20] = offset + 3;
-			cubeIndices[i + 21] = offset + 3; cubeIndices[i + 22] = offset + 7; cubeIndices[i + 23] = offset + 4;
-			// 底面
-			cubeIndices[i + 24] = offset + 4; cubeIndices[i + 25] = offset + 5; cubeIndices[i + 26] = offset + 1;
-			cubeIndices[i + 27] = offset + 1; cubeIndices[i + 28] = offset + 0; cubeIndices[i + 29] = offset + 4;
-			// 顶面
-			cubeIndices[i + 30] = offset + 3; cubeIndices[i + 31] = offset + 2; cubeIndices[i + 32] = offset + 6;
-			cubeIndices[i + 33] = offset + 6; cubeIndices[i + 34] = offset + 7; cubeIndices[i + 35] = offset + 3;
+			cubeIndices[i + 0] = offset + 0;
+			cubeIndices[i + 1] = offset + 1;
+			cubeIndices[i + 2] = offset + 2;
 
-			offset += 8; // 下一个立方体的索引从 +8 开始
+			cubeIndices[i + 3] = offset + 2;
+			cubeIndices[i + 4] = offset + 3;
+			cubeIndices[i + 5] = offset + 0;
+
+			offset += 4;
 		}
 
 		Ref<IndexBuffer> cubeIB = IndexBuffer::create(cubeIndices, s_Data.MaxIndices);
@@ -105,23 +94,50 @@ namespace Rongine {
 		int32_t samplers[s_Data.MaxTextureSlots];
 		for (uint32_t i = 0; i < s_Data.MaxTextureSlots; i++) samplers[i] = i;
 
-		// 注意：这里需要一个支持 Texture 的 3D Shader，你可以复用 Renderer2D 的 Shader
-		// 或者创建一个新的 "Texture3D.glsl"
 		s_Data.TextureShader = Shader::create("assets/shaders/Texture.glsl");
 		s_Data.TextureShader->bind();
 		s_Data.TextureShader->setIntArray("u_Textures", samplers, s_Data.MaxTextureSlots);
 
 		s_Data.TextureSlots[0] = s_Data.WhiteTexture;
 
-		// --- 缓存标准立方体位置 ---
+		// --- 定义 24 个顶点位置 (6个面，逆时针顺序) ---
+		// 每个面的顶点顺序为：左下, 右下, 右上, 左上 (0, 1, 2, 3)
+
+		// 1. 前面 (Front Face) Z = 0.5
 		s_Data.CubeVertexPositions[0] = { -0.5f, -0.5f,  0.5f, 1.0f };
 		s_Data.CubeVertexPositions[1] = { 0.5f, -0.5f,  0.5f, 1.0f };
 		s_Data.CubeVertexPositions[2] = { 0.5f,  0.5f,  0.5f, 1.0f };
 		s_Data.CubeVertexPositions[3] = { -0.5f,  0.5f,  0.5f, 1.0f };
-		s_Data.CubeVertexPositions[4] = { -0.5f, -0.5f, -0.5f, 1.0f };
+
+		// 2. 右面 (Right Face) X = 0.5
+		s_Data.CubeVertexPositions[4] = { 0.5f, -0.5f,  0.5f, 1.0f };
 		s_Data.CubeVertexPositions[5] = { 0.5f, -0.5f, -0.5f, 1.0f };
 		s_Data.CubeVertexPositions[6] = { 0.5f,  0.5f, -0.5f, 1.0f };
-		s_Data.CubeVertexPositions[7] = { -0.5f,  0.5f, -0.5f, 1.0f };
+		s_Data.CubeVertexPositions[7] = { 0.5f,  0.5f,  0.5f, 1.0f };
+
+		// 3. 后面 (Back Face) Z = -0.5
+		s_Data.CubeVertexPositions[8] = { 0.5f, -0.5f, -0.5f, 1.0f };
+		s_Data.CubeVertexPositions[9] = { -0.5f, -0.5f, -0.5f, 1.0f };
+		s_Data.CubeVertexPositions[10] = { -0.5f,  0.5f, -0.5f, 1.0f };
+		s_Data.CubeVertexPositions[11] = { 0.5f,  0.5f, -0.5f, 1.0f };
+
+		// 4. 左面 (Left Face) X = -0.5
+		s_Data.CubeVertexPositions[12] = { -0.5f, -0.5f, -0.5f, 1.0f };
+		s_Data.CubeVertexPositions[13] = { -0.5f, -0.5f,  0.5f, 1.0f };
+		s_Data.CubeVertexPositions[14] = { -0.5f,  0.5f,  0.5f, 1.0f };
+		s_Data.CubeVertexPositions[15] = { -0.5f,  0.5f, -0.5f, 1.0f };
+
+		// 5. 顶面 (Top Face) Y = 0.5
+		s_Data.CubeVertexPositions[16] = { -0.5f,  0.5f,  0.5f, 1.0f };
+		s_Data.CubeVertexPositions[17] = { 0.5f,  0.5f,  0.5f, 1.0f };
+		s_Data.CubeVertexPositions[18] = { 0.5f,  0.5f, -0.5f, 1.0f };
+		s_Data.CubeVertexPositions[19] = { -0.5f,  0.5f, -0.5f, 1.0f };
+
+		// 6. 底面 (Bottom Face) Y = -0.5
+		s_Data.CubeVertexPositions[20] = { -0.5f, -0.5f, -0.5f, 1.0f };
+		s_Data.CubeVertexPositions[21] = { 0.5f, -0.5f, -0.5f, 1.0f };
+		s_Data.CubeVertexPositions[22] = { 0.5f, -0.5f,  0.5f, 1.0f };
+		s_Data.CubeVertexPositions[23] = { -0.5f, -0.5f,  0.5f, 1.0f };
 	}
 
 	void Renderer3D::shutdown()
@@ -150,7 +166,6 @@ namespace Rongine {
 	{
 		if (s_Data.CubeIndexCount == 0) return;
 
-		// 绑定所有纹理
 		for (uint32_t i = 0; i < s_Data.TextureSlotIndex; i++)
 			s_Data.TextureSlots[i]->bind(i);
 
@@ -169,17 +184,14 @@ namespace Rongine {
 
 	void Renderer3D::drawCube(const glm::vec3& position, const glm::vec3& size, const glm::vec4& color)
 	{
-		// 纯色绘制，使用 WhiteTexture
 		drawCube(position, size, s_Data.WhiteTexture, color);
 	}
 
 	void Renderer3D::drawCube(const glm::vec3& position, const glm::vec3& size, const Ref<Texture2D>& texture, const glm::vec4& tintColor)
 	{
-		// 1. 如果 Buffer 满了，先提交一次
 		if (s_Data.CubeIndexCount >= Renderer3DData::MaxIndices)
 			flushAndReset();
 
-		// 2. 查找或添加纹理
 		float textureIndex = 0.0f;
 		for (uint32_t i = 1; i < s_Data.TextureSlotIndex; i++)
 		{
@@ -200,37 +212,30 @@ namespace Rongine {
 			s_Data.TextureSlotIndex++;
 		}
 
-		// 3. 计算变换矩阵 (Model Matrix) - 在 CPU 端完成
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), size);
 
-		// 4. 填充 8 个顶点数据
-		for (int i = 0; i < 8; i++)
+		// --- 24 顶点循环 ---
+		for (int i = 0; i < 24; i++)
 		{
-			// A. 计算世界坐标：原始位置 * 变换矩阵
 			s_Data.CubeVertexBufferPtr->Position = transform * s_Data.CubeVertexPositions[i];
-
-			// B. 颜色
 			s_Data.CubeVertexBufferPtr->Color = tintColor;
 
-			// C. 设置 UV 坐标 (核心修改！)
-			// 将局部坐标 (-0.5 ~ 0.5) 映射到 UV (0.0 ~ 1.0)
-			// 这样每个面虽然会有拉伸，但至少能看到纹理图案，而不是纯色
-			s_Data.CubeVertexBufferPtr->TexCoord = {
-				s_Data.CubeVertexPositions[i].x + 0.5f,
-				s_Data.CubeVertexPositions[i].y + 0.5f
-			};
+			// --- 完美的 UV 映射 (每个面都是 0~1) ---
+			// 0:左下, 1:右下, 2:右上, 3:左上
+			switch (i % 4)
+			{
+			case 0: s_Data.CubeVertexBufferPtr->TexCoord = { 0.0f, 0.0f }; break;
+			case 1: s_Data.CubeVertexBufferPtr->TexCoord = { 1.0f, 0.0f }; break;
+			case 2: s_Data.CubeVertexBufferPtr->TexCoord = { 1.0f, 1.0f }; break;
+			case 3: s_Data.CubeVertexBufferPtr->TexCoord = { 0.0f, 1.0f }; break;
+			}
 
-			// D. 纹理索引
 			s_Data.CubeVertexBufferPtr->TexIndex = textureIndex;
-
-			// E. 平铺系数
 			s_Data.CubeVertexBufferPtr->TilingFactor = 1.0f;
-
-			// 指针后移
 			s_Data.CubeVertexBufferPtr++;
 		}
 
-		s_Data.CubeIndexCount += 36; // 增加索引计数 (12个三角形 * 3)
+		s_Data.CubeIndexCount += 36; // 6个面 * 6个索引 = 36
 		s_Data.Stats.CubeCount++;
 	}
 
