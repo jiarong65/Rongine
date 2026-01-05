@@ -29,3 +29,8 @@
 #include "Rongine/Renderer/OrthographicCamera.h"
 
 #include "Rongine/ImGui/ImGuiLayer.h"
+
+#include "Rongine/CAD/CADImporter.h" 
+#include "Rongine/CAD/CADMesher.h"
+
+#include "Rongine/Utils/GeometryUtils.h"

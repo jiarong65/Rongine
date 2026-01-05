@@ -6,6 +6,10 @@
 #include "Rongine/Renderer/Renderer3D.h" // 必须包含这个
 #include <glm/gtc/type_ptr.hpp>
 #include <chrono>
+#include <Bnd_Box.hxx>                
+#include <BRepBndLib.hxx>             
+#include <BRepPrimAPI_MakeSphere.hxx> 
+#include <gp_Vec.hxx>                 
 #include "imgui/imgui.h"
 
 // --- Timer 类 (性能分析用) ---
@@ -49,8 +53,15 @@ void EditorLayer::onAttach()
 	fbSpec.height = 720;
 	m_framebuffer = Rongine::Framebuffer::create(fbSpec);
 
-	// 【重要】初始化 Renderer3D
-	Rongine::Renderer3D::init();
+	//// 【重要】初始化 Renderer3D
+	//Rongine::Renderer3D::init();
+
+	TopoDS_Shape shape = Rongine::CADImporter::ImportSTEP("assets/models/mypage.stp");
+	m_CadMeshVA = Rongine::CADMesher::CreateMeshFromShape(shape);
+
+	if(!m_CadMeshVA)RONG_CLIENT_ERROR("step 加载失败");
+
+	m_TorusVA = Rongine::GeometryUtils::CreateTorus(1.0f, 0.4f, 64, 32);
 }
 
 void EditorLayer::onDetach()
@@ -91,42 +102,60 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		Rongine::Renderer3D::beginScene(m_cameraContorller.getCamera());
 
 		// A. 绘制地板 (静态)
-		Rongine::Renderer3D::drawCube({ 0.0f, -1.0f, 0.0f }, { 10.0f, 0.1f, 10.0f }, m_checkerboardTexture);
+		Rongine::Renderer3D::drawCube({ 0.0f, -1.0f, 0.0f }, { 100.0f, 0.1f, 100.0f }, m_checkerboardTexture);
 
-		// B. 绘制旋转方块阵列 (验证光照)
-		for (int x = -2; x <= 2; x++)
+		//// B. 绘制旋转方块阵列 (验证光照)
+		//for (int x = -2; x <= 2; x++)
+		//{
+		//	for (int z = -2; z <= 2; z++)
+		//	{
+		//		glm::vec3 pos = { x * 1.5f, 0.0f, z * 1.5f };
+
+		//		// 计算每个方块独特的旋转角度，产生波浪效果
+		//		float angle = glm::radians(s_Rotation + (x + z) * 20.0f);
+
+		//		// 颜色渐变
+		//		glm::vec4 color = { (x + 2.0f) / 4.0f, 0.4f, (z + 2.0f) / 4.0f, 1.0f };
+
+		//		// 调用旋转绘制函数
+		//		Rongine::Renderer3D::drawRotatedCube(
+		//			pos,
+		//			{ 0.8f, 0.8f, 0.8f }, // 大小
+		//			angle,
+		//			{ 1.0f, 1.0f, 0.0f }, // 旋转轴 (对角线旋转，光照变化最明显)
+		//			color
+		//		);
+		//	}
+		//}
+
+		//// C. 绘制带 Logo 的半透明旋转方块 (在中间上方)
+		//Rongine::Renderer3D::drawRotatedCube(
+		//	{ 0.0f, 2.0f, 0.0f },
+		//	{ 1.5f, 1.5f, 1.5f },
+		//	glm::radians(s_Rotation * 0.5f), // 转慢点
+		//	{ 0.0f, 1.0f, 0.0f }, // 绕Y轴自转
+		//	m_logoTexture
+		//);
+
+		if (m_TorusVA)
 		{
-			for (int z = -2; z <= 2; z++)
-			{
-				glm::vec3 pos = { x * 1.5f, 0.0f, z * 1.5f };
-
-				// 计算每个方块独特的旋转角度，产生波浪效果
-				float angle = glm::radians(s_Rotation + (x + z) * 20.0f);
-
-				// 颜色渐变
-				glm::vec4 color = { (x + 2.0f) / 4.0f, 0.4f, (z + 2.0f) / 4.0f, 1.0f };
-
-				// 调用旋转绘制函数
-				Rongine::Renderer3D::drawRotatedCube(
-					pos,
-					{ 0.8f, 0.8f, 0.8f }, // 大小
-					angle,
-					{ 1.0f, 1.0f, 0.0f }, // 旋转轴 (对角线旋转，光照变化最明显)
-					color
-				);
-			}
+			// 把它放在稍微高一点的位置，稍微转一下角度展示立体感
+			glm::mat4 transform = glm::translate(glm::mat4(1.0f), { 0.0f, 1.5f, 0.0f })
+				* glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), { 1.0f, 0.0f, 0.0f });
+			glDisable(GL_CULL_FACE);
+			Rongine::Renderer3D::drawModel(m_TorusVA, transform);
+			glEnable(GL_CULL_FACE);
 		}
 
-		// C. 绘制带 Logo 的半透明旋转方块 (在中间上方)
-		Rongine::Renderer3D::drawRotatedCube(
-			{ 0.0f, 2.0f, 0.0f },
-			{ 1.5f, 1.5f, 1.5f },
-			glm::radians(s_Rotation * 0.5f), // 转慢点
-			{ 0.0f, 1.0f, 0.0f }, // 绕Y轴自转
-			m_logoTexture
-		);
+		if (m_CadMeshVA)
+		{
+			glm::mat4 transform = glm::translate(glm::mat4(1.0f), { 0.0f, 5.0f, 0.0f })
+				* glm::scale(glm::mat4(1.0f), glm::vec3(0.03f));
+			Rongine::Renderer3D::drawModel(m_CadMeshVA, transform);
+		}
 
 		Rongine::Renderer3D::endScene();
+
 		m_framebuffer->unbind();
 	}
 }

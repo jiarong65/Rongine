@@ -80,7 +80,7 @@
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>RONG_PLATFORM_WINDOWS;RONG_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Rongine\vendor\spdlog\include;..\Rongine\src;..\Rongine\vendor\glm;..\Rongine\vendor;..\Rongine\vendor\Glad\include;..\Rongine\vendor\entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Rongine\vendor\spdlog\include;..\Rongine\src;..\Rongine\vendor\glm;..\Rongine\vendor;..\Rongine\vendor\Glad\include;..\Rongine\vendor\entt\include;..\Rongine\vendor\OCCT\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -91,7 +91,12 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>TKernel.lib;TKMath.lib;TKG3d.lib;TKBRep.lib;TKPrim.lib;TKMesh.lib;TKTopAlgo.lib;TKSTEP.lib;TKIGES.lib;TKShHealing.lib;TKXSBase.lib;TKSTEPBase.lib;TKSTEPAttr.lib;TKSTEP209.lib;TKCAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\Rongine\vendor\OCCT\win64\vc14\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>IF EXIST "$(SolutionDir)\Rongine\vendor\OCCT\win64\vc14\bin\*.dll"\ (xcopy /Q /E /Y /I "$(SolutionDir)\Rongine\vendor\OCCT\win64\vc14\bin\*.dll" "..\bin\Debug-windows-x86_64\Rongine-Editor" &gt; nul) ELSE (xcopy /Q /Y /I "$(SolutionDir)\Rongine\vendor\OCCT\win64\vc14\bin\*.dll" "..\bin\Debug-windows-x86_64\Rongine-Editor" &gt; nul)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -99,7 +104,7 @@
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>RONG_PLATFORM_WINDOWS;RONG_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Rongine\vendor\spdlog\include;..\Rongine\src;..\Rongine\vendor\glm;..\Rongine\vendor;..\Rongine\vendor\Glad\include;..\Rongine\vendor\entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Rongine\vendor\spdlog\include;..\Rongine\src;..\Rongine\vendor\glm;..\Rongine\vendor;..\Rongine\vendor\Glad\include;..\Rongine\vendor\entt\include;..\Rongine\vendor\OCCT\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -114,7 +119,12 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>TKernel.lib;TKMath.lib;TKG3d.lib;TKBRep.lib;TKPrim.lib;TKMesh.lib;TKTopAlgo.lib;TKSTEP.lib;TKIGES.lib;TKShHealing.lib;TKXSBase.lib;TKSTEPBase.lib;TKSTEPAttr.lib;TKSTEP209.lib;TKCAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\Rongine\vendor\OCCT\win64\vc14\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>IF EXIST "$(SolutionDir)\Rongine\vendor\OCCT\win64\vc14\bin\*.dll"\ (xcopy /Q /E /Y /I "$(SolutionDir)\Rongine\vendor\OCCT\win64\vc14\bin\*.dll" "..\bin\Release-windows-x86_64\Rongine-Editor" &gt; nul) ELSE (xcopy /Q /Y /I "$(SolutionDir)\Rongine\vendor\OCCT\win64\vc14\bin\*.dll" "..\bin\Release-windows-x86_64\Rongine-Editor" &gt; nul)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
     <ClCompile>
@@ -122,7 +132,7 @@
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>RONG_PLATFORM_WINDOWS;RONG_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Rongine\vendor\spdlog\include;..\Rongine\src;..\Rongine\vendor\glm;..\Rongine\vendor;..\Rongine\vendor\Glad\include;..\Rongine\vendor\entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Rongine\vendor\spdlog\include;..\Rongine\src;..\Rongine\vendor\glm;..\Rongine\vendor;..\Rongine\vendor\Glad\include;..\Rongine\vendor\entt\include;..\Rongine\vendor\OCCT\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -137,7 +147,12 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>TKernel.lib;TKMath.lib;TKG3d.lib;TKBRep.lib;TKPrim.lib;TKMesh.lib;TKTopAlgo.lib;TKSTEP.lib;TKIGES.lib;TKShHealing.lib;TKXSBase.lib;TKSTEPBase.lib;TKSTEPAttr.lib;TKSTEP209.lib;TKCAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\Rongine\vendor\OCCT\win64\vc14\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>IF EXIST "$(SolutionDir)\Rongine\vendor\OCCT\win64\vc14\bin\*.dll"\ (xcopy /Q /E /Y /I "$(SolutionDir)\Rongine\vendor\OCCT\win64\vc14\bin\*.dll" "..\bin\Dist-windows-x86_64\Rongine-Editor" &gt; nul) ELSE (xcopy /Q /Y /I "$(SolutionDir)\Rongine\vendor\OCCT\win64\vc14\bin\*.dll" "..\bin\Dist-windows-x86_64\Rongine-Editor" &gt; nul)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="src\EditorLayer.h" />
@@ -153,10 +168,13 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="assets\models\mypage.stp" />
+    <None Include="assets\models\ymq.CATPart" />
     <None Include="assets\shaders\FlatColor.glsl" />
     <None Include="assets\shaders\Texture.glsl" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="assets\models\mypage.jpg" />
     <Image Include="assets\textures\Checkerboard.png" />
     <Image Include="assets\textures\ChernoLogo.png" />
   </ItemGroup>

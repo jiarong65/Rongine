@@ -1,47 +1,10 @@
 #include "Rongpch.h"
 #include "Renderer3D.h"
-#include "Rongine/Renderer/VertexArray.h"
-#include "Rongine/Renderer/Shader.h"
-#include "Rongine/Renderer/RenderCommand.h"
+#include "RenderCommand.h" // 确保包含 RenderCommand
 #include <glm/gtc/matrix_transform.hpp>
 #include <array>
 
 namespace Rongine {
-
-	struct CubeVertex
-	{
-		glm::vec3 Position;
-		glm::vec3 Normal;   // 法线
-		glm::vec4 Color;
-		glm::vec2 TexCoord;
-		float TexIndex;
-		float TilingFactor;
-	};
-
-	struct Renderer3DData
-	{
-		static const uint32_t MaxCubes = 10000;
-		static const uint32_t MaxVertices = MaxCubes * 24;
-		static const uint32_t MaxIndices = MaxCubes * 36;
-		static const uint32_t MaxTextureSlots = 32;
-
-		Ref<VertexArray> CubeVA;
-		Ref<VertexBuffer> CubeVB;
-		Ref<Shader> TextureShader;
-		Ref<Texture2D> WhiteTexture;
-
-		uint32_t CubeIndexCount = 0;
-		CubeVertex* CubeVertexBufferBase = nullptr;
-		CubeVertex* CubeVertexBufferPtr = nullptr;
-
-		std::array<Ref<Texture2D>, MaxTextureSlots> TextureSlots;
-		uint32_t TextureSlotIndex = 1;
-
-		glm::vec4 CubeVertexPositions[24];
-		glm::vec3 CubeVertexNormals[24];
-
-		Renderer3D::Statistics Stats;
-	};
 
 	static Renderer3DData s_Data;
 
@@ -94,33 +57,41 @@ namespace Rongine {
 
 		s_Data.TextureSlots[0] = s_Data.WhiteTexture;
 
+		// 【新增】初始化 Model 矩阵为单位矩阵，防止第一帧 Batch 渲染出错
+		s_Data.TextureShader->setMat4("u_Model", glm::mat4(1.0f));
+
 		// --- 初始化 24 个顶点的标准位置 ---
-		// Front
+		// Front Face
 		s_Data.CubeVertexPositions[0] = { -0.5f, -0.5f,  0.5f, 1.0f };
 		s_Data.CubeVertexPositions[1] = { 0.5f, -0.5f,  0.5f, 1.0f };
 		s_Data.CubeVertexPositions[2] = { 0.5f,  0.5f,  0.5f, 1.0f };
 		s_Data.CubeVertexPositions[3] = { -0.5f,  0.5f,  0.5f, 1.0f };
-		// Right
+
+		// Right Face
 		s_Data.CubeVertexPositions[4] = { 0.5f, -0.5f,  0.5f, 1.0f };
 		s_Data.CubeVertexPositions[5] = { 0.5f, -0.5f, -0.5f, 1.0f };
 		s_Data.CubeVertexPositions[6] = { 0.5f,  0.5f, -0.5f, 1.0f };
 		s_Data.CubeVertexPositions[7] = { 0.5f,  0.5f,  0.5f, 1.0f };
-		// Back
+
+		// Back Face
 		s_Data.CubeVertexPositions[8] = { 0.5f, -0.5f, -0.5f, 1.0f };
 		s_Data.CubeVertexPositions[9] = { -0.5f, -0.5f, -0.5f, 1.0f };
 		s_Data.CubeVertexPositions[10] = { -0.5f,  0.5f, -0.5f, 1.0f };
 		s_Data.CubeVertexPositions[11] = { 0.5f,  0.5f, -0.5f, 1.0f };
-		// Left
+
+		// Left Face
 		s_Data.CubeVertexPositions[12] = { -0.5f, -0.5f, -0.5f, 1.0f };
 		s_Data.CubeVertexPositions[13] = { -0.5f, -0.5f,  0.5f, 1.0f };
 		s_Data.CubeVertexPositions[14] = { -0.5f,  0.5f,  0.5f, 1.0f };
 		s_Data.CubeVertexPositions[15] = { -0.5f,  0.5f, -0.5f, 1.0f };
-		// Top
+
+		// Top Face
 		s_Data.CubeVertexPositions[16] = { -0.5f,  0.5f,  0.5f, 1.0f };
 		s_Data.CubeVertexPositions[17] = { 0.5f,  0.5f,  0.5f, 1.0f };
 		s_Data.CubeVertexPositions[18] = { 0.5f,  0.5f, -0.5f, 1.0f };
 		s_Data.CubeVertexPositions[19] = { -0.5f,  0.5f, -0.5f, 1.0f };
-		// Bottom
+
+		// Bottom Face
 		s_Data.CubeVertexPositions[20] = { -0.5f, -0.5f, -0.5f, 1.0f };
 		s_Data.CubeVertexPositions[21] = { 0.5f, -0.5f, -0.5f, 1.0f };
 		s_Data.CubeVertexPositions[22] = { 0.5f, -0.5f,  0.5f, 1.0f };
@@ -142,9 +113,18 @@ namespace Rongine {
 
 	void Renderer3D::beginScene(const PerspectiveCamera& camera)
 	{
-
 		s_Data.TextureShader->bind();
-		s_Data.TextureShader->setMat4("u_ViewProjection", camera.getViewProjectionMatrix());
+
+		// 1. 设置 ViewProjection (纯相机矩阵)
+		s_Data.ViewProjection = camera.getViewProjectionMatrix();
+		s_Data.TextureShader->setMat4("u_ViewProjection", s_Data.ViewProjection);
+
+		// 2. 设置 ViewPos (用于高光)
+		s_Data.TextureShader->setFloat3("u_ViewPos", camera.getPosition());
+
+		// 3. 【重要】重置 u_Model 为单位矩阵
+		// 确保接下来的 Batch 渲染 (drawCube) 不会继承上次的物体变换
+		s_Data.TextureShader->setMat4("u_Model", glm::mat4(1.0f));
 
 		s_Data.CubeIndexCount = 0;
 		s_Data.CubeVertexBufferPtr = s_Data.CubeVertexBufferBase;
@@ -161,6 +141,9 @@ namespace Rongine {
 	void Renderer3D::flush()
 	{
 		if (s_Data.CubeIndexCount == 0) return;
+
+		// 【重要】Batch 渲染时，顶点已经在 CPU 变换过了，所以 GPU 的 u_Model 必须是 Identity
+		s_Data.TextureShader->setMat4("u_Model", glm::mat4(1.0f));
 
 		for (uint32_t i = 0; i < s_Data.TextureSlotIndex; i++)
 			s_Data.TextureSlots[i]->bind(i);
@@ -259,6 +242,40 @@ namespace Rongine {
 		s_Data.Stats.CubeCount++;
 	}
 
+	// ===========================================
+	// 【核心修改】 Mesh Rendering
+	// ===========================================
+	void Renderer3D::drawModel(const Ref<VertexArray>& va, const glm::mat4& transform)
+	{
+		// 1. 如果批处理里有方块没画，先画掉 (flush 会使用 Identity Model 矩阵)
+		flush();
+
+		s_Data.TextureShader->bind();
+
+		// 2. 分别设置矩阵
+		// u_Model: 物体的变换 (Shader 用它算 v_Position 和 v_Normal)
+		s_Data.TextureShader->setMat4("u_Model", transform);
+
+		// u_ViewProjection: 相机的 VP (保持 beginScene 设的值，不需要乘 transform)
+		s_Data.TextureShader->setMat4("u_ViewProjection", s_Data.ViewProjection);
+
+		s_Data.WhiteTexture->bind(0);
+
+		va->bind();
+
+		// 3. 【关键修复】显式传递 Index Count！
+		// 之前这里可能默认为 0，导致什么都画不出来
+		uint32_t count = va->getIndexBuffer()->getCount();
+		RenderCommand::drawIndexed(va, count);
+
+		s_Data.Stats.DrawCalls++;
+
+		// 4. 画完后，恢复 u_Model 为单位矩阵
+		// 否则之后如果再调用 drawCube，方块会飞到错误的地方
+		s_Data.TextureShader->setMat4("u_Model", glm::mat4(1.0f));
+	}
+
 	Renderer3D::Statistics Renderer3D::getStatistics() { return s_Data.Stats; }
 	void Renderer3D::resetStatistics() { memset(&s_Data.Stats, 0, sizeof(Statistics)); }
 }
+

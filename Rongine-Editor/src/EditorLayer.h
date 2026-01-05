@@ -28,6 +28,7 @@ private:
 	Rongine::PerspectiveCameraController m_cameraContorller;
 
 	Rongine::Ref<Rongine::VertexArray> m_vertexArray;
+	Rongine::Ref<Rongine::VertexArray> m_CadMeshVA, m_TorusVA;;
 	Rongine::Ref<Rongine::Texture2D> m_checkerboardTexture;
 	Rongine::Ref<Rongine::Texture2D> m_logoTexture;
 

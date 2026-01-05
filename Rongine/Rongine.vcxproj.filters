@@ -16,6 +16,9 @@
     <Filter Include="src\Rongine">
       <UniqueIdentifier>{CE800EC0-3A36-87B5-C32A-818C2FDF7DB9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Rongine\CAD">
+      <UniqueIdentifier>{4523F931-B1AE-66F6-BABF-E9EA26CAC2F6}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Rongine\Core">
       <UniqueIdentifier>{E6551E71-D24E-3DC3-FB80-2248E7D81CCF}</UniqueIdentifier>
     </Filter>
@@ -80,6 +83,12 @@
     </ClInclude>
     <ClInclude Include="src\Rongine.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\CAD\CADImporter.h">
+      <Filter>src\Rongine\CAD</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\CAD\CADMesher.h">
+      <Filter>src\Rongine\CAD</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongine\Core\Application.h">
       <Filter>src\Rongine\Core</Filter>
@@ -1437,6 +1446,7 @@
     <ClInclude Include="vendor\stb_image\stb_image.h">
       <Filter>vendor\stb_image</Filter>
     </ClInclude>
+    <ClInclude Include="src\Rongine\Utils\GeometryUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp">
@@ -1465,6 +1475,12 @@
     </ClCompile>
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp">
       <Filter>src\Platform\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\CAD\CADImporter.cpp">
+      <Filter>src\Rongine\CAD</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\CAD\CADMesher.cpp">
+      <Filter>src\Rongine\CAD</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongine\Core\Application.cpp">
       <Filter>src\Rongine\Core</Filter>
@@ -1535,5 +1551,6 @@
     <ClCompile Include="vendor\stb_image\stb_image.cpp">
       <Filter>vendor\stb_image</Filter>
     </ClCompile>
+    <ClCompile Include="src\Rongine\Utils\GeometryUtils.cpp" />
   </ItemGroup>
 </Project>

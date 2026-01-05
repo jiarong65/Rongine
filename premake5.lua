@@ -1,6 +1,32 @@
+-- =============================================================
+-- [配置] OpenCASCADE 相对路径
+-- 指向项目内部的 vendor 目录，确保项目可移植
+-- =============================================================
+local OCCT_DIR = "Rongine/vendor/OCCT"
+
+-- 需要链接的 OCCT 核心库列表
+local OCCT_LIBS = {
+	"TKernel",
+	"TKMath",
+	"TKG3d",
+	"TKBRep",
+	"TKPrim",
+	"TKMesh",
+	"TKTopAlgo",
+	"TKSTEP",
+	"TKIGES",
+	"TKShHealing",
+	"TKXSBase",    -- 包含 XSControl_Reader
+	"TKSTEPBase",  -- STEP 的基础定义
+	"TKSTEPAttr",  -- STEP 属性支持
+    "TKSTEP209",   -- 额外的 STEP 协议支持
+    "TKCAF"        -- OCAF 框架支持 
+}
+-- =============================================================
+
 workspace "Rongine"
 	architecture "x86_64"
-	startproject "Sandbox"
+	startproject "Rongine-Editor" -- 默认启动编辑器
 
 	configurations
 	{
@@ -9,19 +35,26 @@ workspace "Rongine"
 		"Dist"
 	}
 
-outputdir="%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
-includeDir={}
-includeDir["GLFW"]="Rongine/vendor/GLFW/include"
-includeDir["Glad"]="Rongine/vendor/Glad/include"
-includeDir["ImGui"]="Rongine/vendor/imgui"
-includeDir["glm"]="Rongine/vendor/glm"
-includeDir["entt"]="Rongine/vendor/entt/include"
-includeDir["stb_image"]="Rongine/vendor/stb_image"
+-- 定义所有依赖的头文件路径
+includeDir = {}
+includeDir["GLFW"] = "Rongine/vendor/GLFW/include"
+includeDir["Glad"] = "Rongine/vendor/Glad/include"
+includeDir["ImGui"] = "Rongine/vendor/imgui"
+includeDir["glm"] = "Rongine/vendor/glm"
+includeDir["entt"] = "Rongine/vendor/entt/include"
+includeDir["stb_image"] = "Rongine/vendor/stb_image"
+-- [新增] OCCT 头文件路径 (使用 %{wks.location} 确保基于工作区根目录)
+includeDir["OCCT"] = "%{wks.location}/" .. OCCT_DIR .. "/inc"
+
 include "Rongine/vendor/GLFW"
 include "Rongine/vendor/Glad"
 include "Rongine/vendor/imgui"
 
+-- =============================================================
+-- Project: Rongine (Core Engine Library)
+-- =============================================================
 project "Rongine"
 	location "Rongine"
 	kind "StaticLib"
@@ -30,7 +63,7 @@ project "Rongine"
 	staticruntime "on"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-	objdir("bin-int/" ..outputdir .. "/%{prj.name}")
+	objdir("bin-int/" .. outputdir .. "/%{prj.name}")
 
 	pchheader("Rongpch.h")
 	pchsource("Rongine/src/Rongpch.cpp")
@@ -61,7 +94,8 @@ project "Rongine"
 		"%{includeDir.ImGui}",
 		"%{includeDir.glm}",
 		"%{includeDir.stb_image}",
-		"%{includeDir.entt}"
+		"%{includeDir.entt}",
+		"%{includeDir.OCCT}" -- [新增] 核心引擎需要包含 OCCT 头文件以编写 CADMesher
 	}
 
 	links
@@ -69,7 +103,7 @@ project "Rongine"
 		"GLFW",
 		"Glad",
 		"opengl32.lib",
-		"ImGUi"
+		"ImGui"
 	}
 
 	filter "system:windows"
@@ -98,6 +132,9 @@ project "Rongine"
 		runtime "Release"
 		optimize "on"
 
+-- =============================================================
+-- Project: Sandbox (Test App)
+-- =============================================================
 project "Sandbox"
 	location "Sandbox"
 	kind "ConsoleApp"
@@ -109,7 +146,7 @@ project "Sandbox"
 	debugdir "Sandbox"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-	objdir("bin-int/" ..outputdir .. "%{prj.name}")
+	objdir("bin-int/" .. outputdir .. "/%{prj.name}")
 
 	pchheader("Rongpch.h")
 	pchsource("Sandbox/src/Rongpch.cpp")
@@ -127,7 +164,8 @@ project "Sandbox"
 		"Rongine/src",
 		"%{includeDir.glm}",
 		"Rongine/vendor",
-		"%{includeDir.Glad}"
+		"%{includeDir.Glad}",
+		"%{includeDir.OCCT}" -- 以防 Sandbox 也需要用到几何类型
 	}
 
 	links
@@ -159,6 +197,9 @@ project "Sandbox"
 		optimize "on"
 
 
+-- =============================================================
+-- Project: Rongine-Editor (Main Application)
+-- =============================================================
 project "Rongine-Editor"
 	location "Rongine-Editor"
 	kind "ConsoleApp"
@@ -170,7 +211,7 @@ project "Rongine-Editor"
 	debugdir "%{prj.name}"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-	objdir("bin-int/" ..outputdir .. "/%{prj.name}")
+	objdir("bin-int/" .. outputdir .. "/%{prj.name}")
 
 	pchheader("Rongpch.h")
 	pchsource("Rongine-Editor/src/Rongpch.cpp")
@@ -189,12 +230,20 @@ project "Rongine-Editor"
 		"%{includeDir.glm}",
 		"Rongine/vendor",
 		"%{includeDir.Glad}",
-		"%{includeDir.entt}"
+		"%{includeDir.entt}",
+		"%{includeDir.OCCT}" -- 必须包含，因为 EditorLayer 会调用 OCCT API
+	}
+
+	-- [新增] 添加 OCCT 的库目录
+	libdirs
+	{
+		"%{wks.location}/" .. OCCT_DIR .. "/win64/vc14/lib"
 	}
 
 	links
 	{
-		"Rongine"
+		"Rongine",
+		OCCT_LIBS -- [新增] 自动链接 OCCT 库
 	}
 
 	filter "system:windows"
@@ -203,6 +252,13 @@ project "Rongine-Editor"
 		defines
 		{
 			"RONG_PLATFORM_WINDOWS"
+		}
+		
+		-- [新增] 构建后自动复制 DLL
+		-- 这行命令会自动把 vendor/OCCT/win64/vc14/bin 下的所有 DLL 复制到 exe 旁边
+		postbuildcommands
+		{
+			"{COPY} \"%{wks.location}/" .. OCCT_DIR .. "/win64/vc14/bin/*.dll\" \"%{cfg.targetdir}\""
 		}
 
 	filter "configurations:Debug"

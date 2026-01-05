@@ -31,3 +31,4 @@ bin-int/
 *.cache
 
 Rongine/vendor/imgui/imgui.ini
+Rongine/vendor/OCCT/

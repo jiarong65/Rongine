@@ -4,6 +4,9 @@
     <Filter Include="assets">
       <UniqueIdentifier>{583885F2-44DA-AFC8-2D95-C31C19D63619}</UniqueIdentifier>
     </Filter>
+    <Filter Include="assets\models">
+      <UniqueIdentifier>{2B0B5C10-97CB-D746-6006-21C4CC851C23}</UniqueIdentifier>
+    </Filter>
     <Filter Include="assets\shaders">
       <UniqueIdentifier>{51CD2FD9-3D9B-23DF-262F-9405129CFF43}</UniqueIdentifier>
     </Filter>
@@ -40,6 +43,12 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="assets\models\mypage.stp">
+      <Filter>assets\models</Filter>
+    </None>
+    <None Include="assets\models\ymq.CATPart">
+      <Filter>assets\models</Filter>
+    </None>
     <None Include="assets\shaders\FlatColor.glsl">
       <Filter>assets\shaders</Filter>
     </None>
@@ -48,6 +57,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Image Include="assets\models\mypage.jpg">
+      <Filter>assets\models</Filter>
+    </Image>
     <Image Include="assets\textures\Checkerboard.png">
       <Filter>assets\textures</Filter>
     </Image>

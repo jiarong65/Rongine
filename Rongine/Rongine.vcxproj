@@ -77,7 +77,7 @@
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RONG_PLATFORM_WINDOWS;RONG_BUILD_DLL;GLFW_INCLUDE_NONE;RONG_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -99,7 +99,7 @@
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RONG_PLATFORM_WINDOWS;RONG_BUILD_DLL;GLFW_INCLUDE_NONE;RONG_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -125,7 +125,7 @@
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RONG_PLATFORM_WINDOWS;RONG_BUILD_DLL;GLFW_INCLUDE_NONE;RONG_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -146,6 +146,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Rongine\Utils\GeometryUtils.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLBuffer.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLContext.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLFramebuffer.h" />
@@ -155,6 +156,8 @@
     <ClInclude Include="src\Platform\OpenGL\OpenGLVertexArray.h" />
     <ClInclude Include="src\Platform\Windows\WindowsWindow.h" />
     <ClInclude Include="src\Rongine.h" />
+    <ClInclude Include="src\Rongine\CAD\CADImporter.h" />
+    <ClInclude Include="src\Rongine\CAD\CADMesher.h" />
     <ClInclude Include="src\Rongine\Core\Application.h" />
     <ClInclude Include="src\Rongine\Core\Core.h" />
     <ClInclude Include="src\Rongine\Core\EntryPoint.h" />
@@ -609,6 +612,7 @@
     <ClInclude Include="vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Rongine\Utils\GeometryUtils.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLContext.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLFramebuffer.cpp" />
@@ -618,6 +622,8 @@
     <ClCompile Include="src\Platform\OpenGL\OpenGLVertexArray.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsInput.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp" />
+    <ClCompile Include="src\Rongine\CAD\CADImporter.cpp" />
+    <ClCompile Include="src\Rongine\CAD\CADMesher.cpp" />
     <ClCompile Include="src\Rongine\Core\Application.cpp" />
     <ClCompile Include="src\Rongine\Core\Layer.cpp" />
     <ClCompile Include="src\Rongine\Core\LayerStack.cpp" />
