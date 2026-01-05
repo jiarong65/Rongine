@@ -42,7 +42,7 @@ namespace Rongine {
 
 		// 欧拉角 (Euler Angles)
 		float m_pitch = 0.0f;
-		float m_yaw = 0.0f; // 初始化朝向，通常 0 或者 -90 度取决于坐标系定义
+		float m_yaw = 0.0f; 
 	};
 
 }
