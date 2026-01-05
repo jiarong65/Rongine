@@ -146,9 +146,6 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\Rongine\Renderer\Renderer3D.h" />
-    <ClInclude Include="src\Rongine\Renderer\PerspectiveCameraController.h" />
-    <ClInclude Include="src\Rongine\Renderer\PerspectiveCamera.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLBuffer.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLContext.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLFramebuffer.h" />
@@ -179,9 +176,12 @@
     <ClInclude Include="src\Rongine\Renderer\GraphicsContext.h" />
     <ClInclude Include="src\Rongine\Renderer\OrthographicCamera.h" />
     <ClInclude Include="src\Rongine\Renderer\OrthographicCameraController.h" />
+    <ClInclude Include="src\Rongine\Renderer\PerspectiveCamera.h" />
+    <ClInclude Include="src\Rongine\Renderer\PerspectiveCameraController.h" />
     <ClInclude Include="src\Rongine\Renderer\RenderCommand.h" />
     <ClInclude Include="src\Rongine\Renderer\Renderer.h" />
     <ClInclude Include="src\Rongine\Renderer\Renderer2D.h" />
+    <ClInclude Include="src\Rongine\Renderer\Renderer3D.h" />
     <ClInclude Include="src\Rongine\Renderer\RendererAPI.h" />
     <ClInclude Include="src\Rongine\Renderer\Shader.h" />
     <ClInclude Include="src\Rongine\Renderer\Texture.h" />
@@ -609,9 +609,6 @@
     <ClInclude Include="vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Rongine\Renderer\Renderer3D.cpp" />
-    <ClCompile Include="src\Rongine\Renderer\PerspectiveCameraController.cpp" />
-    <ClCompile Include="src\Rongine\Renderer\PerspectiveCamera.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLContext.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLFramebuffer.cpp" />
@@ -632,9 +629,12 @@
     <ClCompile Include="src\Rongine\Renderer\Framebuffer.cpp" />
     <ClCompile Include="src\Rongine\Renderer\OrthographicCamera.cpp" />
     <ClCompile Include="src\Rongine\Renderer\OrthographicCameraController.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\PerspectiveCamera.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\PerspectiveCameraController.cpp" />
     <ClCompile Include="src\Rongine\Renderer\RenderCommand.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Renderer.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Renderer2D.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\Renderer3D.cpp" />
     <ClCompile Include="src\Rongine\Renderer\RendererAPI.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Shader.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Texture.cpp" />

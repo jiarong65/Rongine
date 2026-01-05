@@ -144,6 +144,12 @@
     <ClInclude Include="src\Rongine\Renderer\OrthographicCameraController.h">
       <Filter>src\Rongine\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Rongine\Renderer\PerspectiveCamera.h">
+      <Filter>src\Rongine\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\Renderer\PerspectiveCameraController.h">
+      <Filter>src\Rongine\Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="src\Rongine\Renderer\RenderCommand.h">
       <Filter>src\Rongine\Renderer</Filter>
     </ClInclude>
@@ -151,6 +157,9 @@
       <Filter>src\Rongine\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongine\Renderer\Renderer2D.h">
+      <Filter>src\Rongine\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\Renderer\Renderer3D.h">
       <Filter>src\Rongine\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongine\Renderer\RendererAPI.h">
@@ -1428,9 +1437,6 @@
     <ClInclude Include="vendor\stb_image\stb_image.h">
       <Filter>vendor\stb_image</Filter>
     </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\PerspectiveCamera.h" />
-    <ClInclude Include="src\Rongine\Renderer\PerspectiveCameraController.h" />
-    <ClInclude Include="src\Rongine\Renderer\Renderer3D.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp">
@@ -1493,6 +1499,12 @@
     <ClCompile Include="src\Rongine\Renderer\OrthographicCameraController.cpp">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\Rongine\Renderer\PerspectiveCamera.cpp">
+      <Filter>src\Rongine\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Renderer\PerspectiveCameraController.cpp">
+      <Filter>src\Rongine\Renderer</Filter>
+    </ClCompile>
     <ClCompile Include="src\Rongine\Renderer\RenderCommand.cpp">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
@@ -1500,6 +1512,9 @@
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongine\Renderer\Renderer2D.cpp">
+      <Filter>src\Rongine\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Renderer\Renderer3D.cpp">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongine\Renderer\RendererAPI.cpp">
@@ -1520,8 +1535,5 @@
     <ClCompile Include="vendor\stb_image\stb_image.cpp">
       <Filter>vendor\stb_image</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\PerspectiveCamera.cpp" />
-    <ClCompile Include="src\Rongine\Renderer\PerspectiveCameraController.cpp" />
-    <ClCompile Include="src\Rongine\Renderer\Renderer3D.cpp" />
   </ItemGroup>
 </Project>

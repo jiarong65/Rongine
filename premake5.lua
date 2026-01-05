@@ -167,7 +167,7 @@ project "Rongine-Editor"
 	staticruntime "on"
 	buildoptions "/utf-8"
 
-	debugdir "Sandbox"
+	debugdir "%{prj.name}"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir("bin-int/" ..outputdir .. "/%{prj.name}")
