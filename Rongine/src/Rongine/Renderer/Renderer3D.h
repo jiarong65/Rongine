@@ -29,7 +29,7 @@ namespace Rongine {
 		static void drawRotatedCube(const glm::vec3& position, const glm::vec3& size, float rotation, const glm::vec3& axis, const glm::vec4& color);
 		static void drawRotatedCube(const glm::vec3& position, const glm::vec3& size, float rotation, const glm::vec3& axis, const Ref<Texture2D>& texture, const glm::vec4& tintColor = glm::vec4(1.0f));
 
-		static void drawModel(const Ref<VertexArray>& va, const glm::mat4& transform = glm::mat4(1.0f));
+		static void drawModel(const Ref<VertexArray>& va, const glm::mat4& transform = glm::mat4(1.0f),int entityID=-1);
 
 		// --- 统计信息 ---
 		struct Statistics

@@ -49,5 +49,8 @@ private:
 	bool m_viewportFocused = false, m_viewportHovered = false;
 
 	glm::vec2 m_viewportSize = { 0.0f, 0.0f };
+
+	glm::vec2 m_viewportBounds[2];
+	int m_selectedEntity = -1;
 };
 

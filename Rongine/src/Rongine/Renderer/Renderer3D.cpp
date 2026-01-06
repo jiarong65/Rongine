@@ -122,9 +122,12 @@ namespace Rongine {
 		// 2. 设置 ViewPos (用于高光)
 		s_Data.TextureShader->setFloat3("u_ViewPos", camera.getPosition());
 
-		// 3. 【重要】重置 u_Model 为单位矩阵
+		// 3. 重置 u_Model 为单位矩阵
 		// 确保接下来的 Batch 渲染 (drawCube) 不会继承上次的物体变换
 		s_Data.TextureShader->setMat4("u_Model", glm::mat4(1.0f));
+
+		//清空上一轮鼠标拾取缓存
+		s_Data.TextureShader->setInt("u_EntityID", -1);
 
 		s_Data.CubeIndexCount = 0;
 		s_Data.CubeVertexBufferPtr = s_Data.CubeVertexBufferBase;
@@ -245,7 +248,7 @@ namespace Rongine {
 	// ===========================================
 	// 【核心修改】 Mesh Rendering
 	// ===========================================
-	void Renderer3D::drawModel(const Ref<VertexArray>& va, const glm::mat4& transform)
+	void Renderer3D::drawModel(const Ref<VertexArray>& va, const glm::mat4& transform,int entityID)
 	{
 		// 1. 如果批处理里有方块没画，先画掉 (flush 会使用 Identity Model 矩阵)
 		flush();
@@ -260,6 +263,8 @@ namespace Rongine {
 		s_Data.TextureShader->setMat4("u_ViewProjection", s_Data.ViewProjection);
 
 		s_Data.WhiteTexture->bind(0);
+
+		s_Data.TextureShader->setInt("u_EntityID", entityID);
 
 		va->bind();
 

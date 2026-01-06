@@ -149,21 +149,60 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 			// 把它放在稍微高一点的位置，稍微转一下角度展示立体感
 			glm::mat4 transform = glm::translate(glm::mat4(1.0f), { 0.0f, 1.5f, 0.0f })
 				* glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), { 1.0f, 0.0f, 0.0f });
-			glDisable(GL_CULL_FACE);
-			Rongine::Renderer3D::drawModel(m_TorusVA, transform);
-			glEnable(GL_CULL_FACE);
+			Rongine::Renderer3D::drawModel(m_TorusVA, transform,1);
 		}
 
 		if (m_CadMeshVA)
 		{
 			glm::mat4 transform = glm::translate(glm::mat4(1.0f), { 0.0f, 5.0f, 0.0f })
 				* glm::scale(glm::mat4(1.0f), glm::vec3(0.03f));
-			Rongine::Renderer3D::drawModel(m_CadMeshVA, transform);
+			Rongine::Renderer3D::drawModel(m_CadMeshVA, transform,2);
 		}
 
 		Rongine::Renderer3D::endScene();
 
 		m_framebuffer->unbind();
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+	//  鼠标拾取逻辑 (使用 m_viewportBounds)
+	//////////////////////////////////////////////////////////////////////////////
+	{
+		if (Rongine::Input::isMouseButtonPressed(0) && m_viewportHovered)
+		{
+			auto [mx, my] = ImGui::GetMousePos();
+
+			// 减去视口左上角坐标 -> 得到视口内相对坐标
+			mx -= m_viewportBounds[0].x;
+			my -= m_viewportBounds[0].y;
+
+			// 计算视口宽高
+			glm::vec2 viewportSize = m_viewportBounds[1] - m_viewportBounds[0];
+
+			// 翻转 Y 轴
+			int mouseX = (int)mx;
+			int mouseY = (int)(viewportSize.y - my);
+
+			// 边界检查
+			if (mouseX >= 0 && mouseY >= 0 && mouseX < (int)viewportSize.x && mouseY < (int)viewportSize.y)
+			{
+				// 读取像素
+				m_framebuffer->bind();
+				int pixelID = m_framebuffer->readPixel(1, mouseX, mouseY);
+				m_framebuffer->unbind();
+
+				// 记录选中状态
+				if (pixelID > -1)
+				{
+					m_selectedEntity = pixelID; 
+					RONG_CLIENT_INFO("Mouse Picked ID: {0}", pixelID);
+				}
+				else
+				{
+					m_selectedEntity = -1; 
+				}
+			}
+		}
 	}
 }
 
@@ -200,6 +239,7 @@ void EditorLayer::onImGuiRender()
 		ImGui::EndMenuBar();
 	}
 
+	////////////////////////////////////////////////////////////////////////////////////////////
 	// --- Settings 面板 ---
 	ImGui::Begin("Settings");
 	ImGui::ColorEdit4("Square Color", glm::value_ptr(m_squareColor));
@@ -216,9 +256,21 @@ void EditorLayer::onImGuiRender()
 	m_profileResult.clear();
 	ImGui::End();
 
+	////////////////////////////////////////////////////////////////////////////////////////////
 	// --- Viewport 面板 ---
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 	ImGui::Begin("Viewport");
+
+	////////////////////////////////////////////////////////////////////////////////////////////
+	// 计算视口边界并存入 m_viewportBounds
+	auto viewportMinRegion = ImGui::GetWindowContentRegionMin();
+	auto viewportMaxRegion = ImGui::GetWindowContentRegionMax();
+	auto viewportOffset = ImGui::GetWindowPos();
+
+	// 计算绝对屏幕坐标
+	m_viewportBounds[0] = { viewportMinRegion.x + viewportOffset.x, viewportMinRegion.y + viewportOffset.y };
+	m_viewportBounds[1] = { viewportMaxRegion.x + viewportOffset.x, viewportMaxRegion.y + viewportOffset.y };
+	////////////////////////////////////////////////////////////////////////////////////////////
 
 	// 输入状态管理
 	m_viewportFocused = ImGui::IsWindowFocused();
@@ -229,6 +281,7 @@ void EditorLayer::onImGuiRender()
 	ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
 	m_viewportSize = { viewportPanelSize.x, viewportPanelSize.y };
 
+	////////////////////////////////////////////////////////////////////////////////////////////
 	// 绘制 FBO 纹理
 	uint32_t textureID = m_framebuffer->getColorAttachmentRendererID();
 	ImGui::Image((void*)(uintptr_t)textureID, ImVec2{ m_viewportSize.x, m_viewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });

@@ -41,6 +41,7 @@ void main()
 #version 450 core
 
 layout(location = 0) out vec4 color;
+layout(location = 1) out int color2;    // 输出到 ID 纹理 (Attachment 1)
 
 in vec3 v_Position;
 in vec3 v_Normal;
@@ -50,7 +51,9 @@ in float v_TexIndex;
 in float v_TilingFactor;
 
 uniform sampler2D u_Textures[32]; 
-uniform vec3 u_ViewPos; // <--- 【新增】摄像机位置，用于计算反光
+uniform vec3 u_ViewPos; // 摄像机位置，用于计算反光
+
+uniform int u_EntityID; //实体id
 
 void main()
 {
@@ -123,4 +126,6 @@ void main()
     
     // 将光照应用到纹理颜色上
     color = vec4(lighting, 1.0) * texColor;
+
+    color2 = u_EntityID;
 }
