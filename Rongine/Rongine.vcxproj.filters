@@ -31,6 +31,9 @@
     <Filter Include="src\Rongine\Renderer">
       <UniqueIdentifier>{348C6AAF-201B-F478-C939-0874B5A7041F}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Rongine\Utils">
+      <UniqueIdentifier>{AE643196-1A7B-2F2C-63F2-BA4DCF4700B4}</UniqueIdentifier>
+    </Filter>
     <Filter Include="vendor">
       <UniqueIdentifier>{B3738122-9F15-ACF8-88D0-BF4C74113349}</UniqueIdentifier>
     </Filter>
@@ -182,6 +185,9 @@
     </ClInclude>
     <ClInclude Include="src\Rongine\Renderer\VertexArray.h">
       <Filter>src\Rongine\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\Utils\GeometryUtils.h">
+      <Filter>src\Rongine\Utils</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongpch.h">
       <Filter>src</Filter>
@@ -1446,7 +1452,6 @@
     <ClInclude Include="vendor\stb_image\stb_image.h">
       <Filter>vendor\stb_image</Filter>
     </ClInclude>
-    <ClInclude Include="src\Rongine\Utils\GeometryUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp">
@@ -1545,12 +1550,14 @@
     <ClCompile Include="src\Rongine\Renderer\VertexArray.cpp">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\Rongine\Utils\GeometryUtils.cpp">
+      <Filter>src\Rongine\Utils</Filter>
+    </ClCompile>
     <ClCompile Include="src\Rongpch.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="vendor\stb_image\stb_image.cpp">
       <Filter>vendor\stb_image</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Utils\GeometryUtils.cpp" />
   </ItemGroup>
 </Project>

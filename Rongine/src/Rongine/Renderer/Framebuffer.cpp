@@ -5,7 +5,7 @@
 #include "Platform/OpenGL/OpenGLFramebuffer.h"
 
 namespace Rongine {
-	Ref<Framebuffer> Framebuffer::create(const FrameSpecification& spec)
+	Ref<Framebuffer> Framebuffer::create(const FramebufferSpecification& spec)
 	{
 		switch (Renderer::getAPI())
 		{

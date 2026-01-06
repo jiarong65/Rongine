@@ -48,9 +48,14 @@ void EditorLayer::onAttach()
 	m_checkerboardTexture = Rongine::Texture2D::create("assets/textures/Checkerboard.png");
 	m_logoTexture = Rongine::Texture2D::create("assets/textures/ChernoLogo.png");
 
-	Rongine::FrameSpecification fbSpec;
+	Rongine::FramebufferSpecification fbSpec;
 	fbSpec.width = 1280;
 	fbSpec.height = 720;
+	fbSpec.Attachments = {
+		Rongine::FramebufferTextureFormat::RGBA8,
+		Rongine::FramebufferTextureFormat::RED_INTEGER,
+		Rongine::FramebufferTextureFormat::Depth
+	};
 	m_framebuffer = Rongine::Framebuffer::create(fbSpec);
 
 	//// 【重要】初始化 Renderer3D
@@ -98,6 +103,8 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		m_framebuffer->bind();
 		Rongine::RenderCommand::setColor({ 0.1f, 0.1f, 0.1f, 1 });
 		Rongine::RenderCommand::clear();
+
+		m_framebuffer->clearAttachment(1, -1);
 
 		Rongine::Renderer3D::beginScene(m_cameraContorller.getCamera());
 
