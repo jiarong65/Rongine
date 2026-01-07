@@ -24,6 +24,8 @@ namespace Rongine {
 		float getDistance() const { return m_distance; }
 		void setDistance(float distance) { m_distance = distance; }
 
+		void setFocus(const glm::vec3& focalPoint, float distance);
+
 	private:
 		bool onMouseScrolled(MouseScrolledEvent& e);
 		bool onWindowResized(WindowResizeEvent& e);

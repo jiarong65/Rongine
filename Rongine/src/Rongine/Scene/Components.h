@@ -6,7 +6,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 
-#include "Rongine/Renderer/VertexArray.h" // °üº¬ÄãµÄ VertexArray
+#include "Rongine/Renderer/VertexArray.h" // åŒ…å«ä½ çš„ VertexArray
 
 namespace Rongine {
 
@@ -22,7 +22,7 @@ namespace Rongine {
     struct TransformComponent
     {
         glm::vec3 Translation = { 0.0f, 0.0f, 0.0f };
-        glm::vec3 Rotation = { 0.0f, 0.0f, 0.0f }; // Å·À­½Ç (»¡¶È)
+        glm::vec3 Rotation = { 0.0f, 0.0f, 0.0f }; // æ¬§æ‹‰è§’ (å¼§åº¦)
         glm::vec3 Scale = { 1.0f, 1.0f, 1.0f };
 
         TransformComponent() = default;
@@ -38,19 +38,29 @@ namespace Rongine {
         }
     };
 
+    // AABB ç»“æ„ä½“
+    struct AABB {
+        glm::vec3 Min = { 0.0f, 0.0f, 0.0f };
+        glm::vec3 Max = { 0.0f, 0.0f, 0.0f };
+
+        glm::vec3 GetCenter() const { return (Min + Max) * 0.5f; }
+        glm::vec3 GetSize() const { return Max - Min; }
+    };
+
     struct MeshComponent
     {
         Ref<VertexArray> VA;
+        AABB BoundingBox;
 
         MeshComponent() = default;
         MeshComponent(const MeshComponent&) = default;
         MeshComponent(const Ref<VertexArray>& va) : VA(va) {}
     };
 
-    // ÎªÎ´À´Ô¤ÁôµÄ¹âÆ××é¼ş
+    // ä¸ºæœªæ¥é¢„ç•™çš„å…‰è°±ç»„ä»¶
     struct SpectralMaterialComponent
     {
         int MaterialID = -1;
-        // std::string H5FilePath; // ÒÔºó¿ÉÄÜÊÇÕâ¸ö
+        // std::string H5FilePath; // ä»¥åå¯èƒ½æ˜¯è¿™ä¸ª
     };
 }

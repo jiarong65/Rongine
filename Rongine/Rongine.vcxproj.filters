@@ -1471,6 +1471,7 @@
       <Filter>vendor\stb_image</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongine\ImGui\SceneHierarchyPanel.h" />
+    <ClInclude Include="src\Rongine\Utils\PlatformUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp">
@@ -1585,5 +1586,6 @@
       <Filter>vendor\stb_image</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongine\ImGui\SceneHierarchyPanel.cpp" />
+    <ClCompile Include="src\Rongine\Utils\PlatformUtils.cpp" />
   </ItemGroup>
 </Project>

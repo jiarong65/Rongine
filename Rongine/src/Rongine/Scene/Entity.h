@@ -19,7 +19,7 @@ namespace Rongine {
                 RONG_CORE_WARN("Entity already has component!");
                 return GetComponent<T>();
             }
-            // ×¢Òâ£º³ÉÔ±±äÁ¿ÃûĞŞÕıÎª m_scene (ÓëÏÂ·½¶¨ÒåÒ»ÖÂ)
+            
             return m_scene->m_registry.emplace<T>(m_EntityHandle, std::forward<Args>(args)...);
         }
 
@@ -30,12 +30,11 @@ namespace Rongine {
             return m_scene->m_registry.get<T>(m_EntityHandle);
         }
 
-        // ¡¾ºËĞÄĞŞ¸´¡¿Ìæ»» all_of Îª try_get
         template<typename T>
         bool HasComponent()
         {
-            // try_get ·µ»ØÖ¸Õë£¬Èç¹û×é¼ş´æÔÚÔò·Ç¿Õ£¬²»´æÔÚÔòÎª nullptr
-            // ÕâÔÚ¼¸ºõËùÓĞ EnTT °æ±¾ÖĞ¶¼Í¨ÓÃ
+            // try_get è¿”å›æŒ‡é’ˆï¼Œå¦‚æœç»„ä»¶å­˜åœ¨åˆ™éç©ºï¼Œä¸å­˜åœ¨åˆ™ä¸º nullptr
+            // è¿™åœ¨å‡ ä¹æ‰€æœ‰ EnTT ç‰ˆæœ¬ä¸­éƒ½é€šç”¨
             return m_scene->m_registry.try_get<T>(m_EntityHandle) != nullptr;
         }
 
@@ -43,7 +42,7 @@ namespace Rongine {
         void RemoveComponent()
         {
             RONG_CORE_ASSERT(HasComponent<T>(), "Entity does not have component!");
-            // ×¢Òâ£ºm_Scene ´óĞ¡Ğ´ĞŞÕıÎª m_scene
+            // æ³¨æ„ï¼šm_Scene å¤§å°å†™ä¿®æ­£ä¸º m_scene
             m_scene->m_registry.remove<T>(m_EntityHandle);
         }
 
@@ -64,7 +63,7 @@ namespace Rongine {
         Scene* m_scene = nullptr;
     };
 
-    // ÄÚÁªÊµÏÖ¹¹Ôìº¯Êı£¬±ÜÃâÁ´½Ó´íÎó
+    // å†…è”å®ç°æ„é€ å‡½æ•°ï¼Œé¿å…é“¾æ¥é”™è¯¯
     inline Entity::Entity(entt::entity handle, Scene* scene)
         : m_EntityHandle(handle), m_scene(scene) {
     }

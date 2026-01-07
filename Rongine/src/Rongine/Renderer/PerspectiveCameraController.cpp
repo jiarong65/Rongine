@@ -91,6 +91,13 @@ namespace Rongine {
 		dispatcher.dispatch<WindowResizeEvent>(RONG_BIND_EVENT_FN(PerspectiveCameraController::onWindowResized));
 	}
 
+	void PerspectiveCameraController::setFocus(const glm::vec3& focalPoint, float distance)
+	{
+		m_focalPoint = focalPoint;
+		m_distance = distance;
+		updateView(); 
+	}
+
 	bool PerspectiveCameraController::onMouseScrolled(MouseScrolledEvent& e)
 	{
 		float delta = e.getYOffset() * 0.1f;

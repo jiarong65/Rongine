@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <TopoDS_Shape.hxx>
+#include "Rongine/Scene/Components.h"
 
 namespace Rongine {
 
@@ -9,6 +10,9 @@ namespace Rongine {
     public:
         // 读取 STEP 文件并返回形状
         static TopoDS_Shape ImportSTEP(const std::string& filepath);
+
+        // 辅助函数 计算AABB
+        static AABB CalculateAABB(const TopoDS_Shape& shape);
     };
 
 }

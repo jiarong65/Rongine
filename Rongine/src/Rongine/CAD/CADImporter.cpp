@@ -6,6 +6,8 @@
 #include <IFSelect_ReturnStatus.hxx>
 #include <BRep_Builder.hxx>
 #include <TopoDS_Compound.hxx>
+#include "BRepBndLib.hxx" 
+#include "Bnd_Box.hxx"
 
 namespace Rongine {
 
@@ -18,8 +20,6 @@ namespace Rongine {
 
         if (status != IFSelect_RetDone)
         {
-            // 这里应该用你的 Log 系统输出错误
-            // RONG_ERROR("Failed to read STEP file: {0}", filepath);
             return TopoDS_Shape(); // 返回空形状
         }
 
@@ -35,5 +35,20 @@ namespace Rongine {
         TopoDS_Shape resultShape = reader.OneShape();
 
         return resultShape;
+    }
+    
+    AABB CADImporter::CalculateAABB(const TopoDS_Shape& shape)
+    {
+        Bnd_Box box;
+        // 使用 Triangulation 数据计算包围盒会更贴合 Mesh，但用几何数据也行 (useTriangulation = true)
+        BRepBndLib::Add(shape, box, true);
+
+        double xmin, ymin, zmin, xmax, ymax, zmax;
+        box.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+
+        AABB result;
+        result.Min = { (float)xmin, (float)ymin, (float)zmin };
+        result.Max = { (float)xmax, (float)ymax, (float)zmax };
+        return result;
     }
 }

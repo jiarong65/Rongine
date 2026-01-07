@@ -25,6 +25,9 @@ public:
 	virtual void onEvent(Rongine::Event& e) override;
 
 private:
+	void OpenFile();
+
+private:
 	Rongine::Ref<Rongine::Shader> m_shader;
 	//Rongine::OrthographicCameraController m_cameraContorller;
 	Rongine::PerspectiveCameraController m_cameraContorller;

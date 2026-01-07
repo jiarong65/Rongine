@@ -75,6 +75,7 @@ void EditorLayer::onAttach()
 		tc.Translation = { 0.0f, 5.0f, 0.0f };
 		tc.Scale = { 0.03f, 0.03f, 0.03f };
 		cadEntity.AddComponent<Rongine::MeshComponent>(cadMeshVA);
+		cadEntity.GetComponent<Rongine::MeshComponent>().BoundingBox = Rongine::CADImporter::CalculateAABB(shape);
 	}
 	else {
 		RONG_CLIENT_ERROR("step 加载失败");
@@ -128,8 +129,50 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	if (Rongine::Input::isKeyPressed(Rongine::Key::E)) m_gizmoType = ImGuizmo::ROTATE;
 	if (Rongine::Input::isKeyPressed(Rongine::Key::R)) m_gizmoType = ImGuizmo::SCALE;
 	//////////////////////////////////////////////////////////////////////////////////////////
+	// 快捷键检测
+	bool control = Rongine::Input::isKeyPressed(Rongine::Key::LeftControl) || Rongine::Input::isKeyPressed(Rongine::Key::RightControl);
+	bool shift = Rongine::Input::isKeyPressed(Rongine::Key::LeftShift) || Rongine::Input::isKeyPressed(Rongine::Key::RightShift);
 
-	// 4. 开始渲染
+	if (control && Rongine::Input::isKeyPressed(Rongine::Key::O))
+	{
+		OpenFile();
+	}
+
+	//  自动对焦 (Frame Selection)
+	if (Rongine::Input::isKeyPressed(Rongine::Key::F))
+	{
+		if (m_selectedEntity && m_selectedEntity.HasComponent<Rongine::MeshComponent>())
+		{
+			// 1. 获取组件
+			auto& transform = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
+			auto& mesh = m_selectedEntity.GetComponent<Rongine::MeshComponent>();
+
+			// 2. 获取原始 AABB
+			Rongine::AABB aabb = mesh.BoundingBox;
+
+			// 3. 计算变换后的 AABB 中心点 (作为新的焦点)
+			// 注意：这里做了一个简单的假设，物体中心 = 变换后的 AABB 中心
+			// 更严谨的做法是变换 AABB 的 8 个顶点再求新的 min/max
+			glm::mat4 modelMatrix = transform.GetTransform();
+			glm::vec3 center = glm::vec3(modelMatrix * glm::vec4(aabb.GetCenter(), 1.0f));
+
+			// 计算合适的相机距离
+			// 获取物体最大尺寸 (应用缩放)
+			glm::vec3 size = aabb.GetSize() * transform.Scale;
+			float radius = glm::length(size) * 0.5f;
+
+			// 简单三角学计算：distance = radius / sin(FOV/2)
+			// 2.0f 是一个宽松系数，让物体不要填得太满，留点边距
+			float fovRad = glm::radians(45.0f); // 假设相机 FOV 是 45 度
+			float distance = radius / std::sin(fovRad / 2.0f);
+
+			m_cameraContorller.setFocus(center, distance);
+
+			RONG_CLIENT_INFO("Focused on Entity ID: {0}", (uint32_t)m_selectedEntity);
+		}
+	}
+	//////////////////////////////////////////////////////////////////////////////////////////
+	//  开始渲染
 	Rongine::Renderer3D::resetStatistics();
 	{
 		PROFILE_SCOPE("Renderer 3D");
@@ -232,6 +275,7 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 				if (pixelID > -1)
 				{
 					m_selectedEntity = Rongine::Entity((entt::entity)pixelID, m_activeScene.get());
+					m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
 				}
 				else
 				{
@@ -272,6 +316,10 @@ void EditorLayer::onImGuiRender()
 
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
+			if (ImGui::MenuItem("Open...", "Ctrl+O")) {
+				OpenFile();
+			}
+
 			if (ImGui::MenuItem("Exit")) Rongine::Application::get().close();
 			ImGui::EndMenu();
 		}
@@ -386,4 +434,33 @@ void EditorLayer::onImGuiRender()
 void EditorLayer::onEvent(Rongine::Event& e)
 {
 	m_cameraContorller.onEvent(e);
+}
+
+void EditorLayer::OpenFile()
+{
+	std::string filepath = Rongine::FileDialogs::OpenFile("STEP Files (*.step;*.stp)\0*.step;*.stp\0All Files (*.*)\0*.*\0");
+
+	if (!filepath.empty())
+	{
+		m_activeScene = Rongine::CreateRef<Rongine::Scene>();
+		//m_activeScene->onViewportResize((uint32_t)m_viewportSize.x, (uint32_t)m_viewportSize.y);
+
+		m_sceneHierarchyPanel.setContext(m_activeScene);
+		m_selectedEntity = {};
+
+		TopoDS_Shape shape = Rongine::CADImporter::ImportSTEP(filepath);
+		auto cadMeshVA = Rongine::CADMesher::CreateMeshFromShape(shape);
+
+		if (cadMeshVA) {
+			auto cadEntity = m_activeScene->createEntity("Imported CAD");
+			auto& tc = cadEntity.GetComponent<Rongine::TransformComponent>();
+
+			cadEntity.AddComponent<Rongine::MeshComponent>(cadMeshVA);
+			cadEntity.GetComponent<Rongine::MeshComponent>().BoundingBox = Rongine::CADImporter::CalculateAABB(shape);
+			RONG_CLIENT_INFO("Successfully imported: {0}", filepath);
+		}
+		else {
+			RONG_CLIENT_ERROR("Failed to load: {0}", filepath);
+		}
+	}
 }
