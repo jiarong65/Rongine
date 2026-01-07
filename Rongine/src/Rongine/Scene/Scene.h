@@ -24,6 +24,8 @@ namespace Rongine {
             return m_registry.view<Components...>();
         }
 
+        entt::registry& getRegistry() { return m_registry; }
+
     private:
         entt::registry m_registry;
 

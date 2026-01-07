@@ -89,6 +89,10 @@ void EditorLayer::onAttach()
 		tc.Rotation = { glm::radians(45.0f), 0.0f, 0.0f };
 		torusEntity.AddComponent<Rongine::MeshComponent>(torusVA);
 	}
+
+	//////////////////////////////////////////////////////////////////////////
+	//ui面板
+	m_sceneHierarchyPanel.setContext(m_activeScene);
 }
 
 void EditorLayer::onDetach()
@@ -275,6 +279,9 @@ void EditorLayer::onImGuiRender()
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
+	m_sceneHierarchyPanel.onImGuiRender();
+
+	////////////////////////////////////////////////////////////////////////////////////////////
 	// --- Settings 面板 ---
 	ImGui::Begin("Settings");
 	ImGui::ColorEdit4("Square Color", glm::value_ptr(m_squareColor));
@@ -359,6 +366,14 @@ void EditorLayer::onImGuiRender()
 			tc.Scale = scale;
 		}
 	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	// 1. 获取面板的选择
+	auto selectedEntity = m_sceneHierarchyPanel.getSelectedEntity();
+
+	// 2. 如果面板选择变了，同步给 Gizmo
+	if (selectedEntity != m_selectedEntity)
+		m_selectedEntity = selectedEntity;
 
 	// ==================================================================
 

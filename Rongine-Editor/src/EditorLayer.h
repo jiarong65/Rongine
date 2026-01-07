@@ -57,5 +57,7 @@ private:
 	Rongine::Ref<Rongine::Scene> m_activeScene;
 	Rongine::Entity m_selectedEntity; // 使用 Entity 对象
 	int m_gizmoType = -1; // -1:None, 0:Translate, 1:Rotate, 2:Scale
+
+	Rongine::SceneHierarchyPanel m_sceneHierarchyPanel;
 };
 
