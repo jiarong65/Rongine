@@ -11,6 +11,9 @@
 #include <BRepPrimAPI_MakeSphere.hxx> 
 #include <gp_Vec.hxx>                 
 #include "imgui/imgui.h"
+#include "Rongine/Scene/Components.h"
+#include "ImGuizmo.h" 
+#include <glm/gtx/matrix_decompose.hpp>
 
 // --- Timer 类 (性能分析用) ---
 template<typename Fn>
@@ -58,15 +61,34 @@ void EditorLayer::onAttach()
 	};
 	m_framebuffer = Rongine::Framebuffer::create(fbSpec);
 
-	//// 【重要】初始化 Renderer3D
-	//Rongine::Renderer3D::init();
+	//////////////////////////////////////////////////////////////////////////
 
+	m_activeScene = Rongine::CreateRef<Rongine::Scene>();
+
+	// 2. 加载 CAD 实体
 	TopoDS_Shape shape = Rongine::CADImporter::ImportSTEP("assets/models/mypage.stp");
-	m_CadMeshVA = Rongine::CADMesher::CreateMeshFromShape(shape);
+	auto cadMeshVA = Rongine::CADMesher::CreateMeshFromShape(shape); // 使用局部变量
 
-	if(!m_CadMeshVA)RONG_CLIENT_ERROR("step 加载失败");
+	if (cadMeshVA) {
+		auto cadEntity = m_activeScene->createEntity("CAD Model");
+		auto& tc = cadEntity.GetComponent<Rongine::TransformComponent>();
+		tc.Translation = { 0.0f, 5.0f, 0.0f };
+		tc.Scale = { 0.03f, 0.03f, 0.03f };
+		cadEntity.AddComponent<Rongine::MeshComponent>(cadMeshVA);
+	}
+	else {
+		RONG_CLIENT_ERROR("step 加载失败");
+	}
 
-	m_TorusVA = Rongine::GeometryUtils::CreateTorus(1.0f, 0.4f, 64, 32);
+	// 3. 创建 Torus 实体
+	auto torusVA = Rongine::GeometryUtils::CreateTorus(1.0f, 0.4f, 64, 32);
+	if (torusVA) {
+		auto torusEntity = m_activeScene->createEntity("Torus");
+		auto& tc = torusEntity.GetComponent<Rongine::TransformComponent>();
+		tc.Translation = { 0.0f, 1.5f, 0.0f };
+		tc.Rotation = { glm::radians(45.0f), 0.0f, 0.0f };
+		torusEntity.AddComponent<Rongine::MeshComponent>(torusVA);
+	}
 }
 
 void EditorLayer::onDetach()
@@ -96,6 +118,13 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	// 3. 更新旋转角度
 	s_Rotation += ts * 45.0f; // 每秒转 45 度
 
+	//////////////////////////////////////////////////////////////////////////////////////////
+	if (Rongine::Input::isKeyPressed(Rongine::Key::Q)) m_gizmoType = -1;
+	if (Rongine::Input::isKeyPressed(Rongine::Key::W)) m_gizmoType = ImGuizmo::TRANSLATE;
+	if (Rongine::Input::isKeyPressed(Rongine::Key::E)) m_gizmoType = ImGuizmo::ROTATE;
+	if (Rongine::Input::isKeyPressed(Rongine::Key::R)) m_gizmoType = ImGuizmo::SCALE;
+	//////////////////////////////////////////////////////////////////////////////////////////
+
 	// 4. 开始渲染
 	Rongine::Renderer3D::resetStatistics();
 	{
@@ -110,6 +139,16 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 
 		// A. 绘制地板 (静态)
 		Rongine::Renderer3D::drawCube({ 0.0f, -1.0f, 0.0f }, { 100.0f, 0.1f, 100.0f }, m_checkerboardTexture);
+
+		// 获取所有拥有 Transform 和 Mesh 的实体
+		auto view = m_activeScene->getAllEntitiesWith<Rongine::TransformComponent, Rongine::MeshComponent>();
+
+		for (auto entityHandle : view)
+		{
+			auto [transform, mesh] = view.get<Rongine::TransformComponent, Rongine::MeshComponent>(entityHandle);
+			// 将 entityHandle 强转为 int 作为 ID 传入 shader
+			Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle);
+		}
 
 		//// B. 绘制旋转方块阵列 (验证光照)
 		//for (int x = -2; x <= 2; x++)
@@ -144,20 +183,20 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		//	m_logoTexture
 		//);
 
-		if (m_TorusVA)
-		{
-			// 把它放在稍微高一点的位置，稍微转一下角度展示立体感
-			glm::mat4 transform = glm::translate(glm::mat4(1.0f), { 0.0f, 1.5f, 0.0f })
-				* glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), { 1.0f, 0.0f, 0.0f });
-			Rongine::Renderer3D::drawModel(m_TorusVA, transform,1);
-		}
+		//if (m_TorusVA)
+		//{
+		//	// 把它放在稍微高一点的位置，稍微转一下角度展示立体感
+		//	glm::mat4 transform = glm::translate(glm::mat4(1.0f), { 0.0f, 1.5f, 0.0f })
+		//		* glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), { 1.0f, 0.0f, 0.0f });
+		//	Rongine::Renderer3D::drawModel(m_TorusVA, transform,1);
+		//}
 
-		if (m_CadMeshVA)
-		{
-			glm::mat4 transform = glm::translate(glm::mat4(1.0f), { 0.0f, 5.0f, 0.0f })
-				* glm::scale(glm::mat4(1.0f), glm::vec3(0.03f));
-			Rongine::Renderer3D::drawModel(m_CadMeshVA, transform,2);
-		}
+		//if (m_CadMeshVA)
+		//{
+		//	glm::mat4 transform = glm::translate(glm::mat4(1.0f), { 0.0f, 5.0f, 0.0f })
+		//		* glm::scale(glm::mat4(1.0f), glm::vec3(0.03f));
+		//	Rongine::Renderer3D::drawModel(m_CadMeshVA, transform,2);
+		//}
 
 		Rongine::Renderer3D::endScene();
 
@@ -168,38 +207,32 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	//  鼠标拾取逻辑 (使用 m_viewportBounds)
 	//////////////////////////////////////////////////////////////////////////////
 	{
-		if (Rongine::Input::isMouseButtonPressed(0) && m_viewportHovered)
+		if (m_viewportHovered && !ImGuizmo::IsUsing() && !ImGuizmo::IsOver() &&
+			ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 		{
 			auto [mx, my] = ImGui::GetMousePos();
-
-			// 减去视口左上角坐标 -> 得到视口内相对坐标
 			mx -= m_viewportBounds[0].x;
 			my -= m_viewportBounds[0].y;
-
-			// 计算视口宽高
 			glm::vec2 viewportSize = m_viewportBounds[1] - m_viewportBounds[0];
-
-			// 翻转 Y 轴
 			int mouseX = (int)mx;
 			int mouseY = (int)(viewportSize.y - my);
 
-			// 边界检查
 			if (mouseX >= 0 && mouseY >= 0 && mouseX < (int)viewportSize.x && mouseY < (int)viewportSize.y)
 			{
-				// 读取像素
 				m_framebuffer->bind();
 				int pixelID = m_framebuffer->readPixel(1, mouseX, mouseY);
 				m_framebuffer->unbind();
 
-				// 记录选中状态
+				// [核心修改 2] 只有当确实点到了东西才更新
+				// 如果点到了 -1 (背景)，这里处理为取消选择
 				if (pixelID > -1)
 				{
-					m_selectedEntity = pixelID; 
-					RONG_CLIENT_INFO("Mouse Picked ID: {0}", pixelID);
+					m_selectedEntity = Rongine::Entity((entt::entity)pixelID, m_activeScene.get());
 				}
 				else
 				{
-					m_selectedEntity = -1; 
+					// 点击空白处取消选择
+					m_selectedEntity = {};
 				}
 			}
 		}
@@ -208,6 +241,8 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 
 void EditorLayer::onImGuiRender()
 {
+
+	ImGuizmo::BeginFrame();
 	// --- ImGui DockSpace 模板代码 ---
 	static bool dockspaceOpen = true;
 	static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
@@ -286,10 +321,51 @@ void EditorLayer::onImGuiRender()
 	uint32_t textureID = m_framebuffer->getColorAttachmentRendererID();
 	ImGui::Image((void*)(uintptr_t)textureID, ImVec2{ m_viewportSize.x, m_viewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 
-	ImGui::End();
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	// ImGuizmo
+	// 1. 设置上下文
+	ImGuizmo::SetOrthographic(false);
+	ImGuizmo::SetDrawlist();
+	ImGuizmo::SetRect(m_viewportBounds[0].x, m_viewportBounds[0].y,
+		m_viewportBounds[1].x - m_viewportBounds[0].x,
+		m_viewportBounds[1].y - m_viewportBounds[0].y);
+
+	// 2. 绘制逻辑
+	if (m_selectedEntity && m_gizmoType != -1)
+	{
+		const auto& camera = m_cameraContorller.getCamera();
+		const glm::mat4& cameraProjection = camera.getProjectionMatrix();
+		glm::mat4 cameraView = camera.getViewMatrix();
+
+		auto& tc = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
+		glm::mat4 transform = tc.GetTransform();
+
+		// 绘制
+		ImGuizmo::Manipulate(glm::value_ptr(cameraView), glm::value_ptr(cameraProjection),
+			(ImGuizmo::OPERATION)m_gizmoType, ImGuizmo::LOCAL, glm::value_ptr(transform));
+
+		// 交互
+		if (ImGuizmo::IsUsing())
+		{
+			RONG_CLIENT_INFO(" tc.Scale = scale;");
+			glm::vec3 translation, rotation, scale;
+			glm::vec3 skew;
+			glm::vec4 perspective;
+			glm::quat orientation;
+			glm::decompose(transform, scale, orientation, translation, skew, perspective);
+
+			tc.Translation = translation;
+			tc.Rotation = glm::eulerAngles(orientation);
+			tc.Scale = scale;
+		}
+	}
+
+	// ==================================================================
+
+	ImGui::End(); // End Viewport (Viewport 结束)
 	ImGui::PopStyleVar();
 
-	ImGui::End();
+	ImGui::End(); // End Dockspace (Dockspace 结束)
 }
 
 void EditorLayer::onEvent(Rongine::Event& e)

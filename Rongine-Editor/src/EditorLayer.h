@@ -7,6 +7,8 @@
 #include "Rongine/Renderer/PerspectiveCameraController.h"
 #include "Rongine/Renderer/Renderer.h"
 #include "Rongine/Core/Timestep.h"
+#include "Rongine/Scene/Scene.h"
+#include "Rongine/Scene/Entity.h"
 
 #include <glm/glm.hpp>
 
@@ -28,7 +30,7 @@ private:
 	Rongine::PerspectiveCameraController m_cameraContorller;
 
 	Rongine::Ref<Rongine::VertexArray> m_vertexArray;
-	Rongine::Ref<Rongine::VertexArray> m_CadMeshVA, m_TorusVA;;
+	//Rongine::Ref<Rongine::VertexArray> m_CadMeshVA, m_TorusVA;;
 	Rongine::Ref<Rongine::Texture2D> m_checkerboardTexture;
 	Rongine::Ref<Rongine::Texture2D> m_logoTexture;
 
@@ -51,6 +53,9 @@ private:
 	glm::vec2 m_viewportSize = { 0.0f, 0.0f };
 
 	glm::vec2 m_viewportBounds[2];
-	int m_selectedEntity = -1;
+
+	Rongine::Ref<Rongine::Scene> m_activeScene;
+	Rongine::Entity m_selectedEntity; // 使用 Entity 对象
+	int m_gizmoType = -1; // -1:None, 0:Translate, 1:Rotate, 2:Scale
 };
 

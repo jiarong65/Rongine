@@ -31,11 +31,17 @@
     <Filter Include="src\Rongine\Renderer">
       <UniqueIdentifier>{348C6AAF-201B-F478-C939-0874B5A7041F}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Rongine\Scene">
+      <UniqueIdentifier>{6BD00396-D7E6-012C-205E-8D4D8CB3D2B3}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Rongine\Utils">
       <UniqueIdentifier>{AE643196-1A7B-2F2C-63F2-BA4DCF4700B4}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor">
       <UniqueIdentifier>{B3738122-9F15-ACF8-88D0-BF4C74113349}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\ImGuizmo">
+      <UniqueIdentifier>{73BF7F4C-DF4A-ED10-E85B-700554664911}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor\glm">
       <UniqueIdentifier>{829FC5A8-6E57-07F6-D75E-E051C335A2E6}</UniqueIdentifier>
@@ -186,11 +192,23 @@
     <ClInclude Include="src\Rongine\Renderer\VertexArray.h">
       <Filter>src\Rongine\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Rongine\Scene\Components.h">
+      <Filter>src\Rongine\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\Scene\Entity.h">
+      <Filter>src\Rongine\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\Scene\Scene.h">
+      <Filter>src\Rongine\Scene</Filter>
+    </ClInclude>
     <ClInclude Include="src\Rongine\Utils\GeometryUtils.h">
       <Filter>src\Rongine\Utils</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongpch.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\ImGuizmo\ImGuizmo.h">
+      <Filter>vendor\ImGuizmo</Filter>
     </ClInclude>
     <ClInclude Include="vendor\glm\glm\common.hpp">
       <Filter>vendor\glm\glm</Filter>
@@ -1550,11 +1568,17 @@
     <ClCompile Include="src\Rongine\Renderer\VertexArray.cpp">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\Rongine\Scene\Scene.cpp">
+      <Filter>src\Rongine\Scene</Filter>
+    </ClCompile>
     <ClCompile Include="src\Rongine\Utils\GeometryUtils.cpp">
       <Filter>src\Rongine\Utils</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongpch.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\ImGuizmo\ImGuizmo.cpp">
+      <Filter>vendor\ImGuizmo</Filter>
     </ClCompile>
     <ClCompile Include="vendor\stb_image\stb_image.cpp">
       <Filter>vendor\stb_image</Filter>

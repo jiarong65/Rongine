@@ -32,21 +32,21 @@ namespace Rongine {
 		glm::vec2 delta = (mouse - m_initialMousePosition) * 0.003f; // 0.003 是鼠标灵敏度
 		m_initialMousePosition = mouse;
 
-		// 2. WASD 移动 (移动的是焦点 FocalPoint)
-		if (Input::isKeyPressed(Key::W))
-			m_focalPoint += getForwardDirection() * m_moveSpeed * (float)ts;
-		if (Input::isKeyPressed(Key::S))
-			m_focalPoint -= getForwardDirection() * m_moveSpeed * (float)ts;
-		if (Input::isKeyPressed(Key::A))
-			m_focalPoint -= getRightDirection() * m_moveSpeed * (float)ts;
-		if (Input::isKeyPressed(Key::D))
-			m_focalPoint += getRightDirection() * m_moveSpeed * (float)ts;
+		//// 2. WASD 移动 (移动的是焦点 FocalPoint)
+		//if (Input::isKeyPressed(Key::W))
+		//	m_focalPoint += getForwardDirection() * m_moveSpeed * (float)ts;
+		//if (Input::isKeyPressed(Key::S))
+		//	m_focalPoint -= getForwardDirection() * m_moveSpeed * (float)ts;
+		//if (Input::isKeyPressed(Key::A))
+		//	m_focalPoint -= getRightDirection() * m_moveSpeed * (float)ts;
+		//if (Input::isKeyPressed(Key::D))
+		//	m_focalPoint += getRightDirection() * m_moveSpeed * (float)ts;
 
-		// Q/E 垂直升降
-		if (Input::isKeyPressed(Key::E))
-			m_focalPoint += getUpDirection() * m_moveSpeed * (float)ts;
-		if (Input::isKeyPressed(Key::Q))
-			m_focalPoint -= getUpDirection() * m_moveSpeed * (float)ts;
+		//// Q/E 垂直升降
+		//if (Input::isKeyPressed(Key::E))
+		//	m_focalPoint += getUpDirection() * m_moveSpeed * (float)ts;
+		//if (Input::isKeyPressed(Key::Q))
+		//	m_focalPoint -= getUpDirection() * m_moveSpeed * (float)ts;
 
 		// 3. 处理 Alt + 左键旋转 (Orbit)
 		if (Input::isKeyPressed(Key::LeftAlt) && Input::isMouseButtonPressed(0))

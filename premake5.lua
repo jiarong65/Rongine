@@ -47,6 +47,7 @@ includeDir["entt"] = "Rongine/vendor/entt/include"
 includeDir["stb_image"] = "Rongine/vendor/stb_image"
 -- [新增] OCCT 头文件路径 (使用 %{wks.location} 确保基于工作区根目录)
 includeDir["OCCT"] = "%{wks.location}/" .. OCCT_DIR .. "/inc"
+includeDir["ImGuizmo"]="Rongine/vendor/ImGuizmo"
 
 include "Rongine/vendor/GLFW"
 include "Rongine/vendor/Glad"
@@ -75,13 +76,19 @@ project "Rongine"
 		"%{prj.name}/vendor/glm/glm/**.hpp",
 		"%{prj.name}/vendor/glm/glm/**.inl",
 		"%{prj.name}/vendor/stb_image/**.h",
-		"%{prj.name}/vendor/stb_image/**.cpp"
+		"%{prj.name}/vendor/stb_image/**.cpp",
+		"%{prj.name}/vendor/ImGuizmo/ImGuizmo.h",
+        "%{prj.name}/vendor/ImGuizmo/ImGuizmo.cpp"
 	}
 
 	defines
 	{
 		"_CRT_SECURE_NO_WARNINGS"
 	}
+
+	filter "files:**/ImGuizmo.cpp"
+        flags { "NoPCH" }
+    filter {} -- 重置过滤器，防止影响后面的配置
 
 	includedirs
 	{
@@ -95,7 +102,8 @@ project "Rongine"
 		"%{includeDir.glm}",
 		"%{includeDir.stb_image}",
 		"%{includeDir.entt}",
-		"%{includeDir.OCCT}" -- [新增] 核心引擎需要包含 OCCT 头文件以编写 CADMesher
+		"%{includeDir.OCCT}", -- [新增] 核心引擎需要包含 OCCT 头文件以编写 CADMesher
+		"%{includeDir.ImGuizmo}"
 	}
 
 	links
@@ -231,7 +239,8 @@ project "Rongine-Editor"
 		"Rongine/vendor",
 		"%{includeDir.Glad}",
 		"%{includeDir.entt}",
-		"%{includeDir.OCCT}" -- 必须包含，因为 EditorLayer 会调用 OCCT API
+		"%{includeDir.OCCT}", -- 必须包含，因为 EditorLayer 会调用 OCCT API
+		"%{includeDir.ImGuizmo}"
 	}
 
 	-- [新增] 添加 OCCT 的库目录
