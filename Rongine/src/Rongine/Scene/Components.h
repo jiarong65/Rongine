@@ -9,6 +9,8 @@
 #include "Rongine/Renderer/VertexArray.h" // 包含你的 VertexArray
 #include "Rongine/Renderer/Renderer3D.h"
 
+class TopoDS_Shape;
+
 namespace Rongine {
 
     struct TagComponent
@@ -68,5 +70,26 @@ namespace Rongine {
     {
         int MaterialID = -1;
         // std::string H5FilePath; // 以后可能是这个
+    };
+
+    struct CADGeometryComponent
+    {
+        enum class GeometryType { None = 0, Cube, Sphere, Cylinder, Imported };
+
+        GeometryType Type = GeometryType::None;
+
+        // --- 核心数据 ---
+        // 我们使用 void* 来存储 TopoDS_Shape*，避免引入 OCCT 头文件依赖
+        // 实际上它指向的是 new TopoDS_Shape()
+        void* ShapeHandle = nullptr;
+
+        // --- 参数化数据 (为以后的序列化做准备) ---
+        struct {
+            float Width = 1.0f, Height = 1.0f, Depth = 1.0f; // 立方体参数
+            float Radius = 1.0f; // 球体/圆柱参数
+        } Params;
+
+        CADGeometryComponent() = default;
+        CADGeometryComponent(const CADGeometryComponent&) = default;
     };
 }

@@ -26,6 +26,7 @@ public:
 
 private:
 	void OpenFile();
+	void CreatePrimitive(Rongine::CADGeometryComponent::GeometryType type);
 
 private:
 	Rongine::Ref<Rongine::Shader> m_shader;

@@ -14,6 +14,7 @@
 #include "Rongine/Scene/Components.h"
 #include "ImGuizmo.h" 
 #include <glm/gtx/matrix_decompose.hpp>
+#include <TopoDS_Shape.hxx>
 
 // --- Timer 类 (性能分析用) ---
 template<typename Fn>
@@ -333,6 +334,7 @@ void EditorLayer::onImGuiRender()
 		ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
 	}
 
+	///////////////////////////////////////////////////////////////////////
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("Open...", "Ctrl+O")) {
@@ -340,10 +342,25 @@ void EditorLayer::onImGuiRender()
 			}
 
 			if (ImGui::MenuItem("Exit")) Rongine::Application::get().close();
+
+			
+
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("GameObjects")) {
+			if (ImGui::MenuItem("Create Cube"))
+				CreatePrimitive(Rongine::CADGeometryComponent::GeometryType::Cube);
+			if (ImGui::MenuItem("Create Sphere"))
+				CreatePrimitive(Rongine::CADGeometryComponent::GeometryType::Sphere);
+			if (ImGui::MenuItem("Create Cylinder"))
+				CreatePrimitive(Rongine::CADGeometryComponent::GeometryType::Cylinder);
+
 			ImGui::EndMenu();
 		}
 		ImGui::EndMenuBar();
 	}
+
 
 	////////////////////////////////////////////////////////////////////////////////////////////
 	m_sceneHierarchyPanel.onImGuiRender();
@@ -544,6 +561,63 @@ void EditorLayer::OpenFile()
 		}
 		else {
 			RONG_CLIENT_ERROR("Failed to load: {0}", filepath);
+		}
+	}
+}
+
+void EditorLayer::CreatePrimitive(Rongine::CADGeometryComponent::GeometryType type)
+{
+	// 1. 创建 Entity
+	auto entity = m_activeScene->createEntity("New Object");
+
+	// 2. 添加基础组件
+	entity.AddComponent<Rongine::TransformComponent>();
+
+	// 3. 添加 CAD 组件并生成数据
+	auto& cadComp = entity.AddComponent<Rongine::CADGeometryComponent>();
+	cadComp.Type = type;
+
+	void* shapeHandle = nullptr;
+
+	if (type == Rongine::CADGeometryComponent::GeometryType::Cube)
+	{
+		cadComp.Params.Width = 1.0f;
+		cadComp.Params.Height = 1.0f;
+		cadComp.Params.Depth = 1.0f;
+		shapeHandle = Rongine::CADModeler::MakeCube(1.0f, 1.0f, 1.0f);
+	}
+	else if (type == Rongine::CADGeometryComponent::GeometryType::Sphere)
+	{
+		cadComp.Params.Radius = 1.0f;
+		shapeHandle = Rongine::CADModeler::MakeSphere(1.0f);
+	}
+	else if (type == Rongine::CADGeometryComponent::GeometryType::Cylinder)
+	{
+		cadComp.Params.Radius = 1.0f;
+		cadComp.Params.Height = 2.0f;
+		shapeHandle = Rongine::CADModeler::MakeCylinder(1.0f, 2.0f);
+	}
+
+	cadComp.ShapeHandle = shapeHandle;
+
+	// 4. 关键一步：立即离散化生成 Mesh (用于渲染)
+	if (shapeHandle)
+	{
+		TopoDS_Shape* occShape = (TopoDS_Shape*)shapeHandle;
+
+		std::vector<Rongine::CubeVertex> verticesData;
+		// 调用你之前修改好的 CreateMeshFromShape
+		auto va = Rongine::CADMesher::CreateMeshFromShape(*occShape, verticesData);
+
+		if (va)
+		{
+			// 创建 Mesh 组件，并存入 CPU 顶点数据 (这对 Gizmo 吸附很重要！)
+			entity.AddComponent<Rongine::MeshComponent>(va, verticesData);
+
+			// 计算包围盒
+			entity.GetComponent<Rongine::MeshComponent>().BoundingBox = Rongine::CADImporter::CalculateAABB(*occShape);
+
+			RONG_CLIENT_INFO("Created Primitive Successfully!");
 		}
 	}
 }

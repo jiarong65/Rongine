@@ -146,6 +146,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Rongine\CAD\CADModeler.h" />
     <ClInclude Include="src\Rongine\Utils\PlatformUtils.h" />
     <ClInclude Include="src\Rongine\ImGui\SceneHierarchyPanel.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLBuffer.h" />
@@ -618,6 +619,7 @@
     <ClInclude Include="vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Rongine\CAD\CADModeler.cpp" />
     <ClCompile Include="src\Rongine\Utils\PlatformUtils.cpp" />
     <ClCompile Include="src\Rongine\ImGui\SceneHierarchyPanel.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp" />

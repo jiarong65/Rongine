@@ -33,6 +33,7 @@
 
 #include "Rongine/CAD/CADImporter.h" 
 #include "Rongine/CAD/CADMesher.h"
+#include "Rongine/CAD/CADModeler.h"
 
 #include "Rongine/Utils/GeometryUtils.h"
 #include "Rongine/Utils/PlatformUtils.h"
