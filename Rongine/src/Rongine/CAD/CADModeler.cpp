@@ -36,7 +36,7 @@ namespace Rongine {
         return new TopoDS_Shape(shape);
     }
 
-    void FreeShape(void* shapeHandle)
+    void CADModeler::FreeShape(void* shapeHandle)
     {
         if (shapeHandle)
         {

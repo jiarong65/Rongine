@@ -334,16 +334,23 @@ void EditorLayer::onImGuiRender()
 		ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
 	}
 
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	// 1. 获取面板的选择
+	auto selectedEntity = m_sceneHierarchyPanel.getSelectedEntity();
+
+	// 2. 如果面板选择变了，同步给 Gizmo
+	if (selectedEntity != m_selectedEntity)
+		m_selectedEntity = selectedEntity;
+
+	// ==================================================================
+
 	///////////////////////////////////////////////////////////////////////
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("Open...", "Ctrl+O")) {
 				OpenFile();
 			}
-
 			if (ImGui::MenuItem("Exit")) Rongine::Application::get().close();
-
-			
 
 			ImGui::EndMenu();
 		}
@@ -441,6 +448,29 @@ void EditorLayer::onImGuiRender()
 		bool snapToFace = false;
 		glm::vec3 faceLocalCenter(0.0f);
 
+		bool isParametricCAD = false;
+		if (m_selectedEntity.HasComponent<Rongine::CADGeometryComponent>())
+		{
+			auto type = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>().Type;
+			// 只有 Cube, Sphere, Cylinder 是参数化的，Imported (导入模型) 依然允许缩放
+			if (type != Rongine::CADGeometryComponent::GeometryType::Imported &&
+				type != Rongine::CADGeometryComponent::GeometryType::None)
+			{
+				isParametricCAD = true;
+			}
+		}
+		// 如果是参数化模型，且当前处于缩放模式 (R键)，则强制不显示 Gizmo，也不允许操作
+		if (isParametricCAD && m_gizmoType == ImGuizmo::SCALE)
+		{
+			// 你可以选择什么都不做，或者在屏幕上画个提示
+			// 这里的 continue/return 取决于你的代码结构，如果是单独的函数直接 return
+			// 简单做法：把 gizmoType 临时设为 -1 (隐藏)，或者直接跳过下面的 Manipulate 调用
+			// 但为了不破坏状态，最简单的办法是：什么都不画，直接跳过本帧 Gizmo 逻辑
+
+			// 跳出 Gizmo 逻辑块 (假设这是在一个大 if 里，或者你可以把下面的逻辑包在一个 else 里)
+			goto SkipGizmo;
+		}
+
 		// --- 吸附逻辑 ---
 		// 如果选中了面，且该实体有网格数据
 		if (m_selectedFace > -1 && m_selectedEntity.HasComponent<Rongine::MeshComponent>())
@@ -513,15 +543,8 @@ void EditorLayer::onImGuiRender()
 		}
 	}
 
-	/////////////////////////////////////////////////////////////////////////////////////////////
-	// 1. 获取面板的选择
-	auto selectedEntity = m_sceneHierarchyPanel.getSelectedEntity();
+SkipGizmo:;
 
-	// 2. 如果面板选择变了，同步给 Gizmo
-	if (selectedEntity != m_selectedEntity)
-		m_selectedEntity = selectedEntity;
-
-	// ==================================================================
 
 	ImGui::End(); // End Viewport (Viewport 结束)
 	ImGui::PopStyleVar();
