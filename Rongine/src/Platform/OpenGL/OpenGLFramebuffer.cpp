@@ -112,6 +112,13 @@ namespace Rongine {
 					glTextureParameteri(m_colorAttachments[i], GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 					glTextureParameteri(m_colorAttachments[i], GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 					break;
+				case FramebufferTextureFormat::RG_INTEGER:
+					// 使用 GL_RG32I (两个32位整数)
+					glTextureStorage2D(m_colorAttachments[i], 1, GL_RG32I, m_specification.width, m_specification.height);
+					// 整数纹理必须用最近邻插值
+					glTextureParameteri(m_colorAttachments[i], GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTextureParameteri(m_colorAttachments[i], GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					break;
 				}
 
 				// 将纹理挂载到 FBO 的 COLOR_ATTACHMENT[i]
@@ -187,6 +194,17 @@ namespace Rongine {
 		glReadPixels(x, y, 1, 1, GL_RED_INTEGER, GL_INT, &pixelData);
 
 		return pixelData;
+	}
+
+	std::pair<int, int> OpenGLFramebuffer::readPixelRG(uint32_t attachmentIndex, int x, int y)
+	{
+		RONG_CORE_ASSERT(attachmentIndex < m_colorAttachments.size(), "attachmentIndex > m_colorAttachments.size()");
+		glReadBuffer(GL_COLOR_ATTACHMENT0 + attachmentIndex);
+
+		int pixelData[2]; // 存 EntityID, FaceID
+		glReadPixels(x, y, 1, 1, GL_RG_INTEGER, GL_INT, pixelData);
+
+		return { pixelData[0], pixelData[1] };
 	}
 
 	// 清空附件

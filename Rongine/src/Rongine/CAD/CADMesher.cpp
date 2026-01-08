@@ -26,6 +26,7 @@ namespace Rongine {
 		std::vector<uint32_t> indices;
 		uint32_t indexOffset = 0;
 
+		int faceID = 0;
 		// 2. 遍历所有的面 (Face)
 		TopExp_Explorer explorer(shape, TopAbs_FACE);
 		while (explorer.More())
@@ -66,6 +67,7 @@ namespace Rongine {
 					v.TexCoord = { 0.0f, 0.0f };
 					v.TexIndex = 0.0f; // 白纹理
 					v.TilingFactor = 1.0f;
+					v.FaceID = faceID;
 
 					vertices.push_back(v);
 				}
@@ -89,6 +91,8 @@ namespace Rongine {
 				indexOffset += nodeCount;
 			}
 			explorer.Next();
+
+			faceID++;
 		}
 
 		// 3. 创建 OpenGL 资源
@@ -107,7 +111,8 @@ namespace Rongine {
 			{ ShaderDataType::Float4, "a_Color" },
 			{ ShaderDataType::Float2, "a_TexCoord" },
 			{ ShaderDataType::Float,  "a_TexIndex" },
-			{ ShaderDataType::Float,  "a_TilingFactor" }
+			{ ShaderDataType::Float,  "a_TilingFactor" },
+			{ ShaderDataType::Int,    "a_FaceID" }
 			});
 		va->addVertexBuffer(vb);
 

@@ -17,6 +17,8 @@ namespace Rongine {
 		static void init();
 		static void shutdown();
 
+		static void setSelection(int entityID, int faceID);
+
 		static void beginScene(const PerspectiveCamera& camera);
 		static void endScene();
 		static void flush();
@@ -30,6 +32,7 @@ namespace Rongine {
 		static void drawRotatedCube(const glm::vec3& position, const glm::vec3& size, float rotation, const glm::vec3& axis, const Ref<Texture2D>& texture, const glm::vec4& tintColor = glm::vec4(1.0f));
 
 		static void drawModel(const Ref<VertexArray>& va, const glm::mat4& transform = glm::mat4(1.0f),int entityID=-1);
+
 
 		// --- 统计信息 ---
 		struct Statistics
@@ -55,6 +58,7 @@ namespace Rongine {
 		glm::vec2 TexCoord;
 		float TexIndex;
 		float TilingFactor;
+		int FaceID;
 	};
 
 	struct Renderer3DData
@@ -63,6 +67,9 @@ namespace Rongine {
 		static const uint32_t MaxVertices = MaxCubes * 24;
 		static const uint32_t MaxIndices = MaxCubes * 36;
 		static const uint32_t MaxTextureSlots = 32;
+
+		int SelectedEntityID;
+		int SelectedFaceID;
 
 		Ref<VertexArray> CubeVA;
 		Ref<VertexBuffer> CubeVB;

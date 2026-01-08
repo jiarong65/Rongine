@@ -44,6 +44,7 @@ namespace Rongine {
                     vertex.TexCoord = { (float)i / majorSegments, (float)j / minorSegments };
                     vertex.TexIndex = 0.0f; // 使用白纹理
                     vertex.TilingFactor = 1.0f;
+                    vertex.FaceID = -1;
 
                     vertices.push_back(vertex);
                 }
@@ -80,7 +81,8 @@ namespace Rongine {
                 { ShaderDataType::Float4, "a_Color" },
                 { ShaderDataType::Float2, "a_TexCoord" },
                 { ShaderDataType::Float,  "a_TexIndex" },
-                { ShaderDataType::Float,  "a_TilingFactor" }
+                { ShaderDataType::Float,  "a_TilingFactor" },
+                { ShaderDataType::Int,    "a_FaceID" }
                 });
             va->addVertexBuffer(vb);
             Ref<IndexBuffer> ib = IndexBuffer::create(indices.data(), indices.size());

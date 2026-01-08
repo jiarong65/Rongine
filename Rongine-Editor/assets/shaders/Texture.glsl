@@ -8,6 +8,7 @@ layout(location = 2) in vec4 a_Color;
 layout(location = 3) in vec2 a_TexCoord;
 layout(location = 4) in float a_TexIndex;
 layout(location = 5) in float a_TilingFactor;
+layout(location = 6) in int a_FaceID;
 
 uniform mat4 u_ViewProjection;
 uniform mat4 u_Model;
@@ -18,6 +19,7 @@ out vec4 v_Color;
 out vec2 v_TexCoord;
 out float v_TexIndex;
 out float v_TilingFactor;
+flat out int v_FaceID;
 
 void main()
 {
@@ -30,6 +32,7 @@ void main()
     v_TexCoord = a_TexCoord;
     v_TexIndex = a_TexIndex;
     v_TilingFactor = a_TilingFactor;
+    v_FaceID = a_FaceID;
 
     // 如果是 BatchRenderer (drawRotatedCube)，a_Position 已经是世界坐标
     // 如果是 drawModel，这里假设 MVP 矩阵正确处理了变换
@@ -41,7 +44,7 @@ void main()
 #version 450 core
 
 layout(location = 0) out vec4 color;
-layout(location = 1) out int color2;    // 输出到 ID 纹理 (Attachment 1)
+layout(location = 1) out ivec2 idOutput;    // 输出到 ID 纹理 (Attachment 1)
 
 in vec3 v_Position;
 in vec3 v_Normal;
@@ -49,9 +52,13 @@ in vec4 v_Color;
 in vec2 v_TexCoord;
 in float v_TexIndex;
 in float v_TilingFactor;
+flat in int v_FaceID;
 
 uniform sampler2D u_Textures[32]; 
 uniform vec3 u_ViewPos; // 摄像机位置，用于计算反光
+
+uniform int u_SelectedEntityID;
+uniform int u_SelectedFaceID;
 
 uniform int u_EntityID; //实体id
 
@@ -123,9 +130,28 @@ void main()
 
     // 综合光照结果
     vec3 lighting = (ambient + diffuse + specular);
-    
-    // 将光照应用到纹理颜色上
-    color = vec4(lighting, 1.0) * texColor;
 
-    color2 = u_EntityID;
+    vec4 finalColor = vec4(lighting, 1.0) * texColor;
+
+    if (u_EntityID == u_SelectedEntityID)
+    {
+        // 情况A：这个面正是被点击的那个面 (FaceID 匹配)
+        if (v_FaceID == u_SelectedFaceID)
+        {
+            // 混合橙色 (1.0, 0.6, 0.0)，强度 0.5
+            // mix(原色, 高亮色, 混合比例)
+            finalColor = mix(finalColor, vec4(1.0, 0.6, 0.0, 1.0), 0.5);
+        }
+        // 情况B：虽然选中了实体，但选中的面ID是 -1 (代表选中了整个物体)
+        // 或者是为了让没被选中的面也有一点点反应（可选）
+        else if (u_SelectedFaceID == -1)
+        {
+            // 整体微微发黄，表示选中了物体但没选中具体面
+            finalColor = mix(finalColor, vec4(1.0, 1.0, 0.0, 1.0), 0.3);
+        }
+    }
+    
+    color = finalColor;
+
+    idOutput = ivec2(u_EntityID, v_FaceID);
 }

@@ -53,16 +53,47 @@ namespace Rongine {
 		uint32_t index = 0;
 		for (const auto& element : layout)
 		{
-			glEnableVertexAttribArray(index);
-			glVertexAttribPointer(
-				index,
-				element.getComponentCount(),
-				shaderDateTypetoOpenGLBaseType(element.type),
-				element.normalized ? GL_TRUE : GL_FALSE,
-				layout.getStride(),
-				(void*)element.offset
-			);
-			index++;
+			switch (element.type)
+			{
+			case ShaderDataType::Float:
+			case ShaderDataType::Float2:
+			case ShaderDataType::Float3:
+			case ShaderDataType::Float4:
+			case ShaderDataType::Mat3:
+			case ShaderDataType::Mat4:
+			{
+				glEnableVertexAttribArray(index);
+				glVertexAttribPointer(
+					index,
+					element.getComponentCount(),
+					shaderDateTypetoOpenGLBaseType(element.type),
+					element.normalized ? GL_TRUE : GL_FALSE,
+					layout.getStride(),
+					(const void*)element.offset
+				);
+				index++;
+				break;
+			}
+			case ShaderDataType::Int:
+			case ShaderDataType::Int2:
+			case ShaderDataType::Int3:
+			case ShaderDataType::Int4:
+			case ShaderDataType::Bool:
+			{
+				glEnableVertexAttribArray(index);
+				// 核心修复：针对整数类型，必须使用 glVertexAttribIPointer
+				// 注意：这个函数没有 normalized 参数
+				glVertexAttribIPointer(
+					index,
+					element.getComponentCount(),
+					shaderDateTypetoOpenGLBaseType(element.type),
+					layout.getStride(),
+					(const void*)element.offset
+				);
+				index++;
+				break;
+			}
+			}
 		}
 
 		m_vertexBuffers.push_back(vertexBuffer);

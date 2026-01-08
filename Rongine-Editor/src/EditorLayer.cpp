@@ -56,7 +56,7 @@ void EditorLayer::onAttach()
 	fbSpec.height = 720;
 	fbSpec.Attachments = {
 		Rongine::FramebufferTextureFormat::RGBA8,
-		Rongine::FramebufferTextureFormat::RED_INTEGER,
+		Rongine::FramebufferTextureFormat::RG_INTEGER,
 		Rongine::FramebufferTextureFormat::Depth
 	};
 	m_framebuffer = Rongine::Framebuffer::create(fbSpec);
@@ -89,6 +89,9 @@ void EditorLayer::onAttach()
 		tc.Translation = { 0.0f, 1.5f, 0.0f };
 		tc.Rotation = { glm::radians(45.0f), 0.0f, 0.0f };
 		torusEntity.AddComponent<Rongine::MeshComponent>(torusVA);
+		auto& box = torusEntity.GetComponent<Rongine::MeshComponent>().BoundingBox;
+		box.Max = { -1.4f, -0.4f, -1.4f };
+		box.Min = { 1.4f, 0.4f, 1.4f };
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -184,6 +187,12 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 
 		Rongine::Renderer3D::beginScene(m_cameraContorller.getCamera());
 
+		//传入选中的实体和面id
+		int selectedEntityID = (int)(uint32_t)m_selectedEntity; // 这里的转换取决于你的 Entity 实现
+		if (!m_selectedEntity) selectedEntityID = -2;
+
+		Rongine::Renderer3D::setSelection(selectedEntityID, m_selectedFace);
+
 		// A. 绘制地板 (静态)
 		Rongine::Renderer3D::drawCube({ 0.0f, -1.0f, 0.0f }, { 100.0f, 0.1f, 100.0f }, m_checkerboardTexture);
 
@@ -267,20 +276,28 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 			if (mouseX >= 0 && mouseY >= 0 && mouseX < (int)viewportSize.x && mouseY < (int)viewportSize.y)
 			{
 				m_framebuffer->bind();
-				int pixelID = m_framebuffer->readPixel(1, mouseX, mouseY);
+
+				std::pair<int, int> pixelData = m_framebuffer->readPixelRG(1, mouseX, mouseY);
+				int entityID = pixelData.first;
+				int faceID = pixelData.second;
+				//int pixelID = m_framebuffer->readPixel(1, mouseX, mouseY);
 				m_framebuffer->unbind();
 
 				// [核心修改 2] 只有当确实点到了东西才更新
 				// 如果点到了 -1 (背景)，这里处理为取消选择
-				if (pixelID > -1)
+				if (entityID > -1)
 				{
-					m_selectedEntity = Rongine::Entity((entt::entity)pixelID, m_activeScene.get());
+					m_selectedEntity = Rongine::Entity((entt::entity)entityID, m_activeScene.get());
+					m_selectedFace = faceID;
 					m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
+
+					RONG_CLIENT_INFO("Picked Entity: {0}, Face: {1}", entityID, faceID);
 				}
 				else
 				{
 					// 点击空白处取消选择
 					m_selectedEntity = {};
+					m_selectedFace = -1;
 				}
 			}
 		}

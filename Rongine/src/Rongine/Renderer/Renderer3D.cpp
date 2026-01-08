@@ -19,7 +19,8 @@ namespace Rongine {
 			{ ShaderDataType::Float4, "a_Color" },
 			{ ShaderDataType::Float2, "a_TexCoord" },
 			{ ShaderDataType::Float,  "a_TexIndex" },
-			{ ShaderDataType::Float,  "a_TilingFactor" }
+			{ ShaderDataType::Float,  "a_TilingFactor" },
+			{ ShaderDataType::Int,    "a_FaceID" }
 			});
 		s_Data.CubeVA->addVertexBuffer(s_Data.CubeVB);
 
@@ -109,6 +110,12 @@ namespace Rongine {
 	void Renderer3D::shutdown()
 	{
 		delete[] s_Data.CubeVertexBufferBase;
+	}
+
+	void Renderer3D::setSelection(int entityID, int faceID)
+	{
+		s_Data.SelectedEntityID = entityID;
+		s_Data.SelectedFaceID = faceID;
 	}
 
 	void Renderer3D::beginScene(const PerspectiveCamera& camera)
@@ -227,6 +234,7 @@ namespace Rongine {
 			s_Data.CubeVertexBufferPtr->Position = transform * s_Data.CubeVertexPositions[i];
 			s_Data.CubeVertexBufferPtr->Normal = normalMatrix * s_Data.CubeVertexNormals[i]; // 旋转法线
 			s_Data.CubeVertexBufferPtr->Color = tintColor;
+			s_Data.CubeVertexBufferPtr->FaceID = -1;
 
 			switch (i % 4)
 			{
@@ -265,6 +273,9 @@ namespace Rongine {
 		s_Data.WhiteTexture->bind(0);
 
 		s_Data.TextureShader->setInt("u_EntityID", entityID);
+
+		s_Data.TextureShader->setInt("u_SelectedEntityID", s_Data.SelectedEntityID);
+		s_Data.TextureShader->setInt("u_SelectedFaceID", s_Data.SelectedFaceID);
 
 		va->bind();
 

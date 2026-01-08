@@ -9,6 +9,7 @@ namespace Rongine{
 
 		RGBA8,
 		RED_INTEGER,	//存实体id，颜色拾取法
+		RG_INTEGER,    //实体id，面id  支持选中面
 
 		DEPTH24STENCIL8,
 
@@ -58,6 +59,7 @@ namespace Rongine{
 		virtual void resize(uint32_t width, uint32_t height) = 0;
 
 		virtual int readPixel(uint32_t attachmentIndex,int x, int y) = 0;
+		virtual std::pair<int, int> readPixelRG(uint32_t attachmentIndex, int x, int y) = 0;
 		virtual void clearAttachment(uint32_t attachmentIndex,int value) = 0;
 		virtual uint32_t getColorAttachmentRendererID(uint32_t index=0) const = 0;
 
