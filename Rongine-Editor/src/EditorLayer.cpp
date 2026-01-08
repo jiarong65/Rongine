@@ -67,14 +67,16 @@ void EditorLayer::onAttach()
 
 	// 2. 加载 CAD 实体
 	TopoDS_Shape shape = Rongine::CADImporter::ImportSTEP("assets/models/mypage.stp");
-	auto cadMeshVA = Rongine::CADMesher::CreateMeshFromShape(shape); // 使用局部变量
+
+	std::vector<Rongine::CubeVertex> verticesData;
+	auto cadMeshVA = Rongine::CADMesher::CreateMeshFromShape(shape,verticesData); // 使用局部变量
 
 	if (cadMeshVA) {
 		auto cadEntity = m_activeScene->createEntity("CAD Model");
 		auto& tc = cadEntity.GetComponent<Rongine::TransformComponent>();
 		tc.Translation = { 0.0f, 5.0f, 0.0f };
 		tc.Scale = { 0.03f, 0.03f, 0.03f };
-		cadEntity.AddComponent<Rongine::MeshComponent>(cadMeshVA);
+		cadEntity.AddComponent<Rongine::MeshComponent>(cadMeshVA, verticesData);
 		cadEntity.GetComponent<Rongine::MeshComponent>().BoundingBox = Rongine::CADImporter::CalculateAABB(shape);
 	}
 	else {
@@ -405,28 +407,90 @@ void EditorLayer::onImGuiRender()
 	// 2. 绘制逻辑
 	if (m_selectedEntity && m_gizmoType != -1)
 	{
+
+		// 获取相机的 View 和 Projection 矩阵
 		const auto& camera = m_cameraContorller.getCamera();
 		const glm::mat4& cameraProjection = camera.getProjectionMatrix();
 		glm::mat4 cameraView = camera.getViewMatrix();
-
+		// 1. 获取基础数据
 		auto& tc = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
-		glm::mat4 transform = tc.GetTransform();
+		glm::mat4 objectTransform = tc.GetTransform();
 
-		// 绘制
+		// 2. 准备 Gizmo 显示用的矩阵
+		// 默认情况：Gizmo 在物体原点
+		glm::mat4 gizmoMatrix = objectTransform;
+
+		// 标记是否处于“面吸附”模式
+		bool snapToFace = false;
+		glm::vec3 faceLocalCenter(0.0f);
+
+		// --- 吸附逻辑 ---
+		// 如果选中了面，且该实体有网格数据
+		if (m_selectedFace > -1 && m_selectedEntity.HasComponent<Rongine::MeshComponent>())
+		{
+			auto& mesh = m_selectedEntity.GetComponent<Rongine::MeshComponent>();
+			// 确保我们在 Step 1 中存的 LocalVertices 不为空
+			if (!mesh.LocalVertices.empty())
+			{
+				// A. 算出局部中心
+				auto faceInfo = Rongine::GeometryUtils::CalculateFaceCenter(mesh.LocalVertices, m_selectedFace);
+				faceLocalCenter = faceInfo.LocalCenter;
+
+				// B. 将局部中心转为世界坐标 (应用物体的旋转和缩放)
+				// 公式：WorldPos = ObjectMatrix * LocalPos
+				glm::vec4 worldCenter4 = objectTransform * glm::vec4(faceInfo.LocalCenter, 1.0f);
+				glm::vec3 worldCenter = glm::vec3(worldCenter4);
+
+				// C. 强制修改 Gizmo 矩阵的位置列 (第4列)，让 Gizmo 跳到面中心
+				// 注意：我们只改位置，不改旋转和缩放，所以 Gizmo 看起来方向还是正的
+				gizmoMatrix[3][0] = worldCenter.x;
+				gizmoMatrix[3][1] = worldCenter.y;
+				gizmoMatrix[3][2] = worldCenter.z;
+
+				snapToFace = true;
+			}
+		}
+
+		// 3. 绘制 Gizmo (注意：操作的是 gizmoMatrix)
+		// 这样用户看到 Gizmo 就在面的中心
 		ImGuizmo::Manipulate(glm::value_ptr(cameraView), glm::value_ptr(cameraProjection),
-			(ImGuizmo::OPERATION)m_gizmoType, ImGuizmo::LOCAL, glm::value_ptr(transform));
+			(ImGuizmo::OPERATION)m_gizmoType, ImGuizmo::LOCAL, glm::value_ptr(gizmoMatrix));
 
-		// 交互
+		// 4. 处理用户输入 (反向应用回物体)
 		if (ImGuizmo::IsUsing())
 		{
-			RONG_CLIENT_INFO(" tc.Scale = scale;");
 			glm::vec3 translation, rotation, scale;
 			glm::vec3 skew;
 			glm::vec4 perspective;
 			glm::quat orientation;
-			glm::decompose(transform, scale, orientation, translation, skew, perspective);
 
-			tc.Translation = translation;
+			// 分解 被用户移动后的 Gizmo 矩阵
+			glm::decompose(gizmoMatrix, scale, orientation, translation, skew, perspective);
+
+			// --- 核心数学推导 ---
+			if (snapToFace)
+			{
+				// 如果 Gizmo 在面中心，我们需要算回物体的原点在哪里
+				// 物体原点 = Gizmo新位置 - (新旋转缩放后的面偏移)
+
+				// 1. 重建旋转缩放矩阵
+				glm::mat4 rotMat = glm::toMat4(orientation);
+				glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), scale);
+				glm::mat4 rsMat = rotMat * scaleMat;
+
+				// 2. 计算此时面中心相对于原点的偏移量
+				glm::vec3 newOffset = glm::vec3(rsMat * glm::vec4(faceLocalCenter, 1.0f));
+
+				// 3. 应用回物体组件
+				tc.Translation = translation - newOffset;
+			}
+			else
+			{
+				// 普通模式：Gizmo 位置即物体位置
+				tc.Translation = translation;
+			}
+
+			// 旋转和缩放直接应用
 			tc.Rotation = glm::eulerAngles(orientation);
 			tc.Scale = scale;
 		}
@@ -466,13 +530,15 @@ void EditorLayer::OpenFile()
 		m_selectedEntity = {};
 
 		TopoDS_Shape shape = Rongine::CADImporter::ImportSTEP(filepath);
-		auto cadMeshVA = Rongine::CADMesher::CreateMeshFromShape(shape);
+
+		std::vector<Rongine::CubeVertex> verticesData;
+		auto cadMeshVA = Rongine::CADMesher::CreateMeshFromShape(shape,verticesData);
 
 		if (cadMeshVA) {
 			auto cadEntity = m_activeScene->createEntity("Imported CAD");
 			auto& tc = cadEntity.GetComponent<Rongine::TransformComponent>();
 
-			cadEntity.AddComponent<Rongine::MeshComponent>(cadMeshVA);
+			cadEntity.AddComponent<Rongine::MeshComponent>(cadMeshVA,verticesData);
 			cadEntity.GetComponent<Rongine::MeshComponent>().BoundingBox = Rongine::CADImporter::CalculateAABB(shape);
 			RONG_CLIENT_INFO("Successfully imported: {0}", filepath);
 		}

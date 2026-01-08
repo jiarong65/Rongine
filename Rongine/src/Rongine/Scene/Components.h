@@ -7,6 +7,7 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include "Rongine/Renderer/VertexArray.h" // 包含你的 VertexArray
+#include "Rongine/Renderer/Renderer3D.h"
 
 namespace Rongine {
 
@@ -52,9 +53,14 @@ namespace Rongine {
         Ref<VertexArray> VA;
         AABB BoundingBox;
 
+        std::vector<CubeVertex> LocalVertices;
+
         MeshComponent() = default;
         MeshComponent(const MeshComponent&) = default;
         MeshComponent(const Ref<VertexArray>& va) : VA(va) {}
+        MeshComponent(const Ref<VertexArray>& va, const std::vector<CubeVertex>& verts)
+            : VA(va), LocalVertices(verts) {
+        }
     };
 
     // 为未来预留的光谱组件
