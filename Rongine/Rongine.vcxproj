@@ -155,6 +155,7 @@
     <ClInclude Include="src\Platform\OpenGL\OpenGLVertexArray.h" />
     <ClInclude Include="src\Platform\Windows\WindowsWindow.h" />
     <ClInclude Include="src\Rongine.h" />
+    <ClInclude Include="src\Rongine\CAD\CADBoolean.h" />
     <ClInclude Include="src\Rongine\CAD\CADImporter.h" />
     <ClInclude Include="src\Rongine\CAD\CADMesher.h" />
     <ClInclude Include="src\Rongine\CAD\CADModeler.h" />
@@ -629,6 +630,7 @@
     <ClCompile Include="src\Platform\OpenGL\OpenGLVertexArray.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsInput.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp" />
+    <ClCompile Include="src\Rongine\CAD\CADBoolean.cpp" />
     <ClCompile Include="src\Rongine\CAD\CADImporter.cpp" />
     <ClCompile Include="src\Rongine\CAD\CADMesher.cpp" />
     <ClCompile Include="src\Rongine\CAD\CADModeler.cpp" />

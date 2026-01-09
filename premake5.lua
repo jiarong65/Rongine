@@ -13,6 +13,7 @@ local OCCT_LIBS = {
 	"TKPrim",
 	"TKMesh",
 	"TKTopAlgo",
+	"TKBO",
 	"TKSTEP",
 	"TKIGES",
 	"TKShHealing",

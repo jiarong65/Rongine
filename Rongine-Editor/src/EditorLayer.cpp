@@ -15,6 +15,9 @@
 #include "ImGuizmo.h" 
 #include <glm/gtx/matrix_decompose.hpp>
 #include <TopoDS_Shape.hxx>
+#include <BRepBuilderAPI_Transform.hxx>
+#include <GProp_GProps.hxx>
+#include <BRepGProp.hxx>
 
 // --- Timer 类 (性能分析用) ---
 template<typename Fn>
@@ -141,7 +144,7 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 
 	if (control && Rongine::Input::isKeyPressed(Rongine::Key::I))
 	{
-		OpenFile();
+		ImportSTEP();
 	}
 	if (control && Rongine::Input::isKeyPressed(Rongine::Key::O))
 	{
@@ -150,6 +153,20 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	if (control && Rongine::Input::isKeyPressed(Rongine::Key::S))
 	{
 		SaveSceneAs();
+	}
+	if (Rongine::Input::isKeyPressed(Rongine::Key::Delete))
+	{
+		if (m_selectedEntity)
+		{
+			// 创建一个临时的清理函数或直接调用 destroy
+			// 注意：删除后要立即清空 m_selectedEntity，防止下一帧访问野指针崩溃
+			m_activeScene->destroyEntity(m_selectedEntity);
+			m_selectedEntity = {}; // 置空
+			m_sceneHierarchyPanel.setSelectedEntity({}); // 通知面板取消选择
+			m_selectedFace = -1; // 重置选中的面
+
+			RONG_CLIENT_INFO("Entity Deleted.");
+		}
 	}
 
 	//  自动对焦 (Frame Selection)
@@ -356,7 +373,31 @@ void EditorLayer::onImGuiRender()
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("Import...", "Ctrl+I")) {
-				OpenFile();
+				ImportSTEP();
+			}
+			if (ImGui::MenuItem("Export Selected as STEP..."))
+			{
+				if (m_selectedEntity && m_selectedEntity.HasComponent<Rongine::CADGeometryComponent>())
+				{
+					std::string filepath = Rongine::FileDialogs::SaveFile("STEP File (*.step)\0*.step\0");
+					if (!filepath.empty())
+					{
+						// 自动补全后缀
+						if (filepath.find(".step") == std::string::npos && filepath.find(".stp") == std::string::npos)
+							filepath += ".step";
+
+						void* shape = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>().ShapeHandle;
+
+						if (Rongine::CADExporter::ExportSTEP(filepath, shape))
+						{
+							RONG_CLIENT_INFO("Export Successful: {0}", filepath);
+						}
+					}
+				}
+				else
+				{
+					RONG_CLIENT_WARN("Please select a CAD object to export!");
+				}
 			}
 			if (ImGui::MenuItem("Open...", "Ctrl+O")) {
 				OpenScene(); // 改为调用 OpenScene
@@ -376,6 +417,52 @@ void EditorLayer::onImGuiRender()
 				CreatePrimitive(Rongine::CADGeometryComponent::GeometryType::Sphere);
 			if (ImGui::MenuItem("Create Cylinder"))
 				CreatePrimitive(Rongine::CADGeometryComponent::GeometryType::Cylinder);
+
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Edit"))
+		{
+			if (ImGui::MenuItem("Delete Selected", "Del"))
+			{
+				if (m_selectedEntity)
+				{
+					m_activeScene->destroyEntity(m_selectedEntity);
+					m_selectedEntity = {};
+					m_sceneHierarchyPanel.setSelectedEntity({});
+					m_selectedFace = -1;
+				}
+			}
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Tools"))
+		{
+			// 设定工具物体
+			if (ImGui::MenuItem("Set Selected as Tool (Knife)"))
+			{
+				if (m_selectedEntity)
+				{
+					m_ToolEntity = m_selectedEntity;
+					RONG_CLIENT_INFO("Tool set to: {0}", (uint32_t)m_ToolEntity);
+				}
+			}
+
+			ImGui::Separator();
+
+			// 执行布尔运算 (当前选中 - 工具)
+			if (ImGui::MenuItem("Boolean Cut (Selected - Tool)"))
+			{
+				OnBooleanOperation(Rongine::CADBoolean::Operation::Cut);
+			}
+
+			if (ImGui::MenuItem("Boolean Fuse (Selected + Tool)"))
+			{
+				OnBooleanOperation(Rongine::CADBoolean::Operation::Fuse);
+			}
+
+			if (ImGui::MenuItem("Boolean Common (Intersection)"))
+			{
+				OnBooleanOperation(Rongine::CADBoolean::Operation::Common);
+			}
 
 			ImGui::EndMenu();
 		}
@@ -571,16 +658,12 @@ void EditorLayer::onEvent(Rongine::Event& e)
 	m_cameraContorller.onEvent(e);
 }
 
-void EditorLayer::OpenFile()
+void EditorLayer::ImportSTEP()
 {
 	std::string filepath = Rongine::FileDialogs::OpenFile("STEP Files (*.step;*.stp)\0*.step;*.stp\0All Files (*.*)\0*.*\0");
 
 	if (!filepath.empty())
 	{
-		m_activeScene = Rongine::CreateRef<Rongine::Scene>();
-		//m_activeScene->onViewportResize((uint32_t)m_viewportSize.x, (uint32_t)m_viewportSize.y);
-
-		m_sceneHierarchyPanel.setContext(m_activeScene);
 		m_selectedEntity = {};
 
 		TopoDS_Shape shape = Rongine::CADImporter::ImportSTEP(filepath);
@@ -703,5 +786,100 @@ void EditorLayer::OpenScene()
 		{
 			RONG_CLIENT_ERROR("Failed to load scene: {0}", filepath);
 		}
+	}
+}
+
+void EditorLayer::OnBooleanOperation(Rongine::CADBoolean::Operation op)
+{
+	// 检查有效性：必须选中了物体，且工具物体也存在，且两者不是同一个
+	if (!m_selectedEntity || !m_ToolEntity || m_selectedEntity == m_ToolEntity)
+	{
+		RONG_CLIENT_WARN("Invalid Boolean Operands! Select one entity and set another as Tool.");
+		return;
+	}
+
+	// 检查是否都有 CAD 组件
+	if (!m_selectedEntity.HasComponent<Rongine::CADGeometryComponent>() ||
+		!m_ToolEntity.HasComponent<Rongine::CADGeometryComponent>())
+	{
+		RONG_CLIENT_WARN("Both entities must have CAD Geometry!");
+		return;
+	}
+
+	auto& cadA = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
+	auto& transA = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
+
+	auto& cadB = m_ToolEntity.GetComponent<Rongine::CADGeometryComponent>();
+	auto& transB = m_ToolEntity.GetComponent<Rongine::TransformComponent>();
+
+	// 1. 执行运算
+	void* resultShapeHandle = Rongine::CADBoolean::Perform(
+		cadA.ShapeHandle, transA.GetTransform(),
+		cadB.ShapeHandle, transB.GetTransform(),
+		op
+	);
+
+	// 2. 如果成功，生成新物体
+	if (resultShapeHandle)
+	{
+
+		TopoDS_Shape* occShape = (TopoDS_Shape*)resultShapeHandle;
+
+		// ==================== 【新增】几何中心归位逻辑 ====================
+
+		// A. 计算几何中心
+		GProp_GProps props;
+		BRepGProp::VolumeProperties(*occShape, props);
+		gp_Pnt center = props.CentreOfMass(); // 获取质心
+
+		// B. 创建一个反向变换：把形状从中心移回原点
+		gp_Trsf transform;
+		transform.SetTranslation(center, gp_Pnt(0, 0, 0));
+
+		// C. 应用变换到形状 (永久修改形状的顶点)
+		BRepBuilderAPI_Transform xform(*occShape, transform);
+		TopoDS_Shape centeredShape = xform.Shape();
+
+		// D. 更新 shapeHandle 指向这个归位后的形状
+		// (注意：这里要小心内存管理，最好把旧的 occShape 删掉，或者直接用 new)
+		*occShape = centeredShape; // 简单粗暴覆盖
+
+		// =================================================================
+		// 创建结果实体
+		auto resultEntity = m_activeScene->createEntity("Boolean Result");
+
+		// 添加 Transform
+		// 注意：因为 Perform 已经在世界坐标系下运算了，所以新物体的 Transform 应该是归零的
+		auto& resTc = resultEntity.AddComponent<Rongine::TransformComponent>();
+		resTc.Translation = { (float)center.X(), (float)center.Y(), (float)center.Z() };
+
+		// 添加 CAD 组件 (类型设为 Imported，因为它已经不是纯参数化的球/方块了)
+		auto& resCad = resultEntity.AddComponent<Rongine::CADGeometryComponent>();
+		resCad.Type = Rongine::CADGeometryComponent::GeometryType::Imported;
+		resCad.ShapeHandle = resultShapeHandle;
+
+		// 生成 Mesh
+		std::vector<Rongine::CubeVertex> vertices;
+		auto va = Rongine::CADMesher::CreateMeshFromShape(*occShape, vertices);
+
+		if (va)
+		{
+			resultEntity.AddComponent<Rongine::MeshComponent>(va, vertices);
+			resultEntity.GetComponent<Rongine::MeshComponent>().BoundingBox = Rongine::CADImporter::CalculateAABB(*occShape);
+
+			if (m_selectedEntity.HasComponent<Rongine::TagComponent>())
+				m_selectedEntity.GetComponent<Rongine::TagComponent>().Tag += " (Hidden)";
+			if (m_ToolEntity.HasComponent<Rongine::TagComponent>())
+				m_ToolEntity.GetComponent<Rongine::TagComponent>().Tag += " (Hidden)";
+
+			m_selectedEntity = resultEntity;
+			m_sceneHierarchyPanel.setSelectedEntity(resultEntity);
+		}
+
+		// 可选：运算后隐藏或删除原物体
+		// m_activeScene->DestroyEntity(m_selectedEntity);
+		// m_activeScene->DestroyEntity(m_ToolEntity);
+
+		RONG_CLIENT_INFO("Boolean Operation Successful!");
 	}
 }

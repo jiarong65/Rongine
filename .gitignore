@@ -31,4 +31,19 @@ bin-int/
 *.cache
 
 Rongine/vendor/imgui/imgui.ini
-Rongine/vendor/OCCT/
+Rongine/vendor/OCCT
+
+# ===========================
+# 【新增】忽略生成的模型和存档
+# ===========================
+# 3D 模型导出文件
+*.step
+*.stp
+*.stl
+*.obj
+
+# 场景存档文件 (如果你不想提交测试场景)
+*.rong
+
+# 其它可能生成的临时文件
+*.brep

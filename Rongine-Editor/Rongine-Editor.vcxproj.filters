@@ -43,6 +43,9 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="assets\models\j01.rong">
+      <Filter>assets\models</Filter>
+    </None>
     <None Include="assets\models\mypage.stp">
       <Filter>assets\models</Filter>
     </None>

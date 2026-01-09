@@ -25,10 +25,11 @@ public:
 	virtual void onEvent(Rongine::Event& e) override;
 
 private:
-	void OpenFile();
+	void ImportSTEP();
 	void CreatePrimitive(Rongine::CADGeometryComponent::GeometryType type);
 	void SaveSceneAs();
 	void OpenScene();
+	void OnBooleanOperation(Rongine::CADBoolean::Operation op);
 
 private:
 	Rongine::Ref<Rongine::Shader> m_shader;
@@ -66,5 +67,7 @@ private:
 	int m_gizmoType = -1; // -1:None, 0:Translate, 1:Rotate, 2:Scale
 
 	Rongine::SceneHierarchyPanel m_sceneHierarchyPanel;
+
+	Rongine::Entity m_ToolEntity;                //工具实体
 };
 

@@ -1,25 +1,53 @@
 Scene: Untitled
 Entities:
-  - Entity: 1
+  - Entity: 4
     TagComponent:
-      Tag: New Object
+      Tag: Boolean Result
     TransformComponent:
-      Translation: [3.040928, 0, 0]
+      Translation: [-1.3975059, 0, 7.790841]
       Rotation: [0, -0, 0]
       Scale: [1, 1, 1]
     CADGeometryComponent:
-      Type: 1
+      Type: 4
       Params:
         Width: 1
         Height: 1
         Depth: 1
         Radius: 1
-  - Entity: 0
+  - Entity: 3
     TagComponent:
       Tag: New Object
     TransformComponent:
-      Translation: [0, 0, 0]
-      Rotation: [0, 0, 0]
+      Translation: [-1.1195663, -0.72725725, -3.2584846]
+      Rotation: [-1.5707963, 1.5707964, 0]
+      Scale: [1, 1, 1]
+    CADGeometryComponent:
+      Type: 3
+      Params:
+        Width: 1
+        Height: 2.8
+        Depth: 1
+        Radius: 0.501
+  - Entity: 2
+    TagComponent:
+      Tag: Boolean Result
+    TransformComponent:
+      Translation: [4.6050024, 0, -3.232627]
+      Rotation: [0, -0, 0]
+      Scale: [1, 1, 1]
+    CADGeometryComponent:
+      Type: 4
+      Params:
+        Width: 1
+        Height: 1
+        Depth: 1
+        Radius: 1
+  - Entity: 1
+    TagComponent:
+      Tag: New Object
+    TransformComponent:
+      Translation: [1.9339863, 2.1278725, 0.9660767]
+      Rotation: [0, -0, 0]
       Scale: [1, 1, 1]
     CADGeometryComponent:
       Type: 2
@@ -27,4 +55,18 @@ Entities:
         Width: 1
         Height: 1
         Depth: 1
+        Radius: 0.701
+  - Entity: 0
+    TagComponent:
+      Tag: New Object
+    TransformComponent:
+      Translation: [-2.1742897, -0.11318731, -4.3206115]
+      Rotation: [0, -0, 0]
+      Scale: [1, 1, 1]
+    CADGeometryComponent:
+      Type: 1
+      Params:
+        Width: 2
+        Height: 2
+        Depth: 2
         Radius: 1

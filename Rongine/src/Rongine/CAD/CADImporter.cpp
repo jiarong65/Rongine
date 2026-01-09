@@ -8,6 +8,9 @@
 #include <TopoDS_Compound.hxx>
 #include "BRepBndLib.hxx" 
 #include "Bnd_Box.hxx"
+#include <TopoDS_Shape.hxx>
+#include <STEPControl_Writer.hxx>
+#include <Interface_Static.hxx>
 
 namespace Rongine {
 
@@ -50,5 +53,39 @@ namespace Rongine {
         result.Min = { (float)xmin, (float)ymin, (float)zmin };
         result.Max = { (float)xmax, (float)ymax, (float)zmax };
         return result;
+    }
+
+    bool CADExporter::ExportSTEP(const std::string& filepath, void* shapeHandle)
+    {
+        if (!shapeHandle) return false;
+
+        TopoDS_Shape* shape = (TopoDS_Shape*)shapeHandle;
+
+        // 1. 初始化 Writer
+        STEPControl_Writer writer;
+
+        // 2. 设置单位为毫米 (可选，但在 CAD 交换中很重要)
+        // Interface_Static::SetCVal("write.step.unit", "MM"); 
+
+        // 3. 转换 Shape
+        // STEPControl_AsIs 表示保持原样拓扑
+        IFSelect_ReturnStatus status = writer.Transfer(*shape, STEPControl_AsIs);
+
+        if (status != IFSelect_RetDone)
+        {
+            RONG_CORE_ERROR("STEP Export: Transfer failed!");
+            return false;
+        }
+
+        // 4. 写入文件
+        status = writer.Write(filepath.c_str());
+
+        if (status != IFSelect_RetDone)
+        {
+            RONG_CORE_ERROR("STEP Export: Write failed!");
+            return false;
+        }
+
+        return true;
     }
 }

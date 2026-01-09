@@ -93,6 +93,9 @@
     <ClInclude Include="src\Rongine.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="src\Rongine\CAD\CADBoolean.h">
+      <Filter>src\Rongine\CAD</Filter>
+    </ClInclude>
     <ClInclude Include="src\Rongine\CAD\CADImporter.h">
       <Filter>src\Rongine\CAD</Filter>
     </ClInclude>
@@ -1510,6 +1513,9 @@
     </ClCompile>
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp">
       <Filter>src\Platform\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\CAD\CADBoolean.cpp">
+      <Filter>src\Rongine\CAD</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongine\CAD\CADImporter.cpp">
       <Filter>src\Rongine\CAD</Filter>

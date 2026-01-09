@@ -15,4 +15,11 @@ namespace Rongine {
         static AABB CalculateAABB(const TopoDS_Shape& shape);
     };
 
+    class CADExporter
+    {
+    public:
+        // 导出单个 Shape 到 STEP 文件
+        static bool ExportSTEP(const std::string& filepath, void* shapeHandle);
+    };
+
 }
