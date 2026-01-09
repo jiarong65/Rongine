@@ -1,0 +1,30 @@
+Scene: Untitled
+Entities:
+  - Entity: 1
+    TagComponent:
+      Tag: New Object
+    TransformComponent:
+      Translation: [3.040928, 0, 0]
+      Rotation: [0, -0, 0]
+      Scale: [1, 1, 1]
+    CADGeometryComponent:
+      Type: 1
+      Params:
+        Width: 1
+        Height: 1
+        Depth: 1
+        Radius: 1
+  - Entity: 0
+    TagComponent:
+      Tag: New Object
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CADGeometryComponent:
+      Type: 2
+      Params:
+        Width: 1
+        Height: 1
+        Depth: 1
+        Radius: 1

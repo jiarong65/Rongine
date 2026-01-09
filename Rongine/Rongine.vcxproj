@@ -76,8 +76,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RONG_PLATFORM_WINDOWS;RONG_BUILD_DLL;GLFW_INCLUDE_NONE;RONG_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;vendor\ImGuizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;YAML_CPP_STATIC_DEFINE;RONG_PLATFORM_WINDOWS;RONG_BUILD_DLL;GLFW_INCLUDE_NONE;RONG_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;vendor\ImGuizmo;vendor\yaml-cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -98,8 +98,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RONG_PLATFORM_WINDOWS;RONG_BUILD_DLL;GLFW_INCLUDE_NONE;RONG_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;vendor\ImGuizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;YAML_CPP_STATIC_DEFINE;RONG_PLATFORM_WINDOWS;RONG_BUILD_DLL;GLFW_INCLUDE_NONE;RONG_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;vendor\ImGuizmo;vendor\yaml-cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -124,8 +124,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RONG_PLATFORM_WINDOWS;RONG_BUILD_DLL;GLFW_INCLUDE_NONE;RONG_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;vendor\ImGuizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;YAML_CPP_STATIC_DEFINE;RONG_PLATFORM_WINDOWS;RONG_BUILD_DLL;GLFW_INCLUDE_NONE;RONG_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;vendor\ImGuizmo;vendor\yaml-cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -146,9 +146,6 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\Rongine\CAD\CADModeler.h" />
-    <ClInclude Include="src\Rongine\Utils\PlatformUtils.h" />
-    <ClInclude Include="src\Rongine\ImGui\SceneHierarchyPanel.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLBuffer.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLContext.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLFramebuffer.h" />
@@ -160,6 +157,7 @@
     <ClInclude Include="src\Rongine.h" />
     <ClInclude Include="src\Rongine\CAD\CADImporter.h" />
     <ClInclude Include="src\Rongine\CAD\CADMesher.h" />
+    <ClInclude Include="src\Rongine\CAD\CADModeler.h" />
     <ClInclude Include="src\Rongine\Core\Application.h" />
     <ClInclude Include="src\Rongine\Core\Core.h" />
     <ClInclude Include="src\Rongine\Core\EntryPoint.h" />
@@ -176,6 +174,7 @@
     <ClInclude Include="src\Rongine\Events\KeyEvent.h" />
     <ClInclude Include="src\Rongine\Events\MouseEvent.h" />
     <ClInclude Include="src\Rongine\ImGui\ImGuiLayer.h" />
+    <ClInclude Include="src\Rongine\ImGui\SceneHierarchyPanel.h" />
     <ClInclude Include="src\Rongine\Renderer\Buffer.h" />
     <ClInclude Include="src\Rongine\Renderer\Framebuffer.h" />
     <ClInclude Include="src\Rongine\Renderer\GraphicsContext.h" />
@@ -194,7 +193,9 @@
     <ClInclude Include="src\Rongine\Scene\Components.h" />
     <ClInclude Include="src\Rongine\Scene\Entity.h" />
     <ClInclude Include="src\Rongine\Scene\Scene.h" />
+    <ClInclude Include="src\Rongine\Scene\SceneSerializer.h" />
     <ClInclude Include="src\Rongine\Utils\GeometryUtils.h" />
+    <ClInclude Include="src\Rongine\Utils\PlatformUtils.h" />
     <ClInclude Include="src\Rongpch.h" />
     <ClInclude Include="vendor\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="vendor\glm\glm\common.hpp" />
@@ -619,9 +620,6 @@
     <ClInclude Include="vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Rongine\CAD\CADModeler.cpp" />
-    <ClCompile Include="src\Rongine\Utils\PlatformUtils.cpp" />
-    <ClCompile Include="src\Rongine\ImGui\SceneHierarchyPanel.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLContext.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLFramebuffer.cpp" />
@@ -633,6 +631,7 @@
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp" />
     <ClCompile Include="src\Rongine\CAD\CADImporter.cpp" />
     <ClCompile Include="src\Rongine\CAD\CADMesher.cpp" />
+    <ClCompile Include="src\Rongine\CAD\CADModeler.cpp" />
     <ClCompile Include="src\Rongine\Core\Application.cpp" />
     <ClCompile Include="src\Rongine\Core\Layer.cpp" />
     <ClCompile Include="src\Rongine\Core\LayerStack.cpp" />
@@ -640,6 +639,7 @@
     <ClCompile Include="src\Rongine\Core\Window.cpp" />
     <ClCompile Include="src\Rongine\ImGui\ImGuiBuild.cpp" />
     <ClCompile Include="src\Rongine\ImGui\ImGuiLayer.cpp" />
+    <ClCompile Include="src\Rongine\ImGui\SceneHierarchyPanel.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Buffer.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Framebuffer.cpp" />
     <ClCompile Include="src\Rongine\Renderer\OrthographicCamera.cpp" />
@@ -655,7 +655,9 @@
     <ClCompile Include="src\Rongine\Renderer\Texture.cpp" />
     <ClCompile Include="src\Rongine\Renderer\VertexArray.cpp" />
     <ClCompile Include="src\Rongine\Scene\Scene.cpp" />
+    <ClCompile Include="src\Rongine\Scene\SceneSerializer.cpp" />
     <ClCompile Include="src\Rongine\Utils\GeometryUtils.cpp" />
+    <ClCompile Include="src\Rongine\Utils\PlatformUtils.cpp" />
     <ClCompile Include="src\Rongpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -673,6 +675,9 @@
     </ProjectReference>
     <ProjectReference Include="vendor\imgui\ImGui.vcxproj">
       <Project>{C0FF640D-2C14-8DBE-F595-301E616989EF}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\yaml-cpp\yaml-cpp.vcxproj">
+      <Project>{88F1A057-74BE-FB62-9DD7-E90A890331F1}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

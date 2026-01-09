@@ -66,36 +66,36 @@ void EditorLayer::onAttach()
 
 	m_activeScene = Rongine::CreateRef<Rongine::Scene>();
 
-	// 2. 加载 CAD 实体
-	TopoDS_Shape shape = Rongine::CADImporter::ImportSTEP("assets/models/mypage.stp");
+	//// 2. 加载 CAD 实体
+	//TopoDS_Shape shape = Rongine::CADImporter::ImportSTEP("assets/models/mypage.stp");
 
-	std::vector<Rongine::CubeVertex> verticesData;
-	auto cadMeshVA = Rongine::CADMesher::CreateMeshFromShape(shape,verticesData); // 使用局部变量
+	//std::vector<Rongine::CubeVertex> verticesData;
+	//auto cadMeshVA = Rongine::CADMesher::CreateMeshFromShape(shape,verticesData); // 使用局部变量
 
-	if (cadMeshVA) {
-		auto cadEntity = m_activeScene->createEntity("CAD Model");
-		auto& tc = cadEntity.GetComponent<Rongine::TransformComponent>();
-		tc.Translation = { 0.0f, 5.0f, 0.0f };
-		tc.Scale = { 0.03f, 0.03f, 0.03f };
-		cadEntity.AddComponent<Rongine::MeshComponent>(cadMeshVA, verticesData);
-		cadEntity.GetComponent<Rongine::MeshComponent>().BoundingBox = Rongine::CADImporter::CalculateAABB(shape);
-	}
-	else {
-		RONG_CLIENT_ERROR("step 加载失败");
-	}
+	//if (cadMeshVA) {
+	//	auto cadEntity = m_activeScene->createEntity("CAD Model");
+	//	auto& tc = cadEntity.GetComponent<Rongine::TransformComponent>();
+	//	tc.Translation = { 0.0f, 5.0f, 0.0f };
+	//	tc.Scale = { 0.03f, 0.03f, 0.03f };
+	//	cadEntity.AddComponent<Rongine::MeshComponent>(cadMeshVA, verticesData);
+	//	cadEntity.GetComponent<Rongine::MeshComponent>().BoundingBox = Rongine::CADImporter::CalculateAABB(shape);
+	//}
+	//else {
+	//	RONG_CLIENT_ERROR("step 加载失败");
+	//}
 
-	// 3. 创建 Torus 实体
-	auto torusVA = Rongine::GeometryUtils::CreateTorus(1.0f, 0.4f, 64, 32);
-	if (torusVA) {
-		auto torusEntity = m_activeScene->createEntity("Torus");
-		auto& tc = torusEntity.GetComponent<Rongine::TransformComponent>();
-		tc.Translation = { 0.0f, 1.5f, 0.0f };
-		tc.Rotation = { glm::radians(45.0f), 0.0f, 0.0f };
-		torusEntity.AddComponent<Rongine::MeshComponent>(torusVA);
-		auto& box = torusEntity.GetComponent<Rongine::MeshComponent>().BoundingBox;
-		box.Max = { -1.4f, -0.4f, -1.4f };
-		box.Min = { 1.4f, 0.4f, 1.4f };
-	}
+	//// 3. 创建 Torus 实体
+	//auto torusVA = Rongine::GeometryUtils::CreateTorus(1.0f, 0.4f, 64, 32);
+	//if (torusVA) {
+	//	auto torusEntity = m_activeScene->createEntity("Torus");
+	//	auto& tc = torusEntity.GetComponent<Rongine::TransformComponent>();
+	//	tc.Translation = { 0.0f, 1.5f, 0.0f };
+	//	tc.Rotation = { glm::radians(45.0f), 0.0f, 0.0f };
+	//	torusEntity.AddComponent<Rongine::MeshComponent>(torusVA);
+	//	auto& box = torusEntity.GetComponent<Rongine::MeshComponent>().BoundingBox;
+	//	box.Max = { -1.4f, -0.4f, -1.4f };
+	//	box.Min = { 1.4f, 0.4f, 1.4f };
+	//}
 
 	//////////////////////////////////////////////////////////////////////////
 	//ui面板
@@ -139,9 +139,17 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	bool control = Rongine::Input::isKeyPressed(Rongine::Key::LeftControl) || Rongine::Input::isKeyPressed(Rongine::Key::RightControl);
 	bool shift = Rongine::Input::isKeyPressed(Rongine::Key::LeftShift) || Rongine::Input::isKeyPressed(Rongine::Key::RightShift);
 
-	if (control && Rongine::Input::isKeyPressed(Rongine::Key::O))
+	if (control && Rongine::Input::isKeyPressed(Rongine::Key::I))
 	{
 		OpenFile();
+	}
+	if (control && Rongine::Input::isKeyPressed(Rongine::Key::O))
+	{
+		OpenScene();
+	}
+	if (control && Rongine::Input::isKeyPressed(Rongine::Key::S))
+	{
+		SaveSceneAs();
 	}
 
 	//  自动对焦 (Frame Selection)
@@ -347,8 +355,14 @@ void EditorLayer::onImGuiRender()
 	///////////////////////////////////////////////////////////////////////
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
-			if (ImGui::MenuItem("Open...", "Ctrl+O")) {
+			if (ImGui::MenuItem("Import...", "Ctrl+I")) {
 				OpenFile();
+			}
+			if (ImGui::MenuItem("Open...", "Ctrl+O")) {
+				OpenScene(); // 改为调用 OpenScene
+			}
+			if (ImGui::MenuItem("Save As...", "Ctrl+S")) {
+				SaveSceneAs(); // 新增 Save As
 			}
 			if (ImGui::MenuItem("Exit")) Rongine::Application::get().close();
 
@@ -641,6 +655,53 @@ void EditorLayer::CreatePrimitive(Rongine::CADGeometryComponent::GeometryType ty
 			entity.GetComponent<Rongine::MeshComponent>().BoundingBox = Rongine::CADImporter::CalculateAABB(*occShape);
 
 			RONG_CLIENT_INFO("Created Primitive Successfully!");
+		}
+	}
+}
+
+void EditorLayer::SaveSceneAs()
+{
+	// 打开保存文件对话框，过滤 .rong 文件
+	std::string filepath = Rongine::FileDialogs::SaveFile("Rongine Scene (*.rong)\0*.rong\0");
+
+	if (!filepath.empty())
+	{
+		// 创建序列化器并保存当前场景
+		Rongine::SceneSerializer serializer(m_activeScene);
+		serializer.Serialize(filepath);
+
+		RONG_CLIENT_INFO("Scene saved to: {0}", filepath);
+	}
+}
+
+void EditorLayer::OpenScene()
+{
+	// 打开文件对话框
+	std::string filepath = Rongine::FileDialogs::OpenFile("Rongine Scene (*.rong)\0*.rong\0");
+
+	if (!filepath.empty())
+	{
+		// 1. 创建一个新的空场景（把旧的扔掉）
+		m_activeScene = Rongine::CreateRef<Rongine::Scene>();
+
+		// 2. 如果视口大小已知，调整新场景视口（防止画面拉伸）
+		//if (m_viewportSize.x > 0 && m_viewportSize.y > 0)
+		//	m_activeScene->onViewportResize((uint32_t)m_viewportSize.x, (uint32_t)m_viewportSize.y);
+
+		// 3. 更新面板上下文（让 Hierarchy 面板显示新场景）
+		m_sceneHierarchyPanel.setContext(m_activeScene);
+		m_selectedEntity = {}; // 清空之前的选择，防止野指针
+		m_selectedFace = -1;
+
+		// 4. 反序列化（核心步骤！）
+		Rongine::SceneSerializer serializer(m_activeScene);
+		if (serializer.Deserialize(filepath))
+		{
+			RONG_CLIENT_INFO("Scene loaded from: {0}", filepath);
+		}
+		else
+		{
+			RONG_CLIENT_ERROR("Failed to load scene: {0}", filepath);
 		}
 	}
 }

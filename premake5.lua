@@ -48,10 +48,15 @@ includeDir["stb_image"] = "Rongine/vendor/stb_image"
 -- [新增] OCCT 头文件路径 (使用 %{wks.location} 确保基于工作区根目录)
 includeDir["OCCT"] = "%{wks.location}/" .. OCCT_DIR .. "/inc"
 includeDir["ImGuizmo"]="Rongine/vendor/ImGuizmo"
+includeDir["yaml"]="Rongine/vendor/yaml-cpp/include"
 
-include "Rongine/vendor/GLFW"
-include "Rongine/vendor/Glad"
-include "Rongine/vendor/imgui"
+group "vendor"
+	include "Rongine/vendor/GLFW"
+	include "Rongine/vendor/Glad"
+	include "Rongine/vendor/imgui"
+	include "Rongine/vendor/yaml-cpp"
+group ""
+
 
 -- =============================================================
 -- Project: Rongine (Core Engine Library)
@@ -83,7 +88,8 @@ project "Rongine"
 
 	defines
 	{
-		"_CRT_SECURE_NO_WARNINGS"
+		"_CRT_SECURE_NO_WARNINGS",
+		"YAML_CPP_STATIC_DEFINE"
 	}
 
 	filter "files:**/ImGuizmo.cpp"
@@ -103,7 +109,8 @@ project "Rongine"
 		"%{includeDir.stb_image}",
 		"%{includeDir.entt}",
 		"%{includeDir.OCCT}", -- [新增] 核心引擎需要包含 OCCT 头文件以编写 CADMesher
-		"%{includeDir.ImGuizmo}"
+		"%{includeDir.ImGuizmo}",
+		"%{includeDir.yaml}"
 	}
 
 	links
@@ -111,7 +118,8 @@ project "Rongine"
 		"GLFW",
 		"Glad",
 		"opengl32.lib",
-		"ImGui"
+		"ImGui",
+		"yaml-cpp"
 	}
 
 	filter "system:windows"
@@ -186,7 +194,8 @@ project "Sandbox"
 
 		defines
 		{
-			"RONG_PLATFORM_WINDOWS"
+			"RONG_PLATFORM_WINDOWS",
+			"YAML_CPP_STATIC_DEFINE"
 		}
 
 	filter "configurations:Debug"

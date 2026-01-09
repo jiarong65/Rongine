@@ -13,6 +13,15 @@ class TopoDS_Shape;
 
 namespace Rongine {
 
+    struct IDComponent
+    {
+        uint64_t ID = 0;
+
+        IDComponent() = default;
+        IDComponent(const IDComponent&) = default;
+        IDComponent(uint64_t id) : ID(id) {}
+    };
+
     struct TagComponent
     {
         std::string Tag;

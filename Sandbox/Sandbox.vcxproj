@@ -79,7 +79,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RONG_PLATFORM_WINDOWS;RONG_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>RONG_PLATFORM_WINDOWS;YAML_CPP_STATIC_DEFINE;RONG_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\Rongine\vendor\spdlog\include;..\Rongine\src;..\Rongine\vendor\glm;..\Rongine\vendor;..\Rongine\vendor\Glad\include;..\Rongine\vendor\OCCT\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -98,7 +98,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RONG_PLATFORM_WINDOWS;RONG_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>RONG_PLATFORM_WINDOWS;YAML_CPP_STATIC_DEFINE;RONG_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\Rongine\vendor\spdlog\include;..\Rongine\src;..\Rongine\vendor\glm;..\Rongine\vendor;..\Rongine\vendor\Glad\include;..\Rongine\vendor\OCCT\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -121,7 +121,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RONG_PLATFORM_WINDOWS;RONG_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>RONG_PLATFORM_WINDOWS;YAML_CPP_STATIC_DEFINE;RONG_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\Rongine\vendor\spdlog\include;..\Rongine\src;..\Rongine\vendor\glm;..\Rongine\vendor;..\Rongine\vendor\Glad\include;..\Rongine\vendor\OCCT\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>

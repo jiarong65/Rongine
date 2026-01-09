@@ -37,3 +37,8 @@
 
 #include "Rongine/Utils/GeometryUtils.h"
 #include "Rongine/Utils/PlatformUtils.h"
+
+#include "Rongine/Scene/Components.h"
+#include "Rongine/Scene/Entity.h"
+#include "Rongine/Scene/Scene.h"
+#include "Rongine/Scene/SceneSerializer.h"

@@ -99,6 +99,9 @@
     <ClInclude Include="src\Rongine\CAD\CADMesher.h">
       <Filter>src\Rongine\CAD</Filter>
     </ClInclude>
+    <ClInclude Include="src\Rongine\CAD\CADModeler.h">
+      <Filter>src\Rongine\CAD</Filter>
+    </ClInclude>
     <ClInclude Include="src\Rongine\Core\Application.h">
       <Filter>src\Rongine\Core</Filter>
     </ClInclude>
@@ -145,6 +148,9 @@
       <Filter>src\Rongine\Events</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongine\ImGui\ImGuiLayer.h">
+      <Filter>src\Rongine\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\ImGui\SceneHierarchyPanel.h">
       <Filter>src\Rongine\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongine\Renderer\Buffer.h">
@@ -201,7 +207,13 @@
     <ClInclude Include="src\Rongine\Scene\Scene.h">
       <Filter>src\Rongine\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="src\Rongine\Scene\SceneSerializer.h">
+      <Filter>src\Rongine\Scene</Filter>
+    </ClInclude>
     <ClInclude Include="src\Rongine\Utils\GeometryUtils.h">
+      <Filter>src\Rongine\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\Utils\PlatformUtils.h">
       <Filter>src\Rongine\Utils</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongpch.h">
@@ -1470,9 +1482,6 @@
     <ClInclude Include="vendor\stb_image\stb_image.h">
       <Filter>vendor\stb_image</Filter>
     </ClInclude>
-    <ClInclude Include="src\Rongine\ImGui\SceneHierarchyPanel.h" />
-    <ClInclude Include="src\Rongine\Utils\PlatformUtils.h" />
-    <ClInclude Include="src\Rongine\CAD\CADModeler.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp">
@@ -1508,6 +1517,9 @@
     <ClCompile Include="src\Rongine\CAD\CADMesher.cpp">
       <Filter>src\Rongine\CAD</Filter>
     </ClCompile>
+    <ClCompile Include="src\Rongine\CAD\CADModeler.cpp">
+      <Filter>src\Rongine\CAD</Filter>
+    </ClCompile>
     <ClCompile Include="src\Rongine\Core\Application.cpp">
       <Filter>src\Rongine\Core</Filter>
     </ClCompile>
@@ -1527,6 +1539,9 @@
       <Filter>src\Rongine\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongine\ImGui\ImGuiLayer.cpp">
+      <Filter>src\Rongine\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\ImGui\SceneHierarchyPanel.cpp">
       <Filter>src\Rongine\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongine\Renderer\Buffer.cpp">
@@ -1574,7 +1589,13 @@
     <ClCompile Include="src\Rongine\Scene\Scene.cpp">
       <Filter>src\Rongine\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="src\Rongine\Scene\SceneSerializer.cpp">
+      <Filter>src\Rongine\Scene</Filter>
+    </ClCompile>
     <ClCompile Include="src\Rongine\Utils\GeometryUtils.cpp">
+      <Filter>src\Rongine\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Utils\PlatformUtils.cpp">
       <Filter>src\Rongine\Utils</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongpch.cpp">
@@ -1586,8 +1607,5 @@
     <ClCompile Include="vendor\stb_image\stb_image.cpp">
       <Filter>vendor\stb_image</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\ImGui\SceneHierarchyPanel.cpp" />
-    <ClCompile Include="src\Rongine\Utils\PlatformUtils.cpp" />
-    <ClCompile Include="src\Rongine\CAD\CADModeler.cpp" />
   </ItemGroup>
 </Project>
