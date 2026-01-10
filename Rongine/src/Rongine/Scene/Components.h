@@ -98,6 +98,8 @@ namespace Rongine {
             float Radius = 1.0f; // 球体/圆柱参数
         } Params;
 
+        float LinearDeflection = 0.1f;
+
         CADGeometryComponent() = default;
         CADGeometryComponent(const CADGeometryComponent&) = default;
     };

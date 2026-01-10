@@ -7,6 +7,7 @@
 #include "Rongine/CAD/CADMesher.h"
 #include "Rongine/CAD/CADImporter.h"
 #include <glm/gtc/type_ptr.hpp>
+#include <BRepTools.hxx>
 
 namespace Rongine {
 
@@ -85,10 +86,11 @@ namespace Rongine {
 		if (newShapeHandle)
 		{
 			TopoDS_Shape* occShape = (TopoDS_Shape*)newShapeHandle;
+			BRepTools::Clean(*occShape);
 			std::vector<CubeVertex> newVertices;
 
 			// 调用 Mesher 生成新数据
-			auto newVA = CADMesher::CreateMeshFromShape(*occShape, newVertices);
+			auto newVA = CADMesher::CreateMeshFromShape(*occShape, newVertices,cadComp.LinearDeflection);
 
 			if (newVA)
 			{
@@ -96,6 +98,34 @@ namespace Rongine {
 				meshComp.VA = newVA;
 				meshComp.LocalVertices = newVertices; // 更新 CPU 顶点，保证 Gizmo 吸附正确
 				meshComp.BoundingBox = CADImporter::CalculateAABB(*occShape); // 更新包围盒，保证 F 键聚焦正确
+			}
+		}
+	}
+
+	// 修改精度，重新生成网格 (不重新创建数学模型)
+	static void RebuildMeshOnly(Entity entity)
+	{
+		if (!entity.HasComponent<CADGeometryComponent>() || !entity.HasComponent<MeshComponent>())
+			return;
+
+		auto& cadComp = entity.GetComponent<CADGeometryComponent>();
+		auto& meshComp = entity.GetComponent<MeshComponent>();
+
+		if (cadComp.ShapeHandle)
+		{
+			TopoDS_Shape* occShape = (TopoDS_Shape*)cadComp.ShapeHandle;
+			BRepTools::Clean(*occShape);
+			std::vector<CubeVertex> newVertices;
+
+			// 传入当前的 精度
+			auto newVA = CADMesher::CreateMeshFromShape(*occShape, newVertices, cadComp.LinearDeflection);
+
+			if (newVA)
+			{
+				meshComp.VA = newVA;
+				meshComp.LocalVertices = newVertices;
+				// 更新AABB
+				meshComp.BoundingBox = CADImporter::CalculateAABB(*occShape);
 			}
 		}
 	}
@@ -251,30 +281,56 @@ namespace Rongine {
 			if (ImGui::TreeNodeEx((void*)typeid(CADGeometryComponent).hash_code(), ImGuiTreeNodeFlags_DefaultOpen, "CAD Geometry"))
 			{
 				auto& cadComp = entity.GetComponent<CADGeometryComponent>();
-				bool valueChanged = false;
 
-				// 根据几何体类型显示不同的滑块
-				// 0.01f 是最小值，防止参数变成 0 或负数导致 OCCT 崩溃
+				// 分别标记两种变化状态
+				bool geometryChanged = false;   // 几何参数变了 (需要全套重建)
+				bool meshQualityChanged = false; // 只有精度变了 (只需要重建网格)
+
+				// 1. 几何参数滑块 (根据类型显示)
 				if (cadComp.Type == CADGeometryComponent::GeometryType::Cube)
 				{
-					if (ImGui::DragFloat("Width", &cadComp.Params.Width, 0.1f, 0.001f, 10000.0f)) valueChanged = true;
-					if (ImGui::DragFloat("Height", &cadComp.Params.Height, 0.1f, 0.001f, 10000.0f)) valueChanged = true;
-					if (ImGui::DragFloat("Depth", &cadComp.Params.Depth, 0.1f, 0.001f, 10000.0f)) valueChanged = true;
+					if (ImGui::DragFloat("Width", &cadComp.Params.Width, 0.1f, 0.001f, 10000.0f)) geometryChanged = true;
+					if (ImGui::DragFloat("Height", &cadComp.Params.Height, 0.1f, 0.001f, 10000.0f)) geometryChanged = true;
+					if (ImGui::DragFloat("Depth", &cadComp.Params.Depth, 0.1f, 0.001f, 10000.0f)) geometryChanged = true;
 				}
 				else if (cadComp.Type == CADGeometryComponent::GeometryType::Sphere)
 				{
-					if (ImGui::DragFloat("Radius", &cadComp.Params.Radius, 0.1f, 0.001f, 10000.0f)) valueChanged = true;
+					if (ImGui::DragFloat("Radius", &cadComp.Params.Radius, 0.1f, 0.001f, 10000.0f)) geometryChanged = true;
 				}
 				else if (cadComp.Type == CADGeometryComponent::GeometryType::Cylinder)
 				{
-					if (ImGui::DragFloat("Radius", &cadComp.Params.Radius, 0.1f, 0.001f, 10000.0f)) valueChanged = true;
-					if (ImGui::DragFloat("Height", &cadComp.Params.Height, 0.1f, 0.001f, 10000.0f)) valueChanged = true;
+					if (ImGui::DragFloat("Radius", &cadComp.Params.Radius, 0.1f, 0.001f, 10000.0f)) geometryChanged = true;
+					if (ImGui::DragFloat("Height", &cadComp.Params.Height, 0.1f, 0.001f, 10000.0f)) geometryChanged = true;
 				}
 
-				// 如果用户拖动了滑块，立即重建几何体
-				if (valueChanged)
+				ImGui::Separator();
+
+				// 2. 网格精度滑块 (所有 CAD 类型通用)
+				// 范围：0.001 (极细) 到 10.0 (极粗)
+				// 使用对数刻度或者普通浮点拖拽，为了明显，我们反直觉一点：
+				// 数值越小越精细。
+				if (ImGui::DragFloat("Mesh Quality", &cadComp.LinearDeflection, 0.01f, 0.001f, 10.0f, "%.3f"))
 				{
+					if (cadComp.LinearDeflection < 0.001f) cadComp.LinearDeflection = 0.001f;
+					meshQualityChanged = true;
+				}
+				// 鼠标悬停提示
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("Deflection Value: Smaller = Smoother (High CPU Cost)\nLarger = Coarser (Low CPU Cost)");
+				}
+
+				// 3. 处理变化
+				if (geometryChanged)
+				{
+					// 几何变了，必须重新 MakeShape -> Mesh
 					RebuildCADGeometry(entity);
+				}
+				else if (meshQualityChanged)
+				{
+					// 只有精度变了，不需要重新 MakeShape，直接拿现有的 Shape 重新离散化
+					// 这样效率更高，而且支持 Imported 模型 (因为 Imported 模型没有 Width/Height 参数可改，但有 Shape)
+					RebuildMeshOnly(entity);
 				}
 
 				ImGui::TreePop();

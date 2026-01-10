@@ -16,7 +16,7 @@ namespace Rongine {
 	public:
 		// 输入：OCCT 形状
 		// 输出：一个可以在 OpenGL 里画出来的 VertexArray
-		static Ref<VertexArray> CreateMeshFromShape(const TopoDS_Shape& shape, std::vector<CubeVertex>& outVertices);
+		static Ref<VertexArray> CreateMeshFromShape(const TopoDS_Shape& shape, std::vector<CubeVertex>& outVertices, float deflection = 0.1f);
 	};
 
 }

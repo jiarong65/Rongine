@@ -152,6 +152,7 @@ namespace Rongine {
 			out << YAML::Key << "Height" << YAML::Value << cadComp.Params.Height;
 			out << YAML::Key << "Depth" << YAML::Value << cadComp.Params.Depth;
 			out << YAML::Key << "Radius" << YAML::Value << cadComp.Params.Radius;
+			out << YAML::Key << "LinearDeflection" << YAML::Value << cadComp.LinearDeflection;
 			out << YAML::EndMap; // Params Map
 
 			out << YAML::EndMap; // CADGeometryComponent Map
@@ -242,6 +243,10 @@ namespace Rongine {
 					cadComp.Params.Height = params["Height"].as<float>();
 					cadComp.Params.Depth = params["Depth"].as<float>();
 					cadComp.Params.Radius = params["Radius"].as<float>();
+					if (params["LinearDeflection"])
+						cadComp.LinearDeflection = params["LinearDeflection"].as<float>();
+					else
+						cadComp.LinearDeflection = 0.1f;
 
 					// B. 重建几何体 (OCCT MakeShape)
 					void* shapeHandle = nullptr;

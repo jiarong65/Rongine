@@ -16,14 +16,14 @@
 
 namespace Rongine {
 
-    Ref<VertexArray> CADMesher::CreateMeshFromShape(const TopoDS_Shape& shape, std::vector<CubeVertex>& outVertices)
+    Ref<VertexArray> CADMesher::CreateMeshFromShape(const TopoDS_Shape& shape, std::vector<CubeVertex>& outVertices, float deflection )
     {
         // 0. 清空传入的容器，确保数据干净
         outVertices.clear();
 
         // 1. 离散化 (Meshing)
         // deflection (0.1) 控制网格精度，越小越平滑
-        BRepMesh_IncrementalMesh mesher(shape, 0.1);
+        BRepMesh_IncrementalMesh mesher(shape, deflection);
 
         // 注意：vertices 变量删除了，直接使用 outVertices
         std::vector<uint32_t> indices;
