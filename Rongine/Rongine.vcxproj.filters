@@ -19,6 +19,9 @@
     <Filter Include="src\Rongine\CAD">
       <UniqueIdentifier>{4523F931-B1AE-66F6-BABF-E9EA26CAC2F6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Rongine\Commands">
+      <UniqueIdentifier>{CFE3A0D7-BB72-2AA1-6491-3E9C50FF3A47}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Rongine\Core">
       <UniqueIdentifier>{E6551E71-D24E-3DC3-FB80-2248E7D81CCF}</UniqueIdentifier>
     </Filter>
@@ -104,6 +107,12 @@
     </ClInclude>
     <ClInclude Include="src\Rongine\CAD\CADModeler.h">
       <Filter>src\Rongine\CAD</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\Commands\Command.h">
+      <Filter>src\Rongine\Commands</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\Commands\TransformCommand.h">
+      <Filter>src\Rongine\Commands</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongine\Core\Application.h">
       <Filter>src\Rongine\Core</Filter>
@@ -1485,6 +1494,7 @@
     <ClInclude Include="vendor\stb_image\stb_image.h">
       <Filter>vendor\stb_image</Filter>
     </ClInclude>
+    <ClInclude Include="src\Rongine\Commands\DeleteCommand.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp">
@@ -1525,6 +1535,12 @@
     </ClCompile>
     <ClCompile Include="src\Rongine\CAD\CADModeler.cpp">
       <Filter>src\Rongine\CAD</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Commands\Command.cpp">
+      <Filter>src\Rongine\Commands</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Commands\TransformCommand.cpp">
+      <Filter>src\Rongine\Commands</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongine\Core\Application.cpp">
       <Filter>src\Rongine\Core</Filter>
@@ -1613,5 +1629,6 @@
     <ClCompile Include="vendor\stb_image\stb_image.cpp">
       <Filter>vendor\stb_image</Filter>
     </ClCompile>
+    <ClCompile Include="src\Rongine\Commands\DeleteCommand.cpp" />
   </ItemGroup>
 </Project>

@@ -69,5 +69,9 @@ private:
 	Rongine::SceneHierarchyPanel m_sceneHierarchyPanel;
 
 	Rongine::Entity m_ToolEntity;                //工具实体
+
+	// --- Gizmo 撤销状态 ---
+	bool m_GizmoEditing = false; // 是否正在拖拽中
+	Rongine::TransformComponent m_GizmoStartTransform; // 拖拽开始时的快照
 };
 

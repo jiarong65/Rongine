@@ -49,6 +49,9 @@
     <None Include="assets\models\mypage.stp">
       <Filter>assets\models</Filter>
     </None>
+    <None Include="assets\models\t0001.step">
+      <Filter>assets\models</Filter>
+    </None>
     <None Include="assets\models\ymq.CATPart">
       <Filter>assets\models</Filter>
     </None>

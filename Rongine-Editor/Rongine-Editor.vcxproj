@@ -170,6 +170,7 @@
   <ItemGroup>
     <None Include="assets\models\j01.rong" />
     <None Include="assets\models\mypage.stp" />
+    <None Include="assets\models\t0001.step" />
     <None Include="assets\models\ymq.CATPart" />
     <None Include="assets\shaders\FlatColor.glsl" />
     <None Include="assets\shaders\Texture.glsl" />

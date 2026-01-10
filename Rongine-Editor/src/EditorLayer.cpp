@@ -138,71 +138,6 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	if (Rongine::Input::isKeyPressed(Rongine::Key::E)) m_gizmoType = ImGuizmo::ROTATE;
 	if (Rongine::Input::isKeyPressed(Rongine::Key::R)) m_gizmoType = ImGuizmo::SCALE;
 	//////////////////////////////////////////////////////////////////////////////////////////
-	// 快捷键检测
-	bool control = Rongine::Input::isKeyPressed(Rongine::Key::LeftControl) || Rongine::Input::isKeyPressed(Rongine::Key::RightControl);
-	bool shift = Rongine::Input::isKeyPressed(Rongine::Key::LeftShift) || Rongine::Input::isKeyPressed(Rongine::Key::RightShift);
-
-	if (control && Rongine::Input::isKeyPressed(Rongine::Key::I))
-	{
-		ImportSTEP();
-	}
-	if (control && Rongine::Input::isKeyPressed(Rongine::Key::O))
-	{
-		OpenScene();
-	}
-	if (control && Rongine::Input::isKeyPressed(Rongine::Key::S))
-	{
-		SaveSceneAs();
-	}
-	if (Rongine::Input::isKeyPressed(Rongine::Key::Delete))
-	{
-		if (m_selectedEntity)
-		{
-			// 创建一个临时的清理函数或直接调用 destroy
-			// 注意：删除后要立即清空 m_selectedEntity，防止下一帧访问野指针崩溃
-			m_activeScene->destroyEntity(m_selectedEntity);
-			m_selectedEntity = {}; // 置空
-			m_sceneHierarchyPanel.setSelectedEntity({}); // 通知面板取消选择
-			m_selectedFace = -1; // 重置选中的面
-
-			RONG_CLIENT_INFO("Entity Deleted.");
-		}
-	}
-
-	//  自动对焦 (Frame Selection)
-	if (Rongine::Input::isKeyPressed(Rongine::Key::F))
-	{
-		if (m_selectedEntity && m_selectedEntity.HasComponent<Rongine::MeshComponent>())
-		{
-			// 1. 获取组件
-			auto& transform = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
-			auto& mesh = m_selectedEntity.GetComponent<Rongine::MeshComponent>();
-
-			// 2. 获取原始 AABB
-			Rongine::AABB aabb = mesh.BoundingBox;
-
-			// 3. 计算变换后的 AABB 中心点 (作为新的焦点)
-			// 注意：这里做了一个简单的假设，物体中心 = 变换后的 AABB 中心
-			// 更严谨的做法是变换 AABB 的 8 个顶点再求新的 min/max
-			glm::mat4 modelMatrix = transform.GetTransform();
-			glm::vec3 center = glm::vec3(modelMatrix * glm::vec4(aabb.GetCenter(), 1.0f));
-
-			// 计算合适的相机距离
-			// 获取物体最大尺寸 (应用缩放)
-			glm::vec3 size = aabb.GetSize() * transform.Scale;
-			float radius = glm::length(size) * 0.5f;
-
-			// 简单三角学计算：distance = radius / sin(FOV/2)
-			// 2.0f 是一个宽松系数，让物体不要填得太满，留点边距
-			float fovRad = glm::radians(45.0f); // 假设相机 FOV 是 45 度
-			float distance = radius / std::sin(fovRad / 2.0f);
-
-			m_cameraContorller.setFocus(center, distance);
-
-			RONG_CLIENT_INFO("Focused on Entity ID: {0}", (uint32_t)m_selectedEntity);
-		}
-	}
-	//////////////////////////////////////////////////////////////////////////////////////////
 	//  开始渲染
 	Rongine::Renderer3D::resetStatistics();
 	{
@@ -607,40 +542,70 @@ void EditorLayer::onImGuiRender()
 		// 4. 处理用户输入 (反向应用回物体)
 		if (ImGuizmo::IsUsing())
 		{
+			// A. 刚开始拖拽的那一帧：记录起点
+			if (!m_GizmoEditing)
+			{
+				m_GizmoEditing = true;
+				m_GizmoStartTransform = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
+			}
+
 			glm::vec3 translation, rotation, scale;
 			glm::vec3 skew;
 			glm::vec4 perspective;
 			glm::quat orientation;
 
-			// 分解 被用户移动后的 Gizmo 矩阵
 			glm::decompose(gizmoMatrix, scale, orientation, translation, skew, perspective);
 
-			// --- 核心数学推导 ---
-			if (snapToFace)
+			auto& tc = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
+
+			// --- 实时更新 (为了让用户看到拖拽效果) ---
+			// 注意：这里我们依然直接修改组件，否则用户拖不动！
+			// 撤销系统的作用是在松手那一刻，把“旧状态 -> 新状态”记录下来。
+
+			if (m_gizmoType == ImGuizmo::SCALE)
 			{
-				// 如果 Gizmo 在面中心，我们需要算回物体的原点在哪里
-				// 物体原点 = Gizmo新位置 - (新旋转缩放后的面偏移)
-
-				// 1. 重建旋转缩放矩阵
-				glm::mat4 rotMat = glm::toMat4(orientation);
-				glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), scale);
-				glm::mat4 rsMat = rotMat * scaleMat;
-
-				// 2. 计算此时面中心相对于原点的偏移量
-				glm::vec3 newOffset = glm::vec3(rsMat * glm::vec4(faceLocalCenter, 1.0f));
-
-				// 3. 应用回物体组件
-				tc.Translation = translation - newOffset;
+				// 针对 CAD 模型的缩放拦截逻辑 (保持你之前的 SkipGizmo)
+				tc.Scale = scale;
 			}
 			else
 			{
-				// 普通模式：Gizmo 位置即物体位置
-				tc.Translation = translation;
+				if (snapToFace)
+				{
+					glm::mat4 rotMat = glm::toMat4(orientation);
+					glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), scale);
+					glm::mat4 rsMat = rotMat * scaleMat;
+					glm::vec3 newOffset = glm::vec3(rsMat * glm::vec4(faceLocalCenter, 1.0f));
+					tc.Translation = translation - newOffset;
+				}
+				else
+				{
+					tc.Translation = translation;
+				}
+				tc.Rotation = glm::eulerAngles(orientation);
 			}
+		}
+		else
+		{
+			// B. 松开鼠标的那一帧：提交命令
+			if (m_GizmoEditing)
+			{
+				m_GizmoEditing = false;
 
-			// 旋转和缩放直接应用
-			tc.Rotation = glm::eulerAngles(orientation);
-			tc.Scale = scale;
+				// 获取拖拽结束后的状态
+				auto endTransform = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
+
+				// 只有当真的移动了才产生命令
+				if (m_GizmoStartTransform.Translation != endTransform.Translation ||
+					m_GizmoStartTransform.Rotation != endTransform.Rotation ||
+					m_GizmoStartTransform.Scale != endTransform.Scale)
+				{
+					// 创建并压入命令
+					// 注意：Execute() 会再次设置一次 Transform，但这没关系，因为数据是一样的
+					Rongine::CommandHistory::Push(new Rongine::TransformCommand(m_selectedEntity, m_GizmoStartTransform, endTransform));
+
+					RONG_CLIENT_INFO("Gizmo Transform Command Pushed");
+				}
+			}
 		}
 	}
 
@@ -656,6 +621,99 @@ SkipGizmo:;
 void EditorLayer::onEvent(Rongine::Event& e)
 {
 	m_cameraContorller.onEvent(e);
+
+	//快捷键
+	Rongine::EventDispatcher dispatcher(e);
+	dispatcher.dispatch<Rongine::KeyPressedEvent>([this](Rongine::KeyPressedEvent& event) -> bool
+	{
+		// 检查 Ctrl 是否按下
+		bool control = Rongine::Input::isKeyPressed(Rongine::Key::LeftControl) ||
+			Rongine::Input::isKeyPressed(Rongine::Key::RightControl);
+		bool shift = Rongine::Input::isKeyPressed(Rongine::Key::LeftShift) || 
+			Rongine::Input::isKeyPressed(Rongine::Key::RightShift);
+
+		if (control)
+		{
+			if (event.getKeyCode() == Rongine::Key::Z)
+			{
+				Rongine::CommandHistory::Undo();
+				return true; // 吞掉事件
+			}
+			if (event.getKeyCode() == Rongine::Key::Y)
+			{
+				Rongine::CommandHistory::Redo();
+				return true;
+			}
+			if (event.getKeyCode() ==Rongine::Key::I)
+			{
+				ImportSTEP();
+				return true;
+			}
+			if (event.getKeyCode() == Rongine::Key::O)
+			{
+				OpenScene();
+				return true;
+			}
+			if (event.getKeyCode() == Rongine::Key::S)
+			{
+				SaveSceneAs();
+				return true;
+			}
+		}
+
+		if (event.getKeyCode() == Rongine::Key::Delete)
+		{
+			if (m_selectedEntity)
+			{
+				// 创建一个临时的清理函数或直接调用 destroy
+				// 注意：删除后要立即清空 m_selectedEntity，防止下一帧访问野指针崩溃
+				m_activeScene->destroyEntity(m_selectedEntity);
+				m_selectedEntity = {}; // 置空
+				m_sceneHierarchyPanel.setSelectedEntity({}); // 通知面板取消选择
+				m_selectedFace = -1; // 重置选中的面
+
+				RONG_CLIENT_INFO("Entity Deleted.");
+			}
+			return true;
+		}
+
+		//  自动对焦 (Frame Selection)
+		if (event.getKeyCode() == Rongine::Key::F)
+		{
+			if (m_selectedEntity && m_selectedEntity.HasComponent<Rongine::MeshComponent>())
+			{
+				// 1. 获取组件
+				auto& transform = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
+				auto& mesh = m_selectedEntity.GetComponent<Rongine::MeshComponent>();
+
+				// 2. 获取原始 AABB
+				Rongine::AABB aabb = mesh.BoundingBox;
+
+				// 3. 计算变换后的 AABB 中心点 (作为新的焦点)
+				// 注意：这里做了一个简单的假设，物体中心 = 变换后的 AABB 中心
+				// 更严谨的做法是变换 AABB 的 8 个顶点再求新的 min/max
+				glm::mat4 modelMatrix = transform.GetTransform();
+				glm::vec3 center = glm::vec3(modelMatrix * glm::vec4(aabb.GetCenter(), 1.0f));
+
+				// 计算合适的相机距离
+				// 获取物体最大尺寸 (应用缩放)
+				glm::vec3 size = aabb.GetSize() * transform.Scale;
+				float radius = glm::length(size) * 0.5f;
+
+				// 简单三角学计算：distance = radius / sin(FOV/2)
+				// 2.0f 是一个宽松系数，让物体不要填得太满，留点边距
+				float fovRad = glm::radians(45.0f); // 假设相机 FOV 是 45 度
+				float distance = radius / std::sin(fovRad / 2.0f);
+
+				m_cameraContorller.setFocus(center, distance);
+
+				RONG_CLIENT_INFO("Focused on Entity ID: {0}", (uint32_t)m_selectedEntity);
+				return true;
+			}
+		}
+
+		return false;
+	});
 }
 
 void EditorLayer::ImportSTEP()

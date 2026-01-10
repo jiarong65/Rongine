@@ -36,6 +36,9 @@
 #include "Rongine/CAD/CADModeler.h"
 #include "Rongine/CAD/CADBoolean.h"
 
+#include "Rongine/Commands/Command.h"
+#include "Rongine/Commands/TransformCommand.h"
+
 #include "Rongine/Utils/GeometryUtils.h"
 #include "Rongine/Utils/PlatformUtils.h"
 
