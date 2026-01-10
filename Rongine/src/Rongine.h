@@ -35,6 +35,7 @@
 #include "Rongine/CAD/CADMesher.h"
 #include "Rongine/CAD/CADModeler.h"
 #include "Rongine/CAD/CADBoolean.h"
+#include "Rongine/CAD/CADFeature.h"
 
 #include "Rongine/Commands/Command.h"
 #include "Rongine/Commands/TransformCommand.h"

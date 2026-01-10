@@ -18,6 +18,8 @@
 #include <BRepBuilderAPI_Transform.hxx>
 #include <GProp_GProps.hxx>
 #include <BRepGProp.hxx>
+#include <BRepAlgoAPI_Fuse.hxx>
+#include <BRepTools.hxx>
 
 // --- Timer 类 (性能分析用) ---
 template<typename Fn>
@@ -226,7 +228,7 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	//  鼠标拾取逻辑 (使用 m_viewportBounds)
 	//////////////////////////////////////////////////////////////////////////////
 	{
-		if (m_viewportHovered && !ImGuizmo::IsUsing() && !ImGuizmo::IsOver() &&
+		if (!m_IsExtrudeMode&&m_viewportHovered && !ImGuizmo::IsUsing() && !ImGuizmo::IsOver() &&
 			ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 		{
 			auto [mx, my] = ImGui::GetMousePos();
@@ -398,9 +400,13 @@ void EditorLayer::onImGuiRender()
 			{
 				OnBooleanOperation(Rongine::CADBoolean::Operation::Common);
 			}
-
+			if (ImGui::MenuItem("Interactive Extrude"))
+			{
+				EnterExtrudeMode();
+			}
 			ImGui::EndMenu();
 		}
+
 		ImGui::EndMenuBar();
 	}
 
@@ -421,7 +427,7 @@ void EditorLayer::onImGuiRender()
 
 	ImGui::Separator();
 	for (auto& result : m_profileResult)
-		ImGui::Text("%.3fms  %s", result.time, result.name);
+		if(result.name=="EditorLayer::OnUpdate")ImGui::Text("FPS: %.3f", 1000.0f/result.time);
 	m_profileResult.clear();
 	ImGui::End();
 
@@ -463,6 +469,120 @@ void EditorLayer::onImGuiRender()
 	ImGuizmo::SetRect(m_viewportBounds[0].x, m_viewportBounds[0].y,
 		m_viewportBounds[1].x - m_viewportBounds[0].x,
 		m_viewportBounds[1].y - m_viewportBounds[0].y);
+
+	// ================== 拉伸模式 ==================
+	if (m_IsExtrudeMode)
+	{
+		// 1. 获取相机矩阵
+		const auto& camera = m_cameraContorller.getCamera();
+		glm::mat4 cameraView = camera.getViewMatrix();
+		const glm::mat4& cameraProjection = camera.getProjectionMatrix();
+
+		// 2. 准备 Gizmo 矩阵
+		// 我们需要把 Gizmo 放在 m_ExtrudeGizmoMatrix 的位置
+		// 并且我们把当前的拉伸量 m_ExtrudeHeight 叠加到 Z 轴上显示
+
+		glm::mat4 currentGizmoMatrix = glm::translate(m_ExtrudeGizmoMatrix, glm::vec3(0, 0, m_ExtrudeHeight));
+
+		// 3. 绘制 Gizmo (只显示 Z 轴平移)
+		// 使用 ImGuizmo::TRANSLATE_Z 可以限制只沿 Z 轴移动
+		// 注意：ImGuizmo 的 Z 轴对应我们的法线方向
+		ImGuizmo::Manipulate(glm::value_ptr(cameraView), glm::value_ptr(cameraProjection),
+			ImGuizmo::TRANSLATE_Z, ImGuizmo::LOCAL, glm::value_ptr(currentGizmoMatrix));
+
+		// 4. 处理拖拽
+		if (ImGuizmo::IsUsing())
+		{
+			// 计算相对于初始位置的偏移量
+			// currentGizmoMatrix 的第 4 列 (Translation) 与 m_ExtrudeGizmoMatrix 的差值
+			// 或者更简单：我们只需要知道这次操作移动了多少
+
+			// 为了简单，我们反解 Z 轴的移动量
+			// (这里简化处理：假设只操作了 Translate Z)
+
+			// 更稳健的方法：计算 currentGizmoMatrix 原点 到 m_ExtrudeGizmoMatrix 原点的距离，并投影到 Z 轴
+			glm::vec3 startPos = m_ExtrudeGizmoMatrix[3];
+			glm::vec3 currentPos = currentGizmoMatrix[3];
+			glm::vec3 normal = m_ExtrudeGizmoMatrix[2]; // Z轴方向
+
+			// 投影向量 (Current - Start) 到 Normal 上
+			float newHeight = glm::dot(currentPos - startPos, glm::normalize(normal));
+
+			// 如果高度变了，更新预览
+			if (std::abs(newHeight - m_ExtrudeHeight) > 0.01f) // 加个阈值减少计算频率
+			{
+				m_ExtrudeHeight = newHeight;
+
+				// 生成预览网格
+				auto& cadComp = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
+				void* previewShape = Rongine::CADFeature::ExtrudeFace(cadComp.ShapeHandle, m_selectedFace, m_ExtrudeHeight);
+
+				if (previewShape)
+				{
+					// 同样要变换到世界坐标系
+					// 注意：ExtrudeFace 生成的是局部形状，我们需要给 PreviewEntity 设置正确的 Parent Transform
+					auto& prevTC = m_PreviewEntity.GetComponent<Rongine::TransformComponent>();
+					auto& parentTC = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
+					prevTC.Translation = parentTC.Translation;
+					prevTC.Rotation = parentTC.Rotation;
+					prevTC.Scale = parentTC.Scale;
+
+					// 更新 Mesh
+					std::vector<Rongine::CubeVertex> verts;
+					auto va = Rongine::CADMesher::CreateMeshFromShape(*(TopoDS_Shape*)previewShape, verts, 0.5f); // 预览精度低一点没关系
+
+					if (m_PreviewEntity.HasComponent<Rongine::MeshComponent>())
+						m_PreviewEntity.RemoveComponent<Rongine::MeshComponent>(); // 移除旧的
+
+					m_PreviewEntity.AddComponent<Rongine::MeshComponent>(va, verts);
+
+					// 记得清理 previewShape 指针，因为它只是临时的
+					delete (TopoDS_Shape*)previewShape;
+				}
+			}
+		}
+
+		// 屏幕 UI 按钮
+		// 在视口左上角画两个按钮，方便用户退出
+		// 设置光标位置到视口内部上方
+		ImGui::SetCursorPos(ImVec2(20, 40));
+
+		// 绿色确认按钮
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0.8f, 0, 1));
+		if (ImGui::Button("Apply (Enter)"))
+		{
+			ExitExtrudeMode(true);
+		}
+		ImGui::PopStyleColor();
+
+		ImGui::SameLine();
+
+		// 红色取消按钮
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0, 0, 1));
+		if (ImGui::Button("Cancel (Esc)"))
+		{
+			ExitExtrudeMode(false);
+		}
+		ImGui::PopStyleColor();
+
+		// 显示当前高度提示
+		ImGui::SameLine();
+		ImGui::Text("Height: %.2f", m_ExtrudeHeight);
+		// =============================================================
+
+		// 5. 键盘退出 (保留这个作为快捷键)
+		if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)) || Rongine::Input::isKeyPressed(Rongine::Key::Enter))
+		{
+			ExitExtrudeMode(true); // 确认
+		}
+		if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)) || Rongine::Input::isKeyPressed(Rongine::Key::Escape))
+		{
+			ExitExtrudeMode(false); // 取消
+		}
+
+		// 既然在拉伸模式，就不要运行下面的普通 Gizmo 逻辑了
+		goto SkipGizmo;
+	}
 
 	// 2. 绘制逻辑
 	if (m_selectedEntity && m_gizmoType != -1)
@@ -940,4 +1060,83 @@ void EditorLayer::OnBooleanOperation(Rongine::CADBoolean::Operation op)
 
 		RONG_CLIENT_INFO("Boolean Operation Successful!");
 	}
+}
+
+void EditorLayer::EnterExtrudeMode()
+{
+	if (!m_selectedEntity || m_selectedFace == -1) return;
+	if (!m_selectedEntity.HasComponent<Rongine::CADGeometryComponent>()) return;
+
+	m_IsExtrudeMode = true;
+	m_ExtrudeHeight = 0.0f;
+
+	// 1. 获取选中面的坐标系，作为 Gizmo 的初始位置
+	// 注意：这个矩阵是局部空间的还是世界空间的？
+	// GetFaceTransform 返回的是局部坐标系下的点。
+	// 我们需要把它转到世界坐标系，以便 ImGuizmo 正确显示。
+
+	auto& tc = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
+	auto& cadComp = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
+
+	glm::mat4 faceLocalMatrix = Rongine::CADFeature::GetFaceTransform(cadComp.ShapeHandle, m_selectedFace);
+	glm::mat4 objectWorldMatrix = tc.GetTransform();
+
+	// 组合：Gizmo 世界矩阵 = 物体变换 * 面局部变换
+	m_ExtrudeGizmoMatrix = objectWorldMatrix * faceLocalMatrix;
+
+	// 2. 创建一个空的预览实体 (Ghost)
+	m_PreviewEntity = m_activeScene->createEntity("Extrude Preview");
+	m_PreviewEntity.AddComponent<Rongine::TransformComponent>(); // 默认变换
+	// 给个半透明材质或者特殊颜色更好 (这里暂时用默认 Mesh)
+
+	RONG_CLIENT_INFO("Entered Extrude Mode. Drag the Blue Arrow!");
+}
+
+void EditorLayer::ExitExtrudeMode(bool apply)
+{
+	if (!m_IsExtrudeMode) return;
+
+	if (apply && std::abs(m_ExtrudeHeight) > 0.001f)
+	{
+		// === 执行真正的融合逻辑 (Copy 之前的代码) ===
+		auto& cadComp = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
+
+		// 1. 生成拉伸体
+		void* prismShape = Rongine::CADFeature::ExtrudeFace(cadComp.ShapeHandle, m_selectedFace, m_ExtrudeHeight);
+
+		if (prismShape)
+		{
+			// 2. 融合
+			TopoDS_Shape* baseShape = (TopoDS_Shape*)cadComp.ShapeHandle;
+			TopoDS_Shape* toolShape = (TopoDS_Shape*)prismShape;
+			BRepAlgoAPI_Fuse fuseAlgo(*baseShape, *toolShape);
+			fuseAlgo.Build();
+
+			if (fuseAlgo.IsDone())
+			{
+				// 3. 更新原物体
+				cadComp.ShapeHandle = new TopoDS_Shape(fuseAlgo.Shape());
+				cadComp.Type = Rongine::CADGeometryComponent::GeometryType::Imported;
+
+				// 4. 重建网格
+				BRepTools::Clean(*(TopoDS_Shape*)cadComp.ShapeHandle);
+				std::vector<Rongine::CubeVertex> verts;
+				auto va = Rongine::CADMesher::CreateMeshFromShape(*(TopoDS_Shape*)cadComp.ShapeHandle, verts, cadComp.LinearDeflection);
+
+				auto& meshComp = m_selectedEntity.GetComponent<Rongine::MeshComponent>();
+				meshComp.VA = va;
+				meshComp.LocalVertices = verts;
+				meshComp.BoundingBox = Rongine::CADImporter::CalculateAABB(*(TopoDS_Shape*)cadComp.ShapeHandle);
+
+				RONG_CLIENT_INFO("Extrude Applied!");
+			}
+		}
+	}
+
+	// 清理现场
+	m_activeScene->destroyEntity(m_PreviewEntity);
+	m_PreviewEntity = {};
+	m_IsExtrudeMode = false;
+	m_ExtrudeHeight = 0.0f;
+	m_selectedFace = -1; // 重置选择
 }

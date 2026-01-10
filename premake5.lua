@@ -14,6 +14,8 @@ local OCCT_LIBS = {
 	"TKMesh",
 	"TKTopAlgo",
 	"TKBO",
+	"TKGeomAlgo",
+	"TKGeomBase",
 	"TKSTEP",
 	"TKIGES",
 	"TKShHealing",

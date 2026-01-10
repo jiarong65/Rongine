@@ -30,6 +30,8 @@ private:
 	void SaveSceneAs();
 	void OpenScene();
 	void OnBooleanOperation(Rongine::CADBoolean::Operation op);
+	void EnterExtrudeMode();
+	void ExitExtrudeMode(bool apply);   // apply=true(融合), false(取消)
 
 private:
 	Rongine::Ref<Rongine::Shader> m_shader;
@@ -73,5 +75,11 @@ private:
 	// --- Gizmo 撤销状态 ---
 	bool m_GizmoEditing = false; // 是否正在拖拽中
 	Rongine::TransformComponent m_GizmoStartTransform; // 拖拽开始时的快照
+
+	// --- 拉伸模式状态 ---
+	bool m_IsExtrudeMode = false;       // 是否处于拉伸模式
+	float m_ExtrudeHeight = 0.0f;       // 当前拉伸高度
+	glm::mat4 m_ExtrudeGizmoMatrix;     // Gizmo 的初始位置矩阵
+	Rongine::Entity m_PreviewEntity;    // 用于显示拉伸预览的临时实体
 };
 
