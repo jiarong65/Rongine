@@ -13,6 +13,13 @@ class TopoDS_Shape;
 
 namespace Rongine {
 
+    // 线框渲染用的顶点
+    struct LineVertex
+    {
+        glm::vec3 Position;
+        int EntityID; // 这里我们要存 EdgeID，复用 EntityID 这个名字传入 Shader
+    };
+
     struct IDComponent
     {
         uint64_t ID = 0;
@@ -64,6 +71,9 @@ namespace Rongine {
         Ref<VertexArray> VA;
         AABB BoundingBox;
 
+        Ref<VertexArray> EdgeVA;             // 边的显存对象
+
+        std::vector<LineVertex> LocalLines;  // 边的内存数据 (用于做 CPU 射线检测)
         std::vector<CubeVertex> LocalVertices;
 
         MeshComponent() = default;

@@ -11,6 +11,7 @@ namespace Rongine {
 		virtual void clear()  override;
 
 		virtual void drawIndexed(const Ref<VertexArray>& vertexArray,uint32_t count=0) override;
+		virtual void drawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount) override;
 	};
 
 }

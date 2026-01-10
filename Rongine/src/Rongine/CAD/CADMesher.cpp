@@ -13,6 +13,10 @@
 #include <Poly_Triangulation.hxx>
 #include <TColgp_Array1OfPnt.hxx>
 #include <Poly_Array1OfTriangle.hxx>
+#include <TopoDS_Edge.hxx>
+#include <BRepAdaptor_Curve.hxx>
+#include <GCPnts_TangentialDeflection.hxx>
+#include <CADFeature.cpp>
 
 namespace Rongine {
 
@@ -115,6 +119,74 @@ namespace Rongine {
         Ref<IndexBuffer> ib = IndexBuffer::create(indices.data(), (uint32_t)indices.size());
         va->setIndexBuffer(ib);
 
+        return va;
+    }
+
+    Ref<VertexArray> CADMesher::CreateEdgeMeshFromShape(const TopoDS_Shape& shape, std::vector<LineVertex>& outLines, float deflection)
+    {
+        outLines.clear();
+        int edgeID = 0; // 给每条边编个号，方便以后拾取
+
+        // 1. 遍历所有的边 (Edge)
+        TopExp_Explorer explorer(shape, TopAbs_EDGE);
+        while (explorer.More())
+        {
+            const TopoDS_Edge& edge = TopoDS::Edge(explorer.Current());
+
+            // 2. 将边离散化为线段
+            // BRepAdaptor_Curve 用于获取边的几何属性
+            BRepAdaptor_Curve curveAdaptor(edge);
+
+            // GCPnts_TangentialDeflection: 基于切向偏差的离散化算法
+            // deflection: 线性偏差 (控制光滑度)
+            // angularDeflection: 角度偏差 (控制转角处的精度)，这里给 0.1弧度 (约5.7度)
+            GCPnts_TangentialDeflection discretizer;
+            discretizer.Initialize(curveAdaptor, deflection, 0.1);
+
+            int nPoints = discretizer.NbPoints();
+
+            // 3. 构建线段 (GL_LINES 模式：点1-点2, 点2-点3...)
+            // 也就是每两个点构成一条独立的线段
+            if (nPoints > 1)
+            {
+                for (int i = 1; i < nPoints; i++)
+                {
+                    gp_Pnt p1 = discretizer.Value(i);
+                    gp_Pnt p2 = discretizer.Value(i + 1);
+
+                    // 存入第一个点
+                    LineVertex v1;
+                    v1.Position = { (float)p1.X(), (float)p1.Y(), (float)p1.Z() };
+                    v1.EntityID = edgeID; // 存入边ID
+                    outLines.push_back(v1);
+
+                    // 存入第二个点
+                    LineVertex v2;
+                    v2.Position = { (float)p2.X(), (float)p2.Y(), (float)p2.Z() };
+                    v2.EntityID = edgeID; // 存入边ID
+                    outLines.push_back(v2);
+                }
+            }
+
+            explorer.Next();
+            edgeID++;
+        }
+
+        if (outLines.empty()) return nullptr;
+
+        // 4. 创建 OpenGL 资源
+        Ref<VertexArray> va = VertexArray::create();
+        Ref<VertexBuffer> vb = VertexBuffer::create((float*)outLines.data(), (uint32_t)(outLines.size() * sizeof(LineVertex)));
+
+        // 布局必须匹配 Shader (pos: vec3, entityID: int)
+        vb->setLayout({
+            { ShaderDataType::Float3, "a_Position" },
+            { ShaderDataType::Int,    "a_EntityID" }
+            });
+
+        va->addVertexBuffer(vb);
+
+        // 线框渲染通常不需要 IndexBuffer，直接 drawArrays 即可
         return va;
     }
 

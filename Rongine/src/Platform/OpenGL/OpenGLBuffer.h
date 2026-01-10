@@ -16,9 +16,12 @@ namespace Rongine {
 
 		virtual const BufferLayout& getLayout()const override { return m_layout; }
 		virtual void setLayout(const BufferLayout& layout) override { m_layout = layout; }
+
+		virtual uint32_t getSize() const override { return m_size; }
 	private:
 		uint32_t m_rendererID;
 		BufferLayout m_layout;
+		uint32_t m_size;
 	};
 
 	class OpenGLIndexBuffer :public IndexBuffer

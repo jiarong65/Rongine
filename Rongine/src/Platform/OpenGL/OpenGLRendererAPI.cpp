@@ -30,4 +30,8 @@ namespace Rongine {
 	{
 		glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_INT, nullptr);
 	}
+	void OpenGLRendererAPI::drawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount)
+	{
+		glDrawArrays(GL_LINES, 0, vertexCount);
+	}
 }

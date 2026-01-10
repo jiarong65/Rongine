@@ -61,6 +61,9 @@
     <None Include="assets\shaders\Texture.glsl">
       <Filter>assets\shaders</Filter>
     </None>
+    <None Include="Line.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\models\mypage.jpg">

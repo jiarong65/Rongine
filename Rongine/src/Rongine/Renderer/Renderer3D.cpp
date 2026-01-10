@@ -56,6 +56,8 @@ namespace Rongine {
 		s_Data.TextureShader->bind();
 		s_Data.TextureShader->setIntArray("u_Textures", samplers, s_Data.MaxTextureSlots);
 
+		s_Data.LineShader = Shader::create("assets/shaders/Line.glsl");
+
 		s_Data.TextureSlots[0] = s_Data.WhiteTexture;
 
 		// 【新增】初始化 Model 矩阵为单位矩阵，防止第一帧 Batch 渲染出错
@@ -254,7 +256,7 @@ namespace Rongine {
 	}
 
 	// ===========================================
-	// 【核心修改】 Mesh Rendering
+	//  Mesh Rendering
 	// ===========================================
 	void Renderer3D::drawModel(const Ref<VertexArray>& va, const glm::mat4& transform,int entityID)
 	{
@@ -289,6 +291,30 @@ namespace Rongine {
 		// 4. 画完后，恢复 u_Model 为单位矩阵
 		// 否则之后如果再调用 drawCube，方块会飞到错误的地方
 		s_Data.TextureShader->setMat4("u_Model", glm::mat4(1.0f));
+	}
+
+	void Renderer3D::drawEdges(const Ref<VertexArray>& va, const glm::mat4& transform, const glm::vec4& color)
+	{
+		if (!va) return;
+
+		// 绑定线框 Shader
+		s_Data.LineShader->bind();
+
+		s_Data.LineShader->setMat4("u_ViewProjection", s_Data.ViewProjection);
+		s_Data.LineShader->setMat4("u_Transform", transform);
+		s_Data.LineShader->setFloat4("u_Color", color);
+
+		va->bind();
+
+		// 绘制线条
+		// 获取第一个 VertexBuffer
+		auto& vb = va->getVertexBuffers()[0];
+
+		// 通过 Size / Stride 计算顶点数量
+		// count = 总字节数 / 单个顶点的步长
+		uint32_t vertexCount = vb->getSize() / vb->getLayout().getStride();
+
+		RenderCommand::drawLines(va, vertexCount);
 	}
 
 	Renderer3D::Statistics Renderer3D::getStatistics() { return s_Data.Stats; }

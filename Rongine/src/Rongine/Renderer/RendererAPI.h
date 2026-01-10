@@ -17,6 +17,7 @@ namespace Rongine {
 		virtual void clear() = 0;
 
 		virtual void drawIndexed(const Ref<VertexArray>& vertexArray,uint32_t count=0 ) = 0;
+		virtual void drawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount) =0;
 		inline static API getAPI(){ return s_api; };
 
 	private:

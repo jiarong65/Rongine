@@ -14,7 +14,7 @@ uniform mat4 u_ViewProjection;
 uniform mat4 u_Model;
 
 out vec3 v_Position;
-out vec3 v_Normal;
+flat out vec3 v_Normal;
 out vec4 v_Color;
 out vec2 v_TexCoord;
 out float v_TexIndex;
@@ -47,7 +47,7 @@ layout(location = 0) out vec4 color;
 layout(location = 1) out ivec2 idOutput;    // 输出到 ID 纹理 (Attachment 1)
 
 in vec3 v_Position;
-in vec3 v_Normal;
+flat in vec3 v_Normal;
 in vec4 v_Color;
 in vec2 v_TexCoord;
 in float v_TexIndex;

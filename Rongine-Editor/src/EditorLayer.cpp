@@ -150,76 +150,40 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 
 		m_framebuffer->clearAttachment(1, -1);
 
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//批处理渲染
 		Rongine::Renderer3D::beginScene(m_cameraContorller.getCamera());
+		Rongine::Renderer3D::drawCube({ 0.0f, -1.0f, 0.0f }, { 100.0f, 0.1f, 100.0f }, m_checkerboardTexture);
+		Rongine::Renderer3D::endScene();
 
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//实例化渲染
 		//传入选中的实体和面id
 		int selectedEntityID = (int)(uint32_t)m_selectedEntity; // 这里的转换取决于你的 Entity 实现
 		if (!m_selectedEntity) selectedEntityID = -2;
 
 		Rongine::Renderer3D::setSelection(selectedEntityID, m_selectedFace);
 
-		// A. 绘制地板 (静态)
-		Rongine::Renderer3D::drawCube({ 0.0f, -1.0f, 0.0f }, { 100.0f, 0.1f, 100.0f }, m_checkerboardTexture);
-
-		// 获取所有拥有 Transform 和 Mesh 的实体
 		auto view = m_activeScene->getAllEntitiesWith<Rongine::TransformComponent, Rongine::MeshComponent>();
 
 		for (auto entityHandle : view)
 		{
 			auto [transform, mesh] = view.get<Rongine::TransformComponent, Rongine::MeshComponent>(entityHandle);
-			// 将 entityHandle 强转为 int 作为 ID 传入 shader
+			if (m_selectedEntity == entityHandle && mesh.EdgeVA)
+			{
+				glEnable(GL_POLYGON_OFFSET_FILL);
+
+				//// 设置偏移量：factor=1.0, units=1.0 是经验值
+				//// 这会让面的深度值增加，相当于往屏幕里推远了一点点
+				glPolygonOffset(1.0f, 1.0f);
+				Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle);
+				glDisable(GL_POLYGON_OFFSET_FILL);
+
+				Rongine::Renderer3D::drawEdges(mesh.EdgeVA, transform.GetTransform(), { 0.0f, 0.0f, 0.0f, 1.0f });
+				continue;
+			}
 			Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle);
 		}
-
-		//// B. 绘制旋转方块阵列 (验证光照)
-		//for (int x = -2; x <= 2; x++)
-		//{
-		//	for (int z = -2; z <= 2; z++)
-		//	{
-		//		glm::vec3 pos = { x * 1.5f, 0.0f, z * 1.5f };
-
-		//		// 计算每个方块独特的旋转角度，产生波浪效果
-		//		float angle = glm::radians(s_Rotation + (x + z) * 20.0f);
-
-		//		// 颜色渐变
-		//		glm::vec4 color = { (x + 2.0f) / 4.0f, 0.4f, (z + 2.0f) / 4.0f, 1.0f };
-
-		//		// 调用旋转绘制函数
-		//		Rongine::Renderer3D::drawRotatedCube(
-		//			pos,
-		//			{ 0.8f, 0.8f, 0.8f }, // 大小
-		//			angle,
-		//			{ 1.0f, 1.0f, 0.0f }, // 旋转轴 (对角线旋转，光照变化最明显)
-		//			color
-		//		);
-		//	}
-		//}
-
-		//// C. 绘制带 Logo 的半透明旋转方块 (在中间上方)
-		//Rongine::Renderer3D::drawRotatedCube(
-		//	{ 0.0f, 2.0f, 0.0f },
-		//	{ 1.5f, 1.5f, 1.5f },
-		//	glm::radians(s_Rotation * 0.5f), // 转慢点
-		//	{ 0.0f, 1.0f, 0.0f }, // 绕Y轴自转
-		//	m_logoTexture
-		//);
-
-		//if (m_TorusVA)
-		//{
-		//	// 把它放在稍微高一点的位置，稍微转一下角度展示立体感
-		//	glm::mat4 transform = glm::translate(glm::mat4(1.0f), { 0.0f, 1.5f, 0.0f })
-		//		* glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), { 1.0f, 0.0f, 0.0f });
-		//	Rongine::Renderer3D::drawModel(m_TorusVA, transform,1);
-		//}
-
-		//if (m_CadMeshVA)
-		//{
-		//	glm::mat4 transform = glm::translate(glm::mat4(1.0f), { 0.0f, 5.0f, 0.0f })
-		//		* glm::scale(glm::mat4(1.0f), glm::vec3(0.03f));
-		//	Rongine::Renderer3D::drawModel(m_CadMeshVA, transform,2);
-		//}
-
-		Rongine::Renderer3D::endScene();
 
 		m_framebuffer->unbind();
 	}
@@ -853,8 +817,16 @@ void EditorLayer::ImportSTEP()
 			auto cadEntity = m_activeScene->createEntity("Imported CAD");
 			auto& tc = cadEntity.GetComponent<Rongine::TransformComponent>();
 
-			cadEntity.AddComponent<Rongine::MeshComponent>(cadMeshVA,verticesData);
-			cadEntity.GetComponent<Rongine::MeshComponent>().BoundingBox = Rongine::CADImporter::CalculateAABB(shape);
+			auto& meshComp = cadEntity.AddComponent<Rongine::MeshComponent>(cadMeshVA, verticesData);
+
+			// ==================== 生成边框线】 ====================
+			std::vector<Rongine::LineVertex> lineVerts;
+			auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(shape, lineVerts, 0.1f);
+			meshComp.EdgeVA = edgeVA;
+			meshComp.LocalLines = lineVerts;
+			// ===========================================================
+
+			meshComp.BoundingBox = Rongine::CADImporter::CalculateAABB(shape);
 			RONG_CLIENT_INFO("Successfully imported: {0}", filepath);
 		}
 		else {
@@ -910,10 +882,17 @@ void EditorLayer::CreatePrimitive(Rongine::CADGeometryComponent::GeometryType ty
 		if (va)
 		{
 			// 创建 Mesh 组件，并存入 CPU 顶点数据 (这对 Gizmo 吸附很重要！)
-			entity.AddComponent<Rongine::MeshComponent>(va, verticesData);
+			auto& meshComp=entity.AddComponent<Rongine::MeshComponent>(va, verticesData);
+
+			std::vector<Rongine::LineVertex> lineVerts;
+			// 默认精度 0.1f
+			auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(*occShape, lineVerts, 0.1f);
+
+			meshComp.EdgeVA = edgeVA;
+			meshComp.LocalLines = lineVerts;
 
 			// 计算包围盒
-			entity.GetComponent<Rongine::MeshComponent>().BoundingBox = Rongine::CADImporter::CalculateAABB(*occShape);
+			meshComp.BoundingBox = Rongine::CADImporter::CalculateAABB(*occShape);
 
 			RONG_CLIENT_INFO("Created Primitive Successfully!");
 		}
@@ -1042,8 +1021,16 @@ void EditorLayer::OnBooleanOperation(Rongine::CADBoolean::Operation op)
 
 		if (va)
 		{
-			resultEntity.AddComponent<Rongine::MeshComponent>(va, vertices);
-			resultEntity.GetComponent<Rongine::MeshComponent>().BoundingBox = Rongine::CADImporter::CalculateAABB(*occShape);
+			auto& meshComp = resultEntity.AddComponent<Rongine::MeshComponent>(va, vertices);
+
+			// ==================== 生成边框线 ====================
+			std::vector<Rongine::LineVertex> lineVerts;
+			// 这里如果有 cadComp，最好用 cadComp.LinearDeflection，这里简化用 0.1f 或继承
+			auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(*occShape, lineVerts, 0.1f);
+			meshComp.EdgeVA = edgeVA;
+			meshComp.LocalLines = lineVerts;
+			// ===========================================================
+			meshComp.BoundingBox = Rongine::CADImporter::CalculateAABB(*occShape);
 
 			if (m_selectedEntity.HasComponent<Rongine::TagComponent>())
 				m_selectedEntity.GetComponent<Rongine::TagComponent>().Tag += " (Hidden)";
@@ -1126,6 +1113,14 @@ void EditorLayer::ExitExtrudeMode(bool apply)
 				auto& meshComp = m_selectedEntity.GetComponent<Rongine::MeshComponent>();
 				meshComp.VA = va;
 				meshComp.LocalVertices = verts;
+				// ==================== 生成边框线 ====================
+				std::vector<Rongine::LineVertex> lineVerts;
+				// 使用与面相同的精度参数，保证线贴合在面上
+				auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(*(TopoDS_Shape*)cadComp.ShapeHandle, lineVerts, cadComp.LinearDeflection);
+
+				meshComp.EdgeVA = edgeVA;
+				meshComp.LocalLines = lineVerts;
+				// ===========================================================
 				meshComp.BoundingBox = Rongine::CADImporter::CalculateAABB(*(TopoDS_Shape*)cadComp.ShapeHandle);
 
 				RONG_CLIENT_INFO("Extrude Applied!");

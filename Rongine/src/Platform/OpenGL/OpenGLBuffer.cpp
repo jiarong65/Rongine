@@ -7,6 +7,7 @@ namespace Rongine {
 	////////////////////////VertexBuffer/////////////////////////////
 
 	OpenGLVertexBuffer::OpenGLVertexBuffer(uint32_t size)
+		:m_size(size)
 	{
 		glCreateBuffers(1, &m_rendererID);
 		glBindBuffer(GL_ARRAY_BUFFER, m_rendererID);
@@ -14,6 +15,7 @@ namespace Rongine {
 	}
 
 	OpenGLVertexBuffer::OpenGLVertexBuffer(float* vertex, uint32_t size)
+		:m_size(size)
 	{
 		glCreateBuffers(1, &m_rendererID);
 		glBindBuffer(GL_ARRAY_BUFFER, m_rendererID);

@@ -98,6 +98,13 @@ namespace Rongine {
 				meshComp.VA = newVA;
 				meshComp.LocalVertices = newVertices; // 更新 CPU 顶点，保证 Gizmo 吸附正确
 				meshComp.BoundingBox = CADImporter::CalculateAABB(*occShape); // 更新包围盒，保证 F 键聚焦正确
+
+				// ==================== 生成边框线 ====================
+				std::vector<LineVertex> lineVerts;
+				auto edgeVA = CADMesher::CreateEdgeMeshFromShape(*occShape, lineVerts, cadComp.LinearDeflection);
+				meshComp.EdgeVA = edgeVA;
+				meshComp.LocalLines = lineVerts;
+				// ===========================================================
 			}
 		}
 	}
@@ -126,6 +133,14 @@ namespace Rongine {
 				meshComp.LocalVertices = newVertices;
 				// 更新AABB
 				meshComp.BoundingBox = CADImporter::CalculateAABB(*occShape);
+
+				// ==================== 生成边框线 ====================
+				std::vector<LineVertex> lineVerts;
+				// 传入 cadComp.LinearDeflection
+				auto edgeVA = CADMesher::CreateEdgeMeshFromShape(*occShape, lineVerts, cadComp.LinearDeflection);
+				meshComp.EdgeVA = edgeVA;
+				meshComp.LocalLines = lineVerts;
+				// ===========================================================
 			}
 		}
 	}

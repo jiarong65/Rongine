@@ -33,6 +33,10 @@ namespace Rongine {
 		{
 			s_rendererAPI->drawIndexed(vertexArray, count);
 		}
+		inline static void drawLines(const Ref<VertexArray>& vertexArray, uint32_t count)
+		{
+			s_rendererAPI->drawLines(vertexArray, count);
+		}
 	private:
 		static RendererAPI* s_rendererAPI;
 	};
