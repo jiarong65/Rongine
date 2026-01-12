@@ -22,6 +22,7 @@ namespace Rongine {
 
 		virtual int readPixel(uint32_t attachmentIndex, int x, int y) override;
 		virtual std::pair<int, int> readPixelRG(uint32_t attachmentIndex, int x, int y) override;
+		virtual glm::ivec4 readPixelID(uint32_t attachmentIndex, int x, int y) override;
 
 		virtual void clearAttachment(uint32_t attachmentIndex, int value) override;
 

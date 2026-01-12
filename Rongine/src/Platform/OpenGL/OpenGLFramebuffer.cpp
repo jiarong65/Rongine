@@ -119,6 +119,14 @@ namespace Rongine {
 					glTextureParameteri(m_colorAttachments[i], GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 					glTextureParameteri(m_colorAttachments[i], GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 					break;
+				case FramebufferTextureFormat::RGBA_INTEGER:
+					// 使用 GL_RGBA32I (4个32位整数：R, G, B, A)
+					glTextureStorage2D(m_colorAttachments[i], 1, GL_RGBA32I, m_specification.width, m_specification.height);
+
+					// 整数纹理必须最近邻插值，否则无法读取
+					glTextureParameteri(m_colorAttachments[i], GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTextureParameteri(m_colorAttachments[i], GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					break;
 				}
 
 				// 将纹理挂载到 FBO 的 COLOR_ATTACHMENT[i]
@@ -207,14 +215,42 @@ namespace Rongine {
 		return { pixelData[0], pixelData[1] };
 	}
 
+	glm::ivec4 OpenGLFramebuffer::readPixelID(uint32_t attachmentIndex, int x, int y)
+	{
+		glReadBuffer(GL_COLOR_ATTACHMENT0 + attachmentIndex);
+
+		int pixelData[4] = { -1, -1, -1, -1 }; // 默认值
+		glReadPixels(x, y, 1, 1, GL_RGBA_INTEGER, GL_INT, &pixelData);
+
+		return { pixelData[0], pixelData[1], pixelData[2], pixelData[3] };
+	}
+
 	// 清空附件
 	void OpenGLFramebuffer::clearAttachment(uint32_t attachmentIndex, int value)
 	{
-		RONG_CORE_ASSERT(attachmentIndex < m_colorAttachments.size(),"attachmentIndex > m_colorAttachments.size()");
+		RONG_CORE_ASSERT(attachmentIndex < m_colorAttachments.size(), "Index out of bounds!");
 
 		auto& spec = m_colorAttachmentSpecs[attachmentIndex];
+		int clearValue[4] = { value, value, value, value };
 
-		glClearTexImage(m_colorAttachments[attachmentIndex], 0,
-			GL_RED_INTEGER, GL_INT, &value);
+		// 针对 RGBA8 (颜色层) 和 整数层 分别处理
+		if (spec.TextureFormat == FramebufferTextureFormat::RGBA8)
+		{
+			// 如果是清空背景颜色层，value 通常被当做颜色值（需要注意这里逻辑是否符合你预期）
+			// 建议增加一个专门清空颜色的 clearColorAttachment(vec4)
+			float clearColor[4] = { (float)value, (float)value, (float)value, (float)value };
+			glClearTexImage(m_colorAttachments[attachmentIndex], 0, GL_RGBA, GL_FLOAT, clearColor);
+		}
+		else
+		{
+			GLenum format = GL_NONE;
+			switch (spec.TextureFormat)
+			{
+			case FramebufferTextureFormat::RED_INTEGER:  format = GL_RED_INTEGER; break;
+			case FramebufferTextureFormat::RG_INTEGER:   format = GL_RG_INTEGER;  break;
+			case FramebufferTextureFormat::RGBA_INTEGER: format = GL_RGBA_INTEGER; break;
+			}
+			glClearTexImage(m_colorAttachments[attachmentIndex], 0, format, GL_INT, clearValue);
+		}
 	}
 }

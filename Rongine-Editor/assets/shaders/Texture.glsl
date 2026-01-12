@@ -44,7 +44,7 @@ void main()
 #version 450 core
 
 layout(location = 0) out vec4 color;
-layout(location = 1) out ivec2 idOutput;    // 输出到 ID 纹理 (Attachment 1)
+layout(location = 1) out ivec4 idOutput;    // 输出到 ID 纹理 (Attachment 1)
 
 in vec3 v_Position;
 flat in vec3 v_Normal;
@@ -133,7 +133,7 @@ void main()
 
     vec4 finalColor = vec4(lighting, 1.0) * texColor;
 
-    if (u_EntityID == u_SelectedEntityID)
+    if (u_SelectedEntityID>=0&&u_EntityID == u_SelectedEntityID)
     {
         // 情况A：这个面正是被点击的那个面 (FaceID 匹配)
         if (v_FaceID == u_SelectedFaceID)
@@ -153,5 +153,5 @@ void main()
     
     color = finalColor;
 
-    idOutput = ivec2(u_EntityID, v_FaceID);
+    idOutput = ivec4(u_EntityID, v_FaceID, -1, -1);
 }

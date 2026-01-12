@@ -32,7 +32,7 @@ namespace Rongine {
 		static void drawRotatedCube(const glm::vec3& position, const glm::vec3& size, float rotation, const glm::vec3& axis, const Ref<Texture2D>& texture, const glm::vec4& tintColor = glm::vec4(1.0f));
 
 		static void drawModel(const Ref<VertexArray>& va, const glm::mat4& transform = glm::mat4(1.0f),int entityID=-1);
-		static void drawEdges(const Ref<VertexArray>& va, const glm::mat4& transform, const glm::vec4& color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+		static void drawEdges(const Ref<VertexArray>& va, const glm::mat4& transform, const glm::vec4& color, int entityID, int selectedEdgeID = -1);
 
 
 		// --- 统计信息 ---

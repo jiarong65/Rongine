@@ -156,6 +156,8 @@ namespace Rongine {
 
 		// 【重要】Batch 渲染时，顶点已经在 CPU 变换过了，所以 GPU 的 u_Model 必须是 Identity
 		s_Data.TextureShader->setMat4("u_Model", glm::mat4(1.0f));
+		s_Data.TextureShader->setInt("u_EntityID", -1);
+		s_Data.TextureShader->setInt("u_SelectedEntityID", -1);
 
 		for (uint32_t i = 0; i < s_Data.TextureSlotIndex; i++)
 			s_Data.TextureSlots[i]->bind(i);
@@ -261,7 +263,7 @@ namespace Rongine {
 	void Renderer3D::drawModel(const Ref<VertexArray>& va, const glm::mat4& transform,int entityID)
 	{
 		// 1. 如果批处理里有方块没画，先画掉 (flush 会使用 Identity Model 矩阵)
-		flush();
+		//flush();
 
 		s_Data.TextureShader->bind();
 
@@ -293,7 +295,7 @@ namespace Rongine {
 		s_Data.TextureShader->setMat4("u_Model", glm::mat4(1.0f));
 	}
 
-	void Renderer3D::drawEdges(const Ref<VertexArray>& va, const glm::mat4& transform, const glm::vec4& color)
+	void Renderer3D::drawEdges(const Ref<VertexArray>& va, const glm::mat4& transform, const glm::vec4& color, int entityID, int selectedEdgeID)
 	{
 		if (!va) return;
 
@@ -304,6 +306,9 @@ namespace Rongine {
 		s_Data.LineShader->setMat4("u_Transform", transform);
 		s_Data.LineShader->setFloat4("u_Color", color);
 
+		s_Data.LineShader->setInt("u_EntityID", entityID);
+		s_Data.LineShader->setInt("u_SelectedEdgeID", selectedEdgeID);
+
 		va->bind();
 
 		// 绘制线条
@@ -313,7 +318,6 @@ namespace Rongine {
 		// 通过 Size / Stride 计算顶点数量
 		// count = 总字节数 / 单个顶点的步长
 		uint32_t vertexCount = vb->getSize() / vb->getLayout().getStride();
-
 		RenderCommand::drawLines(va, vertexCount);
 	}
 

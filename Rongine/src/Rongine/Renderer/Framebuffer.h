@@ -1,22 +1,24 @@
 #pragma once
 #include "Rongine/Core/Core.h"
+#include <glm/ext/vector_int4.hpp>
 
 namespace Rongine{
 
-	//Ö§³ÖµÄÎÆÀí¸ñÊ½
+	//æ”¯æŒçš„çº¹ç†æ ¼å¼
 	enum class FramebufferTextureFormat {
 		None=0,
 
 		RGBA8,
-		RED_INTEGER,	//´æÊµÌåid£¬ÑÕÉ«Ê°È¡·¨
-		RG_INTEGER,    //ÊµÌåid£¬Ãæid  Ö§³ÖÑ¡ÖĞÃæ
+		RED_INTEGER,	//å­˜å®ä½“idï¼Œé¢œè‰²æ‹¾å–æ³•
+		RG_INTEGER,
+		RGBA_INTEGER,    //å®ä½“idï¼Œé¢idï¼Œè¾¹id  æ”¯æŒé€‰ä¸­ä½“ã€é¢ã€è¾¹
 
 		DEPTH24STENCIL8,
 
 		Depth = DEPTH24STENCIL8
 	};
 
-	//¸½¼ş¹æ¸ñ
+	//é™„ä»¶è§„æ ¼
 	struct FramebufferTextureSpecification 
 	{
 		FramebufferTextureFormat TextureFormat = FramebufferTextureFormat::None;
@@ -27,7 +29,7 @@ namespace Rongine{
 		}
 	};
 
-	//¸½¼ş¼¯ºÏ
+	//é™„ä»¶é›†åˆ
 	struct FramebufferAttachmentSpecification
 	{
 		std::vector<FramebufferTextureSpecification> Attachments;
@@ -38,7 +40,7 @@ namespace Rongine{
 		}
 	};
 
-	//Ö¡»º³å¹æ¸ñ
+	//å¸§ç¼“å†²è§„æ ¼
 	struct FramebufferSpecification {
 		uint32_t width, height;
 		FramebufferAttachmentSpecification Attachments;
@@ -60,6 +62,7 @@ namespace Rongine{
 
 		virtual int readPixel(uint32_t attachmentIndex,int x, int y) = 0;
 		virtual std::pair<int, int> readPixelRG(uint32_t attachmentIndex, int x, int y) = 0;
+		virtual glm::ivec4 readPixelID(uint32_t attachmentIndex, int x, int y) = 0;
 		virtual void clearAttachment(uint32_t attachmentIndex,int value) = 0;
 		virtual uint32_t getColorAttachmentRendererID(uint32_t index=0) const = 0;
 
