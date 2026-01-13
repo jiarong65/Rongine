@@ -4,7 +4,7 @@
 
 namespace Rongine {
 
-    class Entity; // Ç°ÖÃÉùÃ÷
+    class Entity; // å‰ç½®å£°æ˜
 
     class Scene
     {
@@ -15,9 +15,9 @@ namespace Rongine {
         Entity createEntity(const std::string& name = std::string());
         void destroyEntity(Entity entity);
 
-        void onUpdate(Timestep ts); // ÔİÊ±Ô¤Áô£¬ÒÔºó´¦ÀíÎïÀí»ò½Å±¾
+        void onUpdate(Timestep ts); // æš‚æ—¶é¢„ç•™ï¼Œä»¥åå¤„ç†ç‰©ç†æˆ–è„šæœ¬
 
-        // ÈÃ Entity ÀàºÍ EditorLayer ÄÜ¹»·ÃÎÊ×¢²á±í
+        // è®© Entity ç±»å’Œ EditorLayer èƒ½å¤Ÿè®¿é—®æ³¨å†Œè¡¨
         template<typename... Components>
         auto getAllEntitiesWith()
         {
@@ -26,10 +26,12 @@ namespace Rongine {
 
         entt::registry& getRegistry() { return m_registry; }
 
+        Entity getEntityByUUID(uint64_t uuid);
+
     private:
         entt::registry m_registry;
 
         friend class Entity;
-        friend class EditorLayer; // ÈÃ EditorLayer ÄÜÖ±½Ó²Ù×÷ registry (äÖÈ¾±éÀúÓÃ)
+        friend class EditorLayer; // è®© EditorLayer èƒ½ç›´æ¥æ“ä½œ registry (æ¸²æŸ“éå†ç”¨)
     };
 }

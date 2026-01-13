@@ -4,6 +4,7 @@
 #include "Rongine/Core/Input.h"
 #include "Rongine/Core/KeyCodes.h"
 #include "Rongine/Renderer/Renderer3D.h" // 必须包含这个
+#include "Rongine/Commands/DeleteCommand.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <chrono>
 #include <Bnd_Box.hxx>                
@@ -368,13 +369,13 @@ void EditorLayer::onImGuiRender()
 		{
 			if (ImGui::MenuItem("Delete Selected", "Del"))
 			{
-				if (m_selectedEntity)
-				{
-					m_activeScene->destroyEntity(m_selectedEntity);
-					m_selectedEntity = {};
-					m_sceneHierarchyPanel.setSelectedEntity({});
-					m_selectedFace = -1;
-				}
+				Rongine::CommandHistory::Push(new Rongine::DeleteCommand(m_selectedEntity));
+
+				m_selectedEntity = {};
+				m_sceneHierarchyPanel.setSelectedEntity({});
+				m_selectedFace = -1;
+				m_selectedEdge = -1;
+				m_sceneHierarchyPanel.setSelectedEdge(-1);
 			}
 			ImGui::EndMenu();
 		}
@@ -792,14 +793,13 @@ void EditorLayer::onEvent(Rongine::Event& e)
 		{
 			if (m_selectedEntity)
 			{
-				// 创建一个临时的清理函数或直接调用 destroy
-				// 注意：删除后要立即清空 m_selectedEntity，防止下一帧访问野指针崩溃
-				m_activeScene->destroyEntity(m_selectedEntity);
-				m_selectedEntity = {}; // 置空
-				m_sceneHierarchyPanel.setSelectedEntity({}); // 通知面板取消选择
-				m_selectedFace = -1; // 重置选中的面
+				Rongine::CommandHistory::Push(new Rongine::DeleteCommand(m_selectedEntity));
 
-				RONG_CLIENT_INFO("Entity Deleted.");
+				m_selectedEntity = {};
+				m_sceneHierarchyPanel.setSelectedEntity({});
+				m_selectedFace = -1;
+				m_selectedEdge = -1;
+				m_sceneHierarchyPanel.setSelectedEdge(-1);
 			}
 			return true;
 		}

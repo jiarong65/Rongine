@@ -5,17 +5,17 @@
 namespace Rongine {
 	bool TransformCommand::Execute()
 	{
-		// ½«ÊµÌåÉèÎª¡°ÐÂ×´Ì¬¡±
+		// å°†å®žä½“è®¾ä¸ºâ€œæ–°çŠ¶æ€â€
 		UpdateComponent(m_NewTC);
 		return true;
 	}
 	void TransformCommand::Undo()
 	{
-		// »Ö¸´µ½¡°¾É×´Ì¬¡±
+		// æ¢å¤åˆ°â€œæ—§çŠ¶æ€â€
 		UpdateComponent(m_OldTC);
 	}
 
-	// ¹Ø¼üÓÅ»¯£ºÈç¹ûÔÚÍ¬Ò»¸öÊµÌåÉÏÁ¬Ðø²Ù×÷£¬Ö±½Ó¸üÐÂÖÕµã£¬²»²úÉúÐÂÃüÁî
+	// å…³é”®ä¼˜åŒ–ï¼šå¦‚æžœåœ¨åŒä¸€ä¸ªå®žä½“ä¸Šè¿žç»­æ“ä½œï¼Œç›´æŽ¥æ›´æ–°ç»ˆç‚¹ï¼Œä¸äº§ç”Ÿæ–°å‘½ä»¤
 
 	bool TransformCommand::MergeWith(Command* other)
 	{
@@ -24,7 +24,7 @@ namespace Rongine {
 
 		//if (nextCmd->m_Entity == m_Entity)
 		//{
-		//	m_NewTC = nextCmd->m_NewTC; // ¸üÐÂÖÕµã
+		//	m_NewTC = nextCmd->m_NewTC; // æ›´æ–°ç»ˆç‚¹
 		//	return true;
 		//}
 		return false;
@@ -32,13 +32,21 @@ namespace Rongine {
 
 	void TransformCommand::UpdateComponent(const TransformComponent& tc)
 	{
-		// ±ØÐë¼ì²éÊµÌåÊÇ·ñ»¹»î×Å£¬·ÀÖ¹±ÀÀ£
-		if (m_Entity && m_Entity.HasComponent<TransformComponent>())
+		Entity entity = GetEntity();
+
+		if (entity && entity.HasComponent<TransformComponent>())
 		{
-			auto& comp = m_Entity.GetComponent<TransformComponent>();
+			auto& comp = entity.GetComponent<TransformComponent>();
 			comp.Translation = tc.Translation;
 			comp.Rotation = tc.Rotation;
 			comp.Scale = tc.Scale;
 		}
+	}
+
+	Entity TransformCommand::GetEntity()
+	{
+		if (m_Scene && m_EntityUUID != 0)
+			return m_Scene->getEntityByUUID(m_EntityUUID);
+		return {};
 	}
 }

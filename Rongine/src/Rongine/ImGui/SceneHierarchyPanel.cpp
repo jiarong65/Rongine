@@ -6,6 +6,8 @@
 #include "Rongine/CAD/CADModeler.h"
 #include "Rongine/CAD/CADMesher.h"
 #include "Rongine/CAD/CADImporter.h"
+#include "Rongine/Commands/Command.h" 
+#include "Rongine/Commands/CADModifyCommand.h" 
 #include <glm/gtc/type_ptr.hpp>
 #include <BRepTools.hxx>
 
@@ -303,47 +305,76 @@ namespace Rongine {
 			{
 				auto& cadComp = entity.GetComponent<CADGeometryComponent>();
 
-				// 分别标记两种变化状态
-				bool geometryChanged = false;   // 几何参数变了 (需要全套重建)
-				bool meshQualityChanged = false; // 只有精度变了 (只需要重建网格)
+				// --- 1. 参数化几何滑块 (带 Undo/Redo) ---
+				auto DrawParamSlider = [&](const char* label, float* value, float minVal = 0.001f)
+					{
+						static CADModifyCommand* s_ActiveCommand = nullptr;
 
-				// 1. 几何参数滑块 (根据类型显示)
+						// 1. 鼠标按下瞬间：创建命令，备份旧状态
+						if (ImGui::IsItemActivated())
+						{
+							s_ActiveCommand = new CADModifyCommand(entity);
+						}
+
+						// 2. 绘制滑块
+						ImGui::DragFloat(label, value, 0.1f, minVal, 10000.0f);
+
+						// 3. 拖拽过程中：实时刷新预览，但不提交命令
+						if (s_ActiveCommand && ImGui::IsItemActive())
+						{
+							RebuildCADGeometry(entity);
+						}
+
+						// 4. 鼠标松开且值改变了：提交命令
+						if (ImGui::IsItemDeactivatedAfterEdit())
+						{
+							if (s_ActiveCommand)
+							{
+								s_ActiveCommand->CaptureNewState(); // 捕获新状态
+								CommandHistory::Push(s_ActiveCommand);
+								s_ActiveCommand = nullptr;
+							}
+						}
+						// 5. 鼠标松开但值没变：废弃命令
+						else if (ImGui::IsItemDeactivated())
+						{
+							if (s_ActiveCommand)
+							{
+								delete s_ActiveCommand;
+								s_ActiveCommand = nullptr;
+							}
+						}
+					};
+
+				// 根据类型绘制滑块
 				if (cadComp.Type == CADGeometryComponent::GeometryType::Cube)
 				{
-					if (ImGui::DragFloat("Width", &cadComp.Params.Width, 0.1f, 0.001f, 10000.0f)) geometryChanged = true;
-					if (ImGui::DragFloat("Height", &cadComp.Params.Height, 0.1f, 0.001f, 10000.0f)) geometryChanged = true;
-					if (ImGui::DragFloat("Depth", &cadComp.Params.Depth, 0.1f, 0.001f, 10000.0f)) geometryChanged = true;
+					DrawParamSlider("Width", &cadComp.Params.Width);
+					DrawParamSlider("Height", &cadComp.Params.Height);
+					DrawParamSlider("Depth", &cadComp.Params.Depth);
 				}
 				else if (cadComp.Type == CADGeometryComponent::GeometryType::Sphere)
 				{
-					if (ImGui::DragFloat("Radius", &cadComp.Params.Radius, 0.1f, 0.001f, 10000.0f)) geometryChanged = true;
+					DrawParamSlider("Radius", &cadComp.Params.Radius);
 				}
 				else if (cadComp.Type == CADGeometryComponent::GeometryType::Cylinder)
 				{
-					if (ImGui::DragFloat("Radius", &cadComp.Params.Radius, 0.1f, 0.001f, 10000.0f)) geometryChanged = true;
-					if (ImGui::DragFloat("Height", &cadComp.Params.Height, 0.1f, 0.001f, 10000.0f)) geometryChanged = true;
+					DrawParamSlider("Radius", &cadComp.Params.Radius);
+					DrawParamSlider("Height", &cadComp.Params.Height);
 				}
 
 				ImGui::Separator();
 
-				// 2. 网格精度滑块 (所有 CAD 类型通用)
-				// 范围：0.001 (极细) 到 10.0 (极粗)
-				// 使用对数刻度或者普通浮点拖拽，为了明显，我们反直觉一点：
-				// 数值越小越精细。
+				// --- 2. 网格精度滑块 (无 Undo) ---
+				bool meshQualityChanged = false;
 				if (ImGui::DragFloat("Mesh Quality", &cadComp.LinearDeflection, 0.01f, 0.001f, 10.0f, "%.3f"))
 				{
-					if (cadComp.LinearDeflection < 0.001f) cadComp.LinearDeflection = 0.001f;
+					cadComp.LinearDeflection = std::max(cadComp.LinearDeflection, 0.001f);
 					meshQualityChanged = true;
 				}
-				// 鼠标悬停提示
-				if (ImGui::IsItemHovered())
-				{
-					ImGui::SetTooltip("Deflection Value: Smaller = Smoother (High CPU Cost)\nLarger = Coarser (Low CPU Cost)");
-				}
+				if (meshQualityChanged) RebuildMeshOnly(entity);
 
-				// ==========================================================
-				// 边操作 UI (Fillet) 
-				// ==========================================================
+				// --- 3. 倒角操作 (带 Undo/Redo) ---
 				if (m_selectedEdge != -1)
 				{
 					ImGui::Separator();
@@ -352,32 +383,23 @@ namespace Rongine {
 					static float s_CurrentFilletRadius = 0.2f;
 					ImGui::DragFloat("Fillet Radius", &s_CurrentFilletRadius, 0.01f, 0.01f, 10.0f);
 
-					// 绿色按钮
 					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.8f, 0.2f, 1.0f));
-					if (ImGui::Button("Apply Fillet", ImVec2(-1, 0))) // 宽度填满
+					if (ImGui::Button("Apply Fillet", ImVec2(-1, 0)))
 					{
-						// 调用我们在 CADMesher 中实现的静态函数
-						// 注意：ApplyFillet 内部已经包含了 RebuildMesh 的逻辑
+						// A. 备份旧状态
+						auto* cmd = new CADModifyCommand(entity);
+
+						// B. 执行操作
 						CADMesher::ApplyFillet(entity, m_selectedEdge, s_CurrentFilletRadius);
 
-						// 操作完成后，重置选中状态，因为拓扑结构变了，旧 ID 失效
+						// C. 备份新状态并提交
+						cmd->CaptureNewState();
+						CommandHistory::Push(cmd);
+
+						// D. 强制取消选择 (防止拓扑变动导致崩溃)
 						m_selectedEdge = -1;
 					}
 					ImGui::PopStyleColor();
-				}
-				// ==========================================================
-
-				// 3. 处理变化
-				if (geometryChanged)
-				{
-					// 几何变了，必须重新 MakeShape -> Mesh
-					RebuildCADGeometry(entity);
-				}
-				else if (meshQualityChanged)
-				{
-					// 只有精度变了，不需要重新 MakeShape，直接拿现有的 Shape 重新离散化
-					// 这样效率更高，而且支持 Imported 模型 (因为 Imported 模型没有 Width/Height 参数可改，但有 Shape)
-					RebuildMeshOnly(entity);
 				}
 
 				ImGui::TreePop();

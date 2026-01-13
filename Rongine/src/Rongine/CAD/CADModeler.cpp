@@ -33,15 +33,6 @@ namespace Rongine {
         return new TopoDS_Shape(shape);
     }
 
-    void* CADModeler::MakeFillet(const TopoDS_Shape& shape, const TopoDS_Edge& edge, double radius)
-    {
-        BRepFilletAPI_MakeFillet filletMaker(shape);
-        filletMaker.Add(radius, edge);  // 添加倒角
-
-        TopoDS_Shape newShape = filletMaker.Shape();  // 获取倒角后的新形状
-        return new TopoDS_Shape(newShape);  // 返回新的形状
-    }
-
     void CADModeler::FreeShape(void* shapeHandle)
     {
         if (shapeHandle)

@@ -12,7 +12,9 @@ namespace Rongine {
     Entity Scene::createEntity(const std::string& name)
     {
         Entity entity = { m_registry.create(), this };
-        entity.AddComponent<TransformComponent>(); // 默认都有 Transform
+        entity.AddComponent<TransformComponent>(); 
+        static uint64_t s_NextID = 1;
+        entity.AddComponent<IDComponent>(s_NextID++);
         auto& tag = entity.AddComponent<TagComponent>();
         tag.Tag = name.empty() ? "Entity" : name;
         return entity;
@@ -25,6 +27,18 @@ namespace Rongine {
 
     void Scene::onUpdate(Timestep ts)
     {
-        // 这里暂时留空，以后可以在这里更新脚本组件
+        // 杩欓噷鏆傛椂鐣欑┖锛屼互鍚庡彲浠ュ湪杩欓噷鏇存柊鑴氭湰缁勪欢
+    }
+
+    Entity Scene::getEntityByUUID(uint64_t uuid)
+    {
+        auto view = m_registry.view<IDComponent>();
+        for (auto entity : view)
+        {
+            const auto& idComp = view.get<IDComponent>(entity);
+            if (idComp.ID == uuid)
+                return { entity, this };
+        }
+        return {}; 
     }
 }

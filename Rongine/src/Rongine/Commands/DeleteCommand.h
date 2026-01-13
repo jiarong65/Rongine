@@ -1,28 +1,35 @@
 #pragma once
 #include "Command.h"
 #include "Rongine/Scene/Entity.h"
-#include "Rongine/Scene/SceneSerializer.h" // �����л�������¡��ʵ������
+#include "Rongine/Scene/Components.h"
 
 namespace Rongine {
 
-    class DeleteCommand : public Command
-    {
-    public:
-        DeleteCommand(Entity entity)
-            //: m_Scene(entity.getContext())
-        {
+	// 在内存中暂存被删除实体的数据
+	struct EntityDataBackup
+	{
+		uint64_t UUID = 0;
+		std::string Tag;
+		TransformComponent Transform;
+		bool HasCAD = false;
+		CADGeometryComponent CAD; // 注意：CAD组件里有指针，需要特殊处理
+		bool HasMesh = false;
+		MeshComponent Mesh;       // Mesh组件里有VA，shared_ptr自动管理，可以直接拷贝
+	};
 
-            m_EntityID = (uint32_t)entity; // ���� ID (����� UUID ����)
+	class DeleteCommand : public Command
+	{
+	public:
+		DeleteCommand(Entity entity);
+		virtual ~DeleteCommand(); // 需要处理 CAD 组件的内存
 
+		virtual bool Execute() override;
+		virtual void Undo() override;
+		virtual std::string GetName() const override { return "Delete Entity"; }
 
-        }
-
-        virtual bool Execute() override { return true; }
-        virtual void Undo() override { }
-        virtual std::string GetName() const override { return "Delete Entity"; }
-
-    private:
-        Scene* m_Scene;
-        uint32_t m_EntityID;
-    };
+	private:
+		Scene* m_Scene;             // 也就是 m_ActiveScene
+		entt::entity m_EntityHandle;// 实体的 ID (entt句柄)
+		EntityDataBackup m_Backup;  // 数据备份
+	};
 }

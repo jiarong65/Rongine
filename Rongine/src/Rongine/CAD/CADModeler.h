@@ -19,10 +19,6 @@ namespace Rongine {
         // 创建圆柱
         static void* MakeCylinder(float radius, float height);
 
-        ///////////////////////////////////////////////////////////////////////////////////////////
-        // 倒角
-        static void* MakeFillet(const TopoDS_Shape& shape, const TopoDS_Edge& edge, double radius);
-
         // 释放 Shape 内存的辅助函数 (非常重要，防止内存泄漏)
         static void FreeShape(void* shapeHandle);
     };

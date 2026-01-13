@@ -9,8 +9,15 @@ namespace Rongine {
 	{
 	public:
 		TransformCommand(Entity entity, const TransformComponent& oldTC, const TransformComponent& newTC)
-			: m_Entity(entity), m_OldTC(oldTC), m_NewTC(newTC)
+			: m_OldTC(oldTC), m_NewTC(newTC)
 		{
+			if (entity)
+			{
+				m_Scene = entity.getScene();
+
+				if (entity.HasComponent<IDComponent>())
+					m_EntityUUID = entity.GetComponent<IDComponent>().ID;
+			}
 		}
 
 		virtual bool Execute() override;
@@ -24,9 +31,12 @@ namespace Rongine {
 
 	private:
 		void UpdateComponent(const TransformComponent& tc);
+		Entity GetEntity();
 
 	private:
-		Entity m_Entity;
+		Scene* m_Scene = nullptr;
+		uint64_t m_EntityUUID = 0;
+
 		TransformComponent m_OldTC;
 		TransformComponent m_NewTC;
 	};
