@@ -308,40 +308,49 @@ namespace Rongine {
 				// --- 1. 参数化几何滑块 (带 Undo/Redo) ---
 				auto DrawParamSlider = [&](const char* label, float* value, float minVal = 0.001f)
 					{
+						// 使用静态变量加锁，防止 Width 的状态影响 Height/Depth
 						static CADModifyCommand* s_ActiveCommand = nullptr;
+						static const char* s_ActiveLabel = nullptr; // 记录当前正在操作哪个滑块
 
-						// 1. 鼠标按下瞬间：创建命令，备份旧状态
+						// 先绘制滑块，ImGui 的状态函数检测的是“刚刚提交的 Item”
+						bool valueChanged = ImGui::DragFloat(label, value, 0.1f, minVal, 10000.0f);
+
+						// 2. 检测激活 (鼠标刚按下)
 						if (ImGui::IsItemActivated())
 						{
-							s_ActiveCommand = new CADModifyCommand(entity);
+							// 安全清理（防止异常状态残留）
+							if (s_ActiveCommand) { delete s_ActiveCommand; s_ActiveCommand = nullptr; }
+
+							s_ActiveCommand = new CADModifyCommand(entity); // 备份旧状态
+							s_ActiveLabel = label; // 锁定当前滑块
 						}
 
-						// 2. 绘制滑块
-						ImGui::DragFloat(label, value, 0.1f, minVal, 10000.0f);
-
-						// 3. 拖拽过程中：实时刷新预览，但不提交命令
-						if (s_ActiveCommand && ImGui::IsItemActive())
+						// 3. 处理逻辑 (仅当当前滑块是激活者时)
+						if (s_ActiveCommand && s_ActiveLabel == label)
 						{
-							RebuildCADGeometry(entity);
-						}
-
-						// 4. 鼠标松开且值改变了：提交命令
-						if (ImGui::IsItemDeactivatedAfterEdit())
-						{
-							if (s_ActiveCommand)
+							// 拖拽中且值改变：刷新预览
+							if (ImGui::IsItemActive() && valueChanged)
 							{
-								s_ActiveCommand->CaptureNewState(); // 捕获新状态
-								CommandHistory::Push(s_ActiveCommand);
-								s_ActiveCommand = nullptr;
+								RebuildCADGeometry(entity);
 							}
-						}
-						// 5. 鼠标松开但值没变：废弃命令
-						else if (ImGui::IsItemDeactivated())
-						{
-							if (s_ActiveCommand)
+
+							// 鼠标松开：提交或废弃
+							if (ImGui::IsItemDeactivated())
 							{
-								delete s_ActiveCommand;
-								s_ActiveCommand = nullptr;
+								if (ImGui::IsItemDeactivatedAfterEdit())
+								{
+									// 值确实变了：提交到历史栈
+									s_ActiveCommand->CaptureNewState();
+									CommandHistory::Push(s_ActiveCommand);
+									s_ActiveCommand = nullptr; // 归属权移交
+								}
+								else
+								{
+									// 只是点了一下没改值：删除临时命令
+									delete s_ActiveCommand;
+									s_ActiveCommand = nullptr;
+								}
+								s_ActiveLabel = nullptr; // 解锁
 							}
 						}
 					};
@@ -372,6 +381,9 @@ namespace Rongine {
 					cadComp.LinearDeflection = std::max(cadComp.LinearDeflection, 0.001f);
 					meshQualityChanged = true;
 				}
+				if (ImGui::IsItemHovered())
+					ImGui::SetTooltip("Deflection Value: Smaller = Smoother (High CPU Cost)\nLarger = Coarser (Low CPU Cost)");
+
 				if (meshQualityChanged) RebuildMeshOnly(entity);
 
 				// --- 3. 倒角操作 (带 Undo/Redo) ---
