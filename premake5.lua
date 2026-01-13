@@ -16,6 +16,8 @@ local OCCT_LIBS = {
 	"TKBO",
 	"TKGeomAlgo",
 	"TKGeomBase",
+	"TKFillet",    
+    "TKOffset",    
 	"TKSTEP",
 	"TKIGES",
 	"TKShHealing",

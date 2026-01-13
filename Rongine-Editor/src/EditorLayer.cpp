@@ -268,6 +268,9 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 					m_selectedFace = -1;
 					m_selectedEdge = -1;
 				}
+
+				//将选中的边传递给ui
+				m_sceneHierarchyPanel.setSelectedEdge(m_selectedEdge);
 			}
 		}
 	}
@@ -861,7 +864,7 @@ void EditorLayer::ImportSTEP()
 
 			// ==================== 生成边框线】 ====================
 			std::vector<Rongine::LineVertex> lineVerts;
-			auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(shape, lineVerts, 0.1f);
+			auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(shape, lineVerts, meshComp.m_IDToEdgeMap, 0.1f);
 			meshComp.EdgeVA = edgeVA;
 			meshComp.LocalLines = lineVerts;
 			// ===========================================================
@@ -926,7 +929,7 @@ void EditorLayer::CreatePrimitive(Rongine::CADGeometryComponent::GeometryType ty
 
 			std::vector<Rongine::LineVertex> lineVerts;
 			// 默认精度 0.1f
-			auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(*occShape, lineVerts, 0.1f);
+			auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(*occShape, lineVerts, meshComp.m_IDToEdgeMap, 0.1f);
 
 			meshComp.EdgeVA = edgeVA;
 			meshComp.LocalLines = lineVerts;
@@ -1066,7 +1069,7 @@ void EditorLayer::OnBooleanOperation(Rongine::CADBoolean::Operation op)
 			// ==================== 生成边框线 ====================
 			std::vector<Rongine::LineVertex> lineVerts;
 			// 这里如果有 cadComp，最好用 cadComp.LinearDeflection，这里简化用 0.1f 或继承
-			auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(*occShape, lineVerts, 0.1f);
+			auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(*occShape, lineVerts, meshComp.m_IDToEdgeMap, 0.1f);
 			meshComp.EdgeVA = edgeVA;
 			meshComp.LocalLines = lineVerts;
 			// ===========================================================
@@ -1156,7 +1159,7 @@ void EditorLayer::ExitExtrudeMode(bool apply)
 				// ==================== 生成边框线 ====================
 				std::vector<Rongine::LineVertex> lineVerts;
 				// 使用与面相同的精度参数，保证线贴合在面上
-				auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(*(TopoDS_Shape*)cadComp.ShapeHandle, lineVerts, cadComp.LinearDeflection);
+				auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(*(TopoDS_Shape*)cadComp.ShapeHandle, lineVerts, meshComp.m_IDToEdgeMap, cadComp.LinearDeflection);
 
 				meshComp.EdgeVA = edgeVA;
 				meshComp.LocalLines = lineVerts;

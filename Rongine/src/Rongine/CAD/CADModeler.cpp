@@ -1,11 +1,8 @@
 #include "Rongpch.h"
 #include "CADModeler.h"
 
-// --- 这里才真正引入 OCCT 头文件 ---
-#include <TopoDS_Shape.hxx>
-#include <BRepPrimAPI_MakeBox.hxx>
-#include <BRepPrimAPI_MakeSphere.hxx>
-#include <BRepPrimAPI_MakeCylinder.hxx>
+// --- 引入 OCCT 头文件 ---
+
 
 namespace Rongine {
 
@@ -34,6 +31,15 @@ namespace Rongine {
         BRepPrimAPI_MakeCylinder maker(radius, height);
         TopoDS_Shape shape = maker.Shape();
         return new TopoDS_Shape(shape);
+    }
+
+    void* CADModeler::MakeFillet(const TopoDS_Shape& shape, const TopoDS_Edge& edge, double radius)
+    {
+        BRepFilletAPI_MakeFillet filletMaker(shape);
+        filletMaker.Add(radius, edge);  // 添加倒角
+
+        TopoDS_Shape newShape = filletMaker.Shape();  // 获取倒角后的新形状
+        return new TopoDS_Shape(newShape);  // 返回新的形状
     }
 
     void CADModeler::FreeShape(void* shapeHandle)

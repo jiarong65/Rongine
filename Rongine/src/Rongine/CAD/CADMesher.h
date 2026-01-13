@@ -7,6 +7,7 @@
 
 // 引入 TopoDS_Shape 定义，方便外部调用
 #include <TopoDS_Shape.hxx>
+#include "Rongine/Scene/Entity.h"
 
 class TopoDS_Shape;
 
@@ -20,6 +21,12 @@ namespace Rongine {
 		static Ref<VertexArray> CreateMeshFromShape(const TopoDS_Shape& shape, std::vector<CubeVertex>& outVertices, float deflection = 0.1f);
 
 		static Ref<VertexArray> CreateEdgeMeshFromShape(const TopoDS_Shape& shape, std::vector<LineVertex>& outLines, float deflection = 0.1f);
+		static Ref<VertexArray> CreateEdgeMeshFromShape(Entity entity, const TopoDS_Shape& shape, std::vector<LineVertex>& outLines, float deflection);
+		static Ref<VertexArray> CreateEdgeMeshFromShape(const TopoDS_Shape& shape,std::vector<LineVertex>& outLines,std::map<int, TopoDS_Edge>& outEdgeMap,float deflection);
+
+		static void ApplyFillet(Entity entity, int edgeID, float radius);
+
+		static void RebuildMesh(Entity entity);
 	};
 
 }

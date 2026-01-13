@@ -1,5 +1,11 @@
 #pragma once
 
+#include <TopoDS_Shape.hxx>
+#include <BRepPrimAPI_MakeBox.hxx>
+#include <BRepPrimAPI_MakeSphere.hxx>
+#include <BRepPrimAPI_MakeCylinder.hxx>
+#include <BRepFilletAPI_MakeFillet.hxx>
+
 namespace Rongine {
 
     class CADModeler
@@ -12,6 +18,10 @@ namespace Rongine {
         static void* MakeSphere(float radius);
         // 创建圆柱
         static void* MakeCylinder(float radius, float height);
+
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // 倒角
+        static void* MakeFillet(const TopoDS_Shape& shape, const TopoDS_Edge& edge, double radius);
 
         // 释放 Shape 内存的辅助函数 (非常重要，防止内存泄漏)
         static void FreeShape(void* shapeHandle);

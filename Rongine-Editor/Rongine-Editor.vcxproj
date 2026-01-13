@@ -91,7 +91,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>TKernel.lib;TKMath.lib;TKG3d.lib;TKBRep.lib;TKPrim.lib;TKMesh.lib;TKTopAlgo.lib;TKBO.lib;TKGeomAlgo.lib;TKGeomBase.lib;TKSTEP.lib;TKIGES.lib;TKShHealing.lib;TKXSBase.lib;TKSTEPBase.lib;TKSTEPAttr.lib;TKSTEP209.lib;TKCAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>TKernel.lib;TKMath.lib;TKG3d.lib;TKBRep.lib;TKPrim.lib;TKMesh.lib;TKTopAlgo.lib;TKBO.lib;TKGeomAlgo.lib;TKGeomBase.lib;TKFillet.lib;TKOffset.lib;TKSTEP.lib;TKIGES.lib;TKShHealing.lib;TKXSBase.lib;TKSTEPBase.lib;TKSTEPAttr.lib;TKSTEP209.lib;TKCAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\Rongine\vendor\OCCT\win64\vc14\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -119,7 +119,7 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>TKernel.lib;TKMath.lib;TKG3d.lib;TKBRep.lib;TKPrim.lib;TKMesh.lib;TKTopAlgo.lib;TKBO.lib;TKGeomAlgo.lib;TKGeomBase.lib;TKSTEP.lib;TKIGES.lib;TKShHealing.lib;TKXSBase.lib;TKSTEPBase.lib;TKSTEPAttr.lib;TKSTEP209.lib;TKCAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>TKernel.lib;TKMath.lib;TKG3d.lib;TKBRep.lib;TKPrim.lib;TKMesh.lib;TKTopAlgo.lib;TKBO.lib;TKGeomAlgo.lib;TKGeomBase.lib;TKFillet.lib;TKOffset.lib;TKSTEP.lib;TKIGES.lib;TKShHealing.lib;TKXSBase.lib;TKSTEPBase.lib;TKSTEPAttr.lib;TKSTEP209.lib;TKCAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\Rongine\vendor\OCCT\win64\vc14\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -147,7 +147,7 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>TKernel.lib;TKMath.lib;TKG3d.lib;TKBRep.lib;TKPrim.lib;TKMesh.lib;TKTopAlgo.lib;TKBO.lib;TKGeomAlgo.lib;TKGeomBase.lib;TKSTEP.lib;TKIGES.lib;TKShHealing.lib;TKXSBase.lib;TKSTEPBase.lib;TKSTEPAttr.lib;TKSTEP209.lib;TKCAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>TKernel.lib;TKMath.lib;TKG3d.lib;TKBRep.lib;TKPrim.lib;TKMesh.lib;TKTopAlgo.lib;TKBO.lib;TKGeomAlgo.lib;TKGeomBase.lib;TKFillet.lib;TKOffset.lib;TKSTEP.lib;TKIGES.lib;TKShHealing.lib;TKXSBase.lib;TKSTEPBase.lib;TKSTEPAttr.lib;TKSTEP209.lib;TKCAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\Rongine\vendor\OCCT\win64\vc14\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -173,8 +173,8 @@
     <None Include="assets\models\t0001.step" />
     <None Include="assets\models\ymq.CATPart" />
     <None Include="assets\shaders\FlatColor.glsl" />
+    <None Include="assets\shaders\Line.glsl" />
     <None Include="assets\shaders\Texture.glsl" />
-    <None Include="Line.glsl" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\models\mypage.jpg" />

@@ -58,10 +58,10 @@
     <None Include="assets\shaders\FlatColor.glsl">
       <Filter>assets\shaders</Filter>
     </None>
-    <None Include="assets\shaders\Texture.glsl">
+    <None Include="assets\shaders\Line.glsl">
       <Filter>assets\shaders</Filter>
     </None>
-    <None Include="Line.glsl">
+    <None Include="assets\shaders\Texture.glsl">
       <Filter>assets\shaders</Filter>
     </None>
   </ItemGroup>

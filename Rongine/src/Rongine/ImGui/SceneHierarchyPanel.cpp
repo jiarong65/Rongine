@@ -137,7 +137,13 @@ namespace Rongine {
 				// ==================== 生成边框线 ====================
 				std::vector<LineVertex> lineVerts;
 				// 传入 cadComp.LinearDeflection
-				auto edgeVA = CADMesher::CreateEdgeMeshFromShape(*occShape, lineVerts, cadComp.LinearDeflection);
+				meshComp.m_IDToEdgeMap.clear();
+				auto edgeVA = CADMesher::CreateEdgeMeshFromShape(
+					*occShape,
+					lineVerts,
+					meshComp.m_IDToEdgeMap, 
+					cadComp.LinearDeflection
+				);
 				meshComp.EdgeVA = edgeVA;
 				meshComp.LocalLines = lineVerts;
 				// ===========================================================
@@ -335,6 +341,32 @@ namespace Rongine {
 					ImGui::SetTooltip("Deflection Value: Smaller = Smoother (High CPU Cost)\nLarger = Coarser (Low CPU Cost)");
 				}
 
+				// ==========================================================
+				// 边操作 UI (Fillet) 
+				// ==========================================================
+				if (m_selectedEdge != -1)
+				{
+					ImGui::Separator();
+					ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Selected Edge: %d", m_selectedEdge);
+
+					static float s_CurrentFilletRadius = 0.2f;
+					ImGui::DragFloat("Fillet Radius", &s_CurrentFilletRadius, 0.01f, 0.01f, 10.0f);
+
+					// 绿色按钮
+					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.8f, 0.2f, 1.0f));
+					if (ImGui::Button("Apply Fillet", ImVec2(-1, 0))) // 宽度填满
+					{
+						// 调用我们在 CADMesher 中实现的静态函数
+						// 注意：ApplyFillet 内部已经包含了 RebuildMesh 的逻辑
+						CADMesher::ApplyFillet(entity, m_selectedEdge, s_CurrentFilletRadius);
+
+						// 操作完成后，重置选中状态，因为拓扑结构变了，旧 ID 失效
+						m_selectedEdge = -1;
+					}
+					ImGui::PopStyleColor();
+				}
+				// ==========================================================
+
 				// 3. 处理变化
 				if (geometryChanged)
 				{
@@ -352,12 +384,14 @@ namespace Rongine {
 			}
 		}
 
-		// --- Mesh (只显示有没有) ---
+		// --- Mesh  ---
 		if (entity.HasComponent<MeshComponent>())
 		{
 			if (ImGui::TreeNodeEx((void*)typeid(MeshComponent).hash_code(), ImGuiTreeNodeFlags_DefaultOpen, "Mesh"))
 			{
-				ImGui::Text("Mesh Loaded");
+				auto& mesh = entity.GetComponent<MeshComponent>();
+				ImGui::Text("Vertices: %zu", mesh.LocalVertices.size());
+				ImGui::Text("Edges Mapped: %zu", mesh.m_IDToEdgeMap.size());
 				ImGui::TreePop();
 			}
 		}

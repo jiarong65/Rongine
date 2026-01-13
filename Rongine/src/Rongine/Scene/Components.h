@@ -9,6 +9,8 @@
 #include "Rongine/Renderer/VertexArray.h" // 包含你的 VertexArray
 #include "Rongine/Renderer/Renderer3D.h"
 
+#include <TopoDS_Edge.hxx>
+
 class TopoDS_Shape;
 
 namespace Rongine {
@@ -76,6 +78,8 @@ namespace Rongine {
         std::vector<LineVertex> LocalLines;  // 边的内存数据 (用于做 CPU 射线检测)
         std::vector<CubeVertex> LocalVertices;
 
+        std::map<int, TopoDS_Edge> m_IDToEdgeMap;
+
         MeshComponent() = default;
         MeshComponent(const MeshComponent&) = default;
         MeshComponent(const Ref<VertexArray>& va) : VA(va) {}
@@ -108,7 +112,8 @@ namespace Rongine {
             float Radius = 1.0f; // 球体/圆柱参数
         } Params;
 
-        float LinearDeflection = 0.1f;
+        float LinearDeflection = 0.1f;//精度
+        float FilletRadius = 0.1f; // 倒角的半径
 
         CADGeometryComponent() = default;
         CADGeometryComponent(const CADGeometryComponent&) = default;

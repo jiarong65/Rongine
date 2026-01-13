@@ -19,6 +19,9 @@ namespace Rongine {
 		Entity getSelectedEntity() const { return m_selectionContext; }
 		void setSelectedEntity(Entity entity);
 
+		void setSelectedEdge(int edgeID) { m_selectedEdge = edgeID; }
+		int getSelectedEdge() const { return m_selectedEdge; }
+
 	private:
 		void drawEntityNode(Entity entity);
 		void drawComponents(Entity entity);
@@ -26,5 +29,7 @@ namespace Rongine {
 	private:
 		Ref<Scene> m_context;
 		Entity m_selectionContext; // 当前在面板里选中的物体
+
+		int m_selectedEdge=-2;		//当前选中的边
 	};
 }
