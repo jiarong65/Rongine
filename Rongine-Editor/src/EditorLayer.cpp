@@ -1128,53 +1128,58 @@ void EditorLayer::ExitExtrudeMode(bool apply)
 
 	if (apply && std::abs(m_ExtrudeHeight) > 0.001f)
 	{
-		// === 执行真正的融合逻辑 (Copy 之前的代码) ===
 		auto& cadComp = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
 
-		// 1. 生成拉伸体
-		void* prismShape = Rongine::CADFeature::ExtrudeFace(cadComp.ShapeHandle, m_selectedFace, m_ExtrudeHeight);
+		auto* cmd = new Rongine::CADModifyCommand(m_selectedEntity);
 
-		if (prismShape)
+		void* prismPtr = Rongine::CADFeature::ExtrudeFace(cadComp.ShapeHandle, m_selectedFace, m_ExtrudeHeight);
+
+		if (prismPtr)
 		{
-			// 2. 融合
 			TopoDS_Shape* baseShape = (TopoDS_Shape*)cadComp.ShapeHandle;
-			TopoDS_Shape* toolShape = (TopoDS_Shape*)prismShape;
+			TopoDS_Shape* toolShape = (TopoDS_Shape*)prismPtr;
+
+			// 2. 布尔运算 (融合)
 			BRepAlgoAPI_Fuse fuseAlgo(*baseShape, *toolShape);
 			fuseAlgo.Build();
 
 			if (fuseAlgo.IsDone())
 			{
-				// 3. 更新原物体
+				// 3. 更新组件数据 
+				if (cadComp.ShapeHandle) delete (TopoDS_Shape*)cadComp.ShapeHandle;
+
+				// 应用新 Shape
 				cadComp.ShapeHandle = new TopoDS_Shape(fuseAlgo.Shape());
 				cadComp.Type = Rongine::CADGeometryComponent::GeometryType::Imported;
 
 				// 4. 重建网格
-				BRepTools::Clean(*(TopoDS_Shape*)cadComp.ShapeHandle);
-				std::vector<Rongine::CubeVertex> verts;
-				auto va = Rongine::CADMesher::CreateMeshFromShape(*(TopoDS_Shape*)cadComp.ShapeHandle, verts, cadComp.LinearDeflection);
+				Rongine::CADMesher::RebuildMesh(m_selectedEntity);
 
-				auto& meshComp = m_selectedEntity.GetComponent<Rongine::MeshComponent>();
-				meshComp.VA = va;
-				meshComp.LocalVertices = verts;
-				// ==================== 生成边框线 ====================
-				std::vector<Rongine::LineVertex> lineVerts;
-				// 使用与面相同的精度参数，保证线贴合在面上
-				auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(*(TopoDS_Shape*)cadComp.ShapeHandle, lineVerts, meshComp.m_IDToEdgeMap, cadComp.LinearDeflection);
+				cmd->CaptureNewState();
+				Rongine::CommandHistory::Push(cmd);
 
-				meshComp.EdgeVA = edgeVA;
-				meshComp.LocalLines = lineVerts;
-				// ===========================================================
-				meshComp.BoundingBox = Rongine::CADImporter::CalculateAABB(*(TopoDS_Shape*)cadComp.ShapeHandle);
-
-				RONG_CLIENT_INFO("Extrude Applied!");
+				RONG_CLIENT_INFO("Extrude Applied.");
 			}
+			else
+			{
+				delete cmd; // 运算失败，撤销该命令
+			}
+			delete (TopoDS_Shape*)prismPtr; // 清理临时拉伸体
+		}
+		else
+		{
+			delete cmd; // 没生成拉伸体，清理命令
 		}
 	}
 
-	// 清理现场
-	m_activeScene->destroyEntity(m_PreviewEntity);
-	m_PreviewEntity = {};
+	if (m_PreviewEntity)
+	{
+		m_activeScene->destroyEntity(m_PreviewEntity);
+		m_PreviewEntity = {};
+	}
+
 	m_IsExtrudeMode = false;
 	m_ExtrudeHeight = 0.0f;
-	m_selectedFace = -1; // 重置选择
+
+	m_selectedFace = -1;
 }

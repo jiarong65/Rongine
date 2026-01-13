@@ -39,6 +39,8 @@
 
 #include "Rongine/Commands/Command.h"
 #include "Rongine/Commands/TransformCommand.h"
+#include "Rongine/Commands/CADModifyCommand.h"
+#include "Rongine/Commands/DeleteCommand.h"
 
 #include "Rongine/Utils/GeometryUtils.h"
 #include "Rongine/Utils/PlatformUtils.h"
