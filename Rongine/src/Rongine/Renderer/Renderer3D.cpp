@@ -120,6 +120,13 @@ namespace Rongine {
 		s_Data.SelectedFaceID = faceID;
 	}
 
+	void Renderer3D::setHover(int entityID, int faceID, int edgeID)
+	{
+		s_Data.HoveredEntityID = entityID;
+		s_Data.HoveredFaceID = faceID;
+		s_Data.HoveredEdgeID = edgeID;
+	}
+
 	void Renderer3D::beginScene(const PerspectiveCamera& camera)
 	{
 		s_Data.TextureShader->bind();
@@ -158,6 +165,7 @@ namespace Rongine {
 		s_Data.TextureShader->setMat4("u_Model", glm::mat4(1.0f));
 		s_Data.TextureShader->setInt("u_EntityID", -1);
 		s_Data.TextureShader->setInt("u_SelectedEntityID", -1);
+		s_Data.TextureShader->setInt("u_HoveredEntityID", -1);
 
 		for (uint32_t i = 0; i < s_Data.TextureSlotIndex; i++)
 			s_Data.TextureSlots[i]->bind(i);
@@ -281,10 +289,12 @@ namespace Rongine {
 		s_Data.TextureShader->setInt("u_SelectedEntityID", s_Data.SelectedEntityID);
 		s_Data.TextureShader->setInt("u_SelectedFaceID", s_Data.SelectedFaceID);
 
+		s_Data.TextureShader->setInt("u_HoveredEntityID", s_Data.HoveredEntityID);
+		s_Data.TextureShader->setInt("u_HoveredFaceID", s_Data.HoveredFaceID);
+
 		va->bind();
 
-		// 3. 【关键修复】显式传递 Index Count！
-		// 之前这里可能默认为 0，导致什么都画不出来
+		// 3. 显式传递 Index Count！
 		uint32_t count = va->getIndexBuffer()->getCount();
 		RenderCommand::drawIndexed(va, count);
 
@@ -308,6 +318,9 @@ namespace Rongine {
 
 		s_Data.LineShader->setInt("u_EntityID", entityID);
 		s_Data.LineShader->setInt("u_SelectedEdgeID", selectedEdgeID);
+
+		s_Data.LineShader->setInt("u_HoveredEntityID", s_Data.HoveredEntityID);
+		s_Data.LineShader->setInt("u_HoveredEdgeID", s_Data.HoveredEdgeID);
 
 		va->bind();
 

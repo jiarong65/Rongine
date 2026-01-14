@@ -59,6 +59,8 @@ uniform vec3 u_ViewPos; // 摄像机位置，用于计算反光
 
 uniform int u_SelectedEntityID;
 uniform int u_SelectedFaceID;
+uniform int u_HoveredEntityID;
+uniform int u_HoveredFaceID;
 
 uniform int u_EntityID; //实体id
 
@@ -133,21 +135,29 @@ void main()
 
     vec4 finalColor = vec4(lighting, 1.0) * texColor;
 
-    if (u_SelectedEntityID>=0&&u_EntityID == u_SelectedEntityID)
+    // 1. 判断选中状态 (Selected) - 橙色
+    if (u_SelectedEntityID >= 0 && u_EntityID == u_SelectedEntityID)
     {
-        // 情况A：这个面正是被点击的那个面 (FaceID 匹配)
         if (v_FaceID == u_SelectedFaceID)
         {
-            // 混合橙色 (1.0, 0.6, 0.0)，强度 0.5
-            // mix(原色, 高亮色, 混合比例)
-            finalColor = mix(finalColor, vec4(1.0, 0.6, 0.0, 1.0), 0.5);
+            finalColor = mix(finalColor, vec4(1.0, 0.6, 0.0, 1.0), 0.5); // 选中：深橙色
         }
-        // 情况B：虽然选中了实体，但选中的面ID是 -1 (代表选中了整个物体)
-        // 或者是为了让没被选中的面也有一点点反应（可选）
         else if (u_SelectedFaceID == -1)
         {
-            // 整体微微发黄，表示选中了物体但没选中具体面
-            finalColor = mix(finalColor, vec4(1.0, 1.0, 0.0, 1.0), 0.3);
+            finalColor = mix(finalColor, vec4(1.0, 1.0, 0.0, 1.0), 0.3); // 选中整体：黄色
+        }
+    }
+    
+    // 2. 判断悬停状态 (Hovered) - 浅亮色 (仅当该面没有被选中时才显示悬停色)
+    // 防止“选中”和“悬停”颜色叠加变得很怪
+    bool isSelected = (u_EntityID == u_SelectedEntityID && v_FaceID == u_SelectedFaceID);
+    
+    if (!isSelected && u_HoveredEntityID >= 0 && u_EntityID == u_HoveredEntityID)
+    {
+        if (v_FaceID == u_HoveredFaceID)
+        {
+             // 悬停：浅白色/淡黄色叠加，亮度提升
+             finalColor = mix(finalColor, vec4(1.0, 1.0, 0.8, 1.0), 0.3); 
         }
     }
     

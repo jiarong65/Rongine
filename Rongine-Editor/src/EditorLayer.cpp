@@ -133,6 +133,7 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		if (!m_selectedEntity) selectedEntityID = -2;
 
 		Rongine::Renderer3D::setSelection(selectedEntityID, m_selectedFace);
+		Rongine::Renderer3D::setHover(m_HoveredEntityID, m_HoveredFaceID, m_HoveredEdgeID);
 
 		auto view = m_activeScene->getAllEntitiesWith<Rongine::TransformComponent, Rongine::MeshComponent>();
 
@@ -163,116 +164,130 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	//  鼠标拾取逻辑 (使用 m_viewportBounds)
 	//////////////////////////////////////////////////////////////////////////////
 	{
-		if (!m_IsExtrudeMode&&m_viewportHovered && !ImGuizmo::IsUsing() && !ImGuizmo::IsOver() &&
-			ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		// 1. 获取鼠标在视口内的坐标
+		auto [mx, my] = ImGui::GetMousePos();
+		mx -= m_viewportBounds[0].x;
+		my -= m_viewportBounds[0].y;
+		glm::vec2 viewportSize = m_viewportBounds[1] - m_viewportBounds[0];
+		int mouseX = (int)mx;
+		int mouseY = (int)(viewportSize.y - my);
+
+		// 默认重置悬停状态 (假设没有悬停在任何东西上)
+		m_HoveredEntityID = -1;
+		m_HoveredFaceID = -1;
+		m_HoveredEdgeID = -1;
+
+		// ==============================================================================
+		// Phase 1: 实时悬停探测 (Every Frame)
+		// 只要鼠标在视口内，且没有在使用 Gizmo，就开始探测
+		// ==============================================================================
+		if (m_viewportHovered && !ImGuizmo::IsUsing() &&
+			mouseX >= 0 && mouseY >= 0 && mouseX < (int)viewportSize.x && mouseY < (int)viewportSize.y)
 		{
-			auto [mx, my] = ImGui::GetMousePos();
-			mx -= m_viewportBounds[0].x;
-			my -= m_viewportBounds[0].y;
-			glm::vec2 viewportSize = m_viewportBounds[1] - m_viewportBounds[0];
-			int mouseX = (int)mx;
-			int mouseY = (int)(viewportSize.y - my);
+			m_framebuffer->bind();
 
-			if (mouseX >= 0 && mouseY >= 0 && mouseX < (int)viewportSize.x && mouseY < (int)viewportSize.y)
+			// 定义搜索半径 (悬停时也可以搜一点范围，提升手感)
+			// 如果觉得卡顿，可以把这里的 radius 改为 0 或 1
+			int radius = 2;
+
+			int bestEntityID = -1;
+			int bestFaceID = -1;
+			int bestEdgeID = -1;
+			float minDistanceSq = 10000.0f;
+
+			// 遍历周围像素 (寻找最佳候选项)
+			for (int dy = -radius; dy <= radius; dy++)
 			{
-				m_framebuffer->bind();
-
-				// ==================== 【修改：区域搜索逻辑】 ====================
-								// 定义搜索半径 (比如 2 表示搜 5x5 的区域)
-				int radius = 4; // 稍微大点，手感更好
-
-				int bestEntityID = -1;
-				int bestFaceID = -1;
-				int bestEdgeID = -1;
-
-				// 记录离中心最近的距离 (平方)
-				float minDistanceSq = 10000.0f;
-
-				// 遍历周围像素
-				for (int dy = -radius; dy <= radius; dy++)
+				for (int dx = -radius; dx <= radius; dx++)
 				{
-					for (int dx = -radius; dx <= radius; dx++)
+					int x = mouseX + dx;
+					int y = mouseY + dy;
+
+					if (x < 0 || y < 0 || x >= (int)viewportSize.x || y >= (int)viewportSize.y)
+						continue;
+
+					// 读取像素 ID
+					glm::ivec4 ids = m_framebuffer->readPixelID(1, x, y);
+					int eID = ids.r;
+					int fID = ids.g;
+					int lID = ids.b; // EdgeID
+
+					if (eID > -1)
 					{
-						int x = mouseX + dx;
-						int y = mouseY + dy;
+						float distSq = (float)(dx * dx + dy * dy);
 
-						// 边界检查
-						if (x < 0 || y < 0 || x >= (int)viewportSize.x || y >= (int)viewportSize.y)
-							continue;
+						// --- 优先级策略 (边 > 面) ---
+						bool isEdge = (lID > -1);
+						float effectiveDist = distSq;
 
-						// 读取当前像素的 ID (RGBA)
-						glm::ivec4 ids = m_framebuffer->readPixelID(1, x, y);
-						int eID = ids.r;
-						int fID = ids.g;
-						int lID = ids.b; // EdgeID
+						// 如果是线，即使离得远一点，也视为距离为0 (强行优先)
+						if (isEdge) effectiveDist -= 1000.0f;
 
-						// 如果读到了有效物体
-						if (eID > -1)
+						if (effectiveDist < minDistanceSq)
 						{
-							// 计算距离中心的距离 (优先选离鼠标最近的)
-							float distSq = (float)(dx * dx + dy * dy);
-
-							// 【关键优先级策略】
-							// 1. 总是优先选线 (Edge)！哪怕线稍微远一点点
-							//    我们可以给线的距离打折，让它更容易被选中
-							//    或者简单点：只要搜到了线，就暂时记录下来，看谁最近
-
-							bool isEdge = (lID > -1);
-
-							// 如果当前还没有选中任何线，或者现在的就是线且更近
-							// 这里的逻辑可以微调：
-							// 只有当 (是线 且 (之前没选中线 或 更近)) 或者 (都不是线 且 更近)
-
-							// 为了让线极其容易被选中，我们可以这样做：
-							// 如果当前像素是线，把它的距离视为 0 (或者减去一个大数值)，强行提升优先级
-
-							float effectiveDist = distSq;
-							if (isEdge) effectiveDist -= 1000.0f; // 线的特权：相当于即使离得远，也比就在鼠标底下的面优先
-
-							if (effectiveDist < minDistanceSq)
-							{
-								minDistanceSq = effectiveDist;
-								bestEntityID = eID;
-								bestFaceID = fID;
-								bestEdgeID = lID;
-							}
+							minDistanceSq = effectiveDist;
+							bestEntityID = eID;
+							bestFaceID = fID;
+							bestEdgeID = lID;
 						}
 					}
 				}
+			}
+			m_framebuffer->unbind();
 
-				m_framebuffer->unbind();
+			// 更新悬停状态变量
+			if (bestEntityID > -1)
+			{
+				m_HoveredEntityID = bestEntityID;
+				m_HoveredFaceID = bestFaceID;
+				m_HoveredEdgeID = bestEdgeID;
+			}
+		}
 
-				// ==================== 【应用最佳结果】 ====================
-				if (bestEntityID > -1)
+		// ==============================================================================
+		// Phase 2: 点击确认选择 (On Click)
+		// 如果此时用户点击了左键，直接把刚才探测到的 Hover 结果应用为 Selected
+		// ==============================================================================
+		if (!m_IsExtrudeMode && m_viewportHovered && !ImGuizmo::IsUsing() && !ImGuizmo::IsOver() &&
+			ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		{
+			if (m_HoveredEntityID > -1)
+			{
+				// 选中了物体
+				m_selectedEntity = Rongine::Entity((entt::entity)m_HoveredEntityID, m_activeScene.get());
+				m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
+
+				// 优先选中边
+				if (m_HoveredEdgeID > -1)
 				{
-					m_selectedEntity = Rongine::Entity((entt::entity)bestEntityID, m_activeScene.get());
-					m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
-
-					// 优先判断边
-					if (bestEdgeID > -1)
-					{
-						m_selectedEdge = bestEdgeID;
-						m_selectedFace = -1;
-						RONG_CLIENT_INFO("Picked Edge: {0}", bestEdgeID);
-					}
-					else if (bestFaceID > -1)
-					{
-						m_selectedFace = bestFaceID;
-						m_selectedEdge = -1;
-						RONG_CLIENT_INFO("Picked Face: {0}", bestFaceID);
-					}
+					m_selectedEdge = m_HoveredEdgeID;
+					m_selectedFace = -1;
+					RONG_CLIENT_INFO("Picked Edge: {0}", m_selectedEdge);
+				}
+				// 其次选中面
+				else if (m_HoveredFaceID > -1)
+				{
+					m_selectedFace = m_HoveredFaceID;
+					m_selectedEdge = -1;
+					RONG_CLIENT_INFO("Picked Face: {0}", m_selectedFace);
 				}
 				else
 				{
-					// 点了虚空 (或者搜索范围内全是虚空)
-					m_selectedEntity = {};
+					// 仅选中物体整体
 					m_selectedFace = -1;
 					m_selectedEdge = -1;
 				}
-
-				//将选中的边传递给ui
-				m_sceneHierarchyPanel.setSelectedEdge(m_selectedEdge);
 			}
+			else
+			{
+				// 点击了空白处：取消选择
+				m_selectedEntity = {};
+				m_selectedFace = -1;
+				m_selectedEdge = -1;
+			}
+
+			// 同步 UI 状态
+			m_sceneHierarchyPanel.setSelectedEdge(m_selectedEdge);
 		}
 	}
 }

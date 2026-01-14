@@ -28,6 +28,9 @@ uniform vec4 u_Color;        // 默认颜色 (黑色)
 uniform int u_EntityID;      // 当前画的物体 ID
 uniform int u_SelectedEdgeID;// 当前选中的边 ID (用于高亮)
 
+uniform int u_HoveredEntityID;
+uniform int u_HoveredEdgeID;
+
 flat in int v_EdgeID;
 
 void main()
@@ -35,10 +38,15 @@ void main()
 // 1. 颜色逻辑
     vec4 finalColor = u_Color;
 
-    // 如果这条边是选中的边，变色！
-    if (v_EdgeID == u_SelectedEdgeID && u_SelectedEdgeID != -1)
+    // 1. 选中高亮 (橙色)
+    if (u_SelectedEdgeID != -1 && v_EdgeID == u_SelectedEdgeID)
     {
-        finalColor = vec4(1.0, 0.6, 0.0, 1.0); // 橙色高亮
+        finalColor = vec4(1.0, 0.6, 0.0, 1.0); 
+    }
+    // 2. 悬停高亮 (青色/亮白) - 仅当未被选中时
+    else if (u_HoveredEntityID == u_EntityID && u_HoveredEdgeID != -1 && v_EdgeID == u_HoveredEdgeID)
+    {
+        finalColor = vec4(0.5, 0.8, 1.0, 1.0); // 悬停：青色
     }
 
     color = finalColor;

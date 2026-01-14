@@ -18,6 +18,7 @@ namespace Rongine {
 		static void shutdown();
 
 		static void setSelection(int entityID, int faceID);
+		static void setHover(int entityID, int faceID, int edgeID);
 
 		static void beginScene(const PerspectiveCamera& camera);
 		static void endScene();
@@ -27,7 +28,7 @@ namespace Rongine {
 		static void drawCube(const glm::vec3& position, const glm::vec3& size, const glm::vec4& color);
 		static void drawCube(const glm::vec3& position, const glm::vec3& size, const Ref<Texture2D>& texture, const glm::vec4& tintColor = glm::vec4(1.0f));
 
-		// --- 旋转绘制 (新增) ---
+		// --- 旋转绘制  ---
 		static void drawRotatedCube(const glm::vec3& position, const glm::vec3& size, float rotation, const glm::vec3& axis, const glm::vec4& color);
 		static void drawRotatedCube(const glm::vec3& position, const glm::vec3& size, float rotation, const glm::vec3& axis, const Ref<Texture2D>& texture, const glm::vec4& tintColor = glm::vec4(1.0f));
 
@@ -71,6 +72,10 @@ namespace Rongine {
 
 		int SelectedEntityID;
 		int SelectedFaceID;
+
+		int HoveredEntityID = -1;
+		int HoveredFaceID = -1;
+		int HoveredEdgeID = -1;
 
 		Ref<VertexArray> CubeVA;
 		Ref<VertexBuffer> CubeVB;

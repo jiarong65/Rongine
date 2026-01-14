@@ -69,6 +69,10 @@ private:
 	int m_selectedEdge = -1;
 	int m_gizmoType = -1; // -1:None, 0:Translate, 1:Rotate, 2:Scale
 
+	int m_HoveredEntityID = -1;
+	int m_HoveredFaceID = -1;
+	int m_HoveredEdgeID = -1;
+
 	Rongine::SceneHierarchyPanel m_sceneHierarchyPanel;
 
 	Rongine::Entity m_ToolEntity;                //工具实体
