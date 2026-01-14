@@ -19,6 +19,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <BRepFilletAPI_MakeFillet.hxx>
 
 #include "Rongine/Core/Log.h"
 
@@ -158,5 +159,82 @@ namespace Rongine {
         glm::mat4 translation = glm::translate(glm::mat4(1.0f), Pos);
 
         return translation * rotation;
+    }
+
+    void* CADFeature::MakeFilletShape(void* shapeHandle, int edgeID, float radius)
+    {
+        if (!shapeHandle) return nullptr;
+        TopoDS_Shape* shape = (TopoDS_Shape*)shapeHandle;
+
+        // 1. 初始化倒角工具
+        BRepFilletAPI_MakeFillet filletMaker(*shape);
+
+        // 2. 找到对应的边
+        // 注意：这里的遍历顺序必须和 Mesher 生成 ID 的顺序完全一致
+        int currentID = 0;
+        bool found = false;
+        TopExp_Explorer explorer(*shape, TopAbs_EDGE);
+        for (; explorer.More(); explorer.Next())
+        {
+            if (currentID == edgeID)
+            {
+                const TopoDS_Edge& edge = TopoDS::Edge(explorer.Current());
+                filletMaker.Add(radius, edge);
+                found = true;
+                break;
+            }
+            currentID++;
+        }
+
+        if (!found) return nullptr;
+
+        // 3. 构建
+        try {
+            filletMaker.Build();
+            if (filletMaker.IsDone())
+            {
+                return new TopoDS_Shape(filletMaker.Shape());
+            }
+        }
+        catch (...) {
+            return nullptr;
+        }
+        return nullptr;
+    }
+
+    glm::mat4 CADFeature::GetEdgeTransform(void* shapeHandle, int edgeID)
+    {
+        if (!shapeHandle) return glm::mat4(1.0f);
+
+        TopoDS_Shape* shape = (TopoDS_Shape*)shapeHandle;
+        TopoDS_Edge targetEdge;
+        bool found = false;
+
+        // 1. 遍历寻找对应 ID 的边
+        int currentID = 0;
+        TopExp_Explorer explorer(*shape, TopAbs_EDGE);
+        for (; explorer.More(); explorer.Next())
+        {
+            if (currentID == edgeID)
+            {
+                targetEdge = TopoDS::Edge(explorer.Current());
+                found = true;
+                break;
+            }
+            currentID++;
+        }
+
+        if (!found)
+        {
+            return glm::mat4(1.0f);
+        }
+
+        // 2. 计算边的质心 
+        GProp_GProps linearProps;
+        BRepGProp::LinearProperties(targetEdge, linearProps);
+        gp_Pnt center = linearProps.CentreOfMass();
+
+        // 3. 构建平移矩阵
+        return glm::translate(glm::mat4(1.0f), glm::vec3((float)center.X(), (float)center.Y(), (float)center.Z()));
     }
 }

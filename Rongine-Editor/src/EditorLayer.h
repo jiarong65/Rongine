@@ -31,7 +31,10 @@ private:
 	void OpenScene();
 	void OnBooleanOperation(Rongine::CADBoolean::Operation op);
 	void EnterExtrudeMode();
-	void ExitExtrudeMode(bool apply);   // apply=true(ÈÚºÏ), false(È¡Ïû)
+	void ExitExtrudeMode(bool apply);   // apply=true(èåˆ), false(å–æ¶ˆ)
+
+	void EnterFilletMode();
+	void ExitFilletMode(bool apply);
 
 private:
 	Rongine::Ref<Rongine::Shader> m_shader;
@@ -64,7 +67,7 @@ private:
 	glm::vec2 m_viewportBounds[2];
 
 	Rongine::Ref<Rongine::Scene> m_activeScene;
-	Rongine::Entity m_selectedEntity; // Ê¹ÓÃ Entity ¶ÔÏó
+	Rongine::Entity m_selectedEntity; // ä½¿ç”¨ Entity å¯¹è±¡
 	int m_selectedFace = -1;
 	int m_selectedEdge = -1;
 	int m_gizmoType = -1; // -1:None, 0:Translate, 1:Rotate, 2:Scale
@@ -75,16 +78,21 @@ private:
 
 	Rongine::SceneHierarchyPanel m_sceneHierarchyPanel;
 
-	Rongine::Entity m_ToolEntity;                //¹¤¾ßÊµÌå
+	Rongine::Entity m_ToolEntity;                //å·¥å…·å®ä½“
 
-	// --- Gizmo ³·Ïú×´Ì¬ ---
-	bool m_GizmoEditing = false; // ÊÇ·ñÕıÔÚÍÏ×§ÖĞ
-	Rongine::TransformComponent m_GizmoStartTransform; // ÍÏ×§¿ªÊ¼Ê±µÄ¿ìÕÕ
+	// --- Gizmo æ’¤é”€çŠ¶æ€ ---
+	bool m_GizmoEditing = false; // æ˜¯å¦æ­£åœ¨æ‹–æ‹½ä¸­
+	Rongine::TransformComponent m_GizmoStartTransform; // æ‹–æ‹½å¼€å§‹æ—¶çš„å¿«ç…§
 
-	// --- À­ÉìÄ£Ê½×´Ì¬ ---
-	bool m_IsExtrudeMode = false;       // ÊÇ·ñ´¦ÓÚÀ­ÉìÄ£Ê½
-	float m_ExtrudeHeight = 0.0f;       // µ±Ç°À­Éì¸ß¶È
-	glm::mat4 m_ExtrudeGizmoMatrix;     // Gizmo µÄ³õÊ¼Î»ÖÃ¾ØÕó
-	Rongine::Entity m_PreviewEntity;    // ÓÃÓÚÏÔÊ¾À­ÉìÔ¤ÀÀµÄÁÙÊ±ÊµÌå
+	// --- æ‹‰ä¼¸æ¨¡å¼çŠ¶æ€ ---
+	bool m_IsExtrudeMode = false;       // æ˜¯å¦å¤„äºæ‹‰ä¼¸æ¨¡å¼
+	float m_ExtrudeHeight = 0.0f;       // å½“å‰æ‹‰ä¼¸é«˜åº¦
+	glm::mat4 m_ExtrudeGizmoMatrix;     // Gizmo çš„åˆå§‹ä½ç½®çŸ©é˜µ
+	Rongine::Entity m_PreviewEntity;    // ç”¨äºæ˜¾ç¤ºæ‹‰ä¼¸é¢„è§ˆçš„ä¸´æ—¶å®ä½“
+
+	// --- å€’è§’æ¨¡å¼çŠ¶æ€ ---
+	bool m_IsFilletMode = false;
+	float m_FilletRadius = 0.0f;
+	glm::mat4 m_FilletGizmoMatrix = glm::mat4(1.0f);
 };
 

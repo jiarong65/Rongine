@@ -427,6 +427,14 @@ void EditorLayer::onImGuiRender()
 			{
 				EnterExtrudeMode();
 			}
+			if (ImGui::MenuItem("Interactive Fillet"))
+			{
+				int edgeID = m_selectedEdge;
+				EnterFilletMode();
+				ExitFilletMode(false);
+				m_selectedEdge = edgeID;
+				EnterFilletMode();
+			}
 			ImGui::EndMenu();
 		}
 
@@ -605,6 +613,84 @@ void EditorLayer::onImGuiRender()
 
 		// 既然在拉伸模式，就不要运行下面的普通 Gizmo 逻辑了
 		goto SkipGizmo;
+	}
+	///////////////////////////////////////////////////////////////////////////////////////////
+	//倒角模式
+	if (m_IsFilletMode)
+	{
+		const auto& camera = m_cameraContorller.getCamera();
+		glm::mat4 cameraView = camera.getViewMatrix();
+		const glm::mat4& cameraProjection = camera.getProjectionMatrix();
+
+		// 1. 准备 Gizmo
+		// 我们根据 m_FilletRadius 偏移 Gizmo，给用户视觉反馈
+		// 假设沿 X 轴拖拽调整半径
+		glm::mat4 currentGizmoMatrix = glm::translate(m_FilletGizmoMatrix, glm::vec3(m_FilletRadius, 0, 0));
+
+		// 2. 绘制 Gizmo (只显示 X 轴平移，代表半径大小)
+		ImGuizmo::Manipulate(glm::value_ptr(cameraView), glm::value_ptr(cameraProjection),
+			ImGuizmo::TRANSLATE_X, ImGuizmo::LOCAL, glm::value_ptr(currentGizmoMatrix));
+
+		// 3. 处理拖拽
+		if (ImGuizmo::IsUsing())
+		{
+			// 计算位移量作为半径
+			glm::vec3 startPos = m_FilletGizmoMatrix[3];
+			glm::vec3 currentPos = currentGizmoMatrix[3];
+
+			// 简单地取距离或者 X 轴投影
+			float newRadius = glm::length(currentPos - startPos);
+			// 或者： float newRadius = currentPos.x - startPos.x; (如果局部坐标系对齐好了)
+
+			// 限制半径范围
+			if (newRadius < 0.01f) newRadius = 0.01f;
+
+			if (std::abs(newRadius - m_FilletRadius) > 0.01f)
+			{
+				m_FilletRadius = newRadius;
+
+				// ==================== 生成预览网格 ====================
+				// 注意：这里我们不修改原物体，而是生成一个临时的 TopoDS_Shape
+				auto& cadComp = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
+
+				// 需要一个静态函数：MakeFilletShape(originalShape, edgeID, radius) -> newShape*
+				void* previewShape = Rongine::CADFeature::MakeFilletShape(cadComp.ShapeHandle, m_selectedEdge, m_FilletRadius);
+
+				if (previewShape)
+				{
+					// 更新预览实体的 Mesh
+					std::vector<Rongine::CubeVertex> verts;
+					auto va = Rongine::CADMesher::CreateMeshFromShape(*(TopoDS_Shape*)previewShape, verts, 0.5f); // 预览精度
+
+					if (m_PreviewEntity.HasComponent<Rongine::MeshComponent>())
+						m_PreviewEntity.RemoveComponent<Rongine::MeshComponent>();
+
+					m_PreviewEntity.AddComponent<Rongine::MeshComponent>(va, verts);
+
+					delete (TopoDS_Shape*)previewShape; // 只是预览，用完即弃
+				}
+			}
+		}
+
+		// 4. UI 按钮 (确认/取消)
+		ImGui::SetCursorPos(ImVec2(20, 40));
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0.8f, 0, 1));
+		if (ImGui::Button("Apply Fillet (Enter)")) ExitFilletMode(true);
+		ImGui::PopStyleColor();
+
+		ImGui::SameLine();
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0, 0, 1));
+		if (ImGui::Button("Cancel (Esc)")) ExitFilletMode(false);
+		ImGui::PopStyleColor();
+
+		ImGui::SameLine();
+		ImGui::Text("Radius: %.2f", m_FilletRadius);
+
+		// 5. 快捷键
+		if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter))) ExitFilletMode(true);
+		if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape))) ExitFilletMode(false);
+
+		goto SkipGizmo; // 跳过普通 Gizmo
 	}
 
 	// 2. 绘制逻辑
@@ -1131,7 +1217,9 @@ void EditorLayer::EnterExtrudeMode()
 
 	// 2. 创建一个空的预览实体 (Ghost)
 	m_PreviewEntity = m_activeScene->createEntity("Extrude Preview");
-	m_PreviewEntity.AddComponent<Rongine::TransformComponent>(); // 默认变换
+	auto& prevTC = m_PreviewEntity.HasComponent<Rongine::TransformComponent>() ?
+		m_PreviewEntity.GetComponent<Rongine::TransformComponent>() :
+		m_PreviewEntity.AddComponent<Rongine::TransformComponent>();
 	// 给个半透明材质或者特殊颜色更好 (这里暂时用默认 Mesh)
 
 	RONG_CLIENT_INFO("Entered Extrude Mode. Drag the Blue Arrow!");
@@ -1197,4 +1285,123 @@ void EditorLayer::ExitExtrudeMode(bool apply)
 	m_ExtrudeHeight = 0.0f;
 
 	m_selectedFace = -1;
+}
+
+void EditorLayer::EnterFilletMode()
+{
+	Rongine::Entity id = m_selectedEntity;
+	// 1. 检查选中有效性 (必须选中一条边)
+	if (!m_selectedEntity || m_selectedEdge == -1)
+	{
+		RONG_CLIENT_WARN("Please select an Edge first!");
+		return;
+	}
+	if (!m_selectedEntity.HasComponent<Rongine::CADGeometryComponent>()) return;
+
+	m_IsFilletMode = true;
+	m_FilletRadius = 0.2f; // 初始半径
+
+	// 2. 计算 Gizmo 位置 (放在选中边的中点)
+	auto& tc = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
+	auto& cadComp = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
+
+	glm::mat4 edgeLocalMatrix = Rongine::CADFeature::GetEdgeTransform(cadComp.ShapeHandle, m_selectedEdge);
+	glm::mat4 objectWorldMatrix = tc.GetTransform();
+
+	// Gizmo 位于边的中心
+	m_FilletGizmoMatrix = objectWorldMatrix * edgeLocalMatrix;
+
+	// 3. 创建预览实体 (Ghost)
+	m_PreviewEntity = m_activeScene->createEntity("Fillet Preview");
+
+	Rongine::TransformComponent& previewTC = m_PreviewEntity.GetComponent<Rongine::TransformComponent>();
+
+	// 复制 Transform
+	previewTC.Translation = tc.Translation;
+	previewTC.Rotation = tc.Rotation;
+	previewTC.Scale = tc.Scale;
+
+
+	// 复制当前的 Mesh (作为初始状态)
+	if (m_selectedEntity.HasComponent<Rongine::MeshComponent>())
+	{
+		auto& srcMesh = m_selectedEntity.GetComponent<Rongine::MeshComponent>();
+
+		//复制srcMesh，因为操作AddComponent后，内存池可能会满，会重新申请一片内存，释放原来的内存扩容
+		auto srcVA = srcMesh.VA;
+		auto srcVertices = srcMesh.LocalVertices;
+		auto srcEdgeVA = srcMesh.EdgeVA;
+		auto srcLines = srcMesh.LocalLines;
+		auto srcBoundingBox = srcMesh.BoundingBox;
+		auto srcIDMap = srcMesh.m_IDToEdgeMap;
+
+		if (m_PreviewEntity.HasComponent<Rongine::MeshComponent>())
+			m_PreviewEntity.RemoveComponent<Rongine::MeshComponent>();
+
+		// 复制 VA 和顶点数据
+		auto& dstMesh = m_PreviewEntity.AddComponent<Rongine::MeshComponent>(srcMesh.VA, srcMesh.LocalVertices);
+
+
+		dstMesh.EdgeVA = srcEdgeVA;
+		dstMesh.LocalLines = srcLines;
+		dstMesh.BoundingBox = srcBoundingBox;
+	}
+
+	// 强制触发一次预览更新
+	// 因为设置了初始半径 0.2
+	{
+		void* previewShape = Rongine::CADFeature::MakeFilletShape(cadComp.ShapeHandle, m_selectedEdge, m_FilletRadius);
+		RONG_CLIENT_INFO("MakeFilletShape");
+		if (previewShape)
+		{
+			RONG_CLIENT_INFO("MakeFilletShape su");
+			// 更新预览实体的 Mesh
+			std::vector<Rongine::CubeVertex> verts;
+			auto va = Rongine::CADMesher::CreateMeshFromShape(*(TopoDS_Shape*)previewShape, verts, 0.5f); // 预览精度
+
+			if (m_PreviewEntity.HasComponent<Rongine::MeshComponent>())
+				m_PreviewEntity.RemoveComponent<Rongine::MeshComponent>();
+
+			m_PreviewEntity.AddComponent<Rongine::MeshComponent>(va, verts);
+
+			delete (TopoDS_Shape*)previewShape; // 只是预览，用完即弃
+		}
+	}
+	m_selectedEntity = id;
+
+	RONG_CLIENT_INFO("Entered Fillet Mode. Drag the Gizmo to adjust radius!");
+}
+
+void EditorLayer::ExitFilletMode(bool apply)
+{
+	if (!m_IsFilletMode) return;
+
+	if (apply && m_FilletRadius > 0.001f)
+	{
+		auto& cadComp = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
+
+		// 1. 创建 Undo 命令 (备份当前状态)
+		auto* cmd = new Rongine::CADModifyCommand(m_selectedEntity);
+		// B. 执行操作
+		Rongine::CADMesher::ApplyFillet(m_selectedEntity, m_selectedEdge, m_FilletRadius);
+
+		// C. 备份新状态并提交
+		cmd->CaptureNewState();
+		Rongine::CommandHistory::Push(cmd);
+
+		// D. 强制取消选择 (防止拓扑变动导致崩溃)
+		m_selectedEdge = -1;
+	}
+
+	// 清理预览实体
+	if (m_PreviewEntity)
+	{
+		m_activeScene->destroyEntity(m_PreviewEntity);
+		m_PreviewEntity = {};
+	}
+
+	// 重置状态
+	m_IsFilletMode = false;
+	m_FilletRadius = 0.0f;
+	m_selectedEdge = -1; // 倒角后 Edge ID 会变，必须重置选择
 }

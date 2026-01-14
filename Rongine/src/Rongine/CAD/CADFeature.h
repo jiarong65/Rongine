@@ -6,13 +6,16 @@ namespace Rongine {
     class CADFeature
     {
     public:
-        // À­ÉìÑ¡ÖĞµÄÃæ
-        // shapeHandle: Ô­ÎïÌåµÄ Handle
-        // faceIndex: Ñ¡ÖĞµÄÃæ ID
-        // height: À­Éì¸ß¶È
-        // ·µ»Ø: ĞÂÉú³ÉµÄĞÎ×´ Handle (void*)
+        // æ‹‰ä¼¸é€‰ä¸­çš„é¢
+        // shapeHandle: åŸç‰©ä½“çš„ Handle
+        // faceIndex: é€‰ä¸­çš„é¢ ID
+        // height: æ‹‰ä¼¸é«˜åº¦
+        // è¿”å›: æ–°ç”Ÿæˆçš„å½¢çŠ¶ Handle (void*)
         static void* ExtrudeFace(void* shapeHandle, int faceIndex, float height);
-        // »ñÈ¡Ö¸¶¨ÃæµÄ¾Ö²¿±ä»»¾ØÕó (ÖĞĞÄµãÎªÔ­µã£¬ZÖáÎª·¨Ïß)
+        // è·å–æŒ‡å®šé¢çš„å±€éƒ¨å˜æ¢çŸ©é˜µ (ä¸­å¿ƒç‚¹ä¸ºåŸç‚¹ï¼ŒZè½´ä¸ºæ³•çº¿)
         static glm::mat4 GetFaceTransform(void* shapeHandle, int faceIndex);
+
+        static void* MakeFilletShape(void* shapeHandle, int edgeID, float radius);
+        static glm::mat4 GetEdgeTransform(void* shapeHandle, int edgeID);
     };
 }
