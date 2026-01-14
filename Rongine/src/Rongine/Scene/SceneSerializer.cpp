@@ -5,11 +5,13 @@
 #include "Rongine/Scene/Components.h"
 
 // --- 引入 CAD 相关的头文件 (用于重建几何体) ---
-// 根据你的目录结构，这些应该在 Rongine/CAD/ 下
 #include "Rongine/CAD/CADModeler.h"
 #include "Rongine/CAD/CADMesher.h"
 #include "Rongine/CAD/CADImporter.h"
-#include <TopoDS_Shape.hxx> // 必须包含，用于 void* 强转
+#include <TopoDS_Shape.hxx> 
+
+#include <BRepTools.hxx> // OCCT BRep 读写工具
+#include <filesystem>
 
 #include <yaml-cpp/yaml.h>
 #include <fstream>
@@ -155,6 +157,31 @@ namespace Rongine {
 			out << YAML::Key << "LinearDeflection" << YAML::Value << cadComp.LinearDeflection;
 			out << YAML::EndMap; // Params Map
 
+			bool needsBRepSave = (cadComp.Type == CADGeometryComponent::GeometryType::Imported);
+
+			std::string brepFileName = "";
+
+			if (needsBRepSave && cadComp.ShapeHandle)
+			{
+				uint64_t uuid = entity.GetComponent<IDComponent>().ID; 
+
+				// 构造相对路径
+				brepFileName = "assets/cache/" + std::to_string(uuid) + ".brep";
+
+				// 确保目录存在
+				std::filesystem::create_directories("assets/cache");
+
+				// 调用 OCCT 保存文件
+				TopoDS_Shape* shape = (TopoDS_Shape*)cadComp.ShapeHandle;
+				if (!BRepTools::Write(*shape, brepFileName.c_str()))
+				{
+					RONG_CORE_ERROR("Failed to write BRep file: {0}", brepFileName);
+				}
+			}
+
+			// 将路径写入 YAML
+			out << YAML::Key << "BRepPath" << YAML::Value << brepFileName;
+
 			out << YAML::EndMap; // CADGeometryComponent Map
 		}
 
@@ -216,9 +243,11 @@ namespace Rongine {
 				if (tagComponent)
 					name = tagComponent["Tag"].as<std::string>();
 
-				RONG_CORE_TRACE("Deserialized entity with ID = {0}, name = {1}", uuid, name);
-
 				Entity deserializedEntity = m_Context->createEntity(name);
+				if (deserializedEntity.HasComponent<IDComponent>())
+					deserializedEntity.GetComponent<IDComponent>().ID = uuid; // 恢复 UUID
+
+				RONG_CORE_TRACE("Deserialized entity '{0}' (UUID: {1})", name, uuid);
 
 				// 2. 加载 Transform
 				auto transformComponent = entity["TransformComponent"];
@@ -236,53 +265,88 @@ namespace Rongine {
 				{
 					auto& cadComp = deserializedEntity.AddComponent<CADGeometryComponent>();
 
-					// A. 读取类型和参数
+					// A. 读取参数
 					cadComp.Type = (CADGeometryComponent::GeometryType)cadComponent["Type"].as<int>();
 					auto params = cadComponent["Params"];
 					cadComp.Params.Width = params["Width"].as<float>();
 					cadComp.Params.Height = params["Height"].as<float>();
 					cadComp.Params.Depth = params["Depth"].as<float>();
 					cadComp.Params.Radius = params["Radius"].as<float>();
+
 					if (params["LinearDeflection"])
 						cadComp.LinearDeflection = params["LinearDeflection"].as<float>();
 					else
 						cadComp.LinearDeflection = 0.1f;
 
-					// B. 重建几何体 (OCCT MakeShape)
+					// 加载 BRep 文件
 					void* shapeHandle = nullptr;
-					switch (cadComp.Type)
+					std::string brepPath = "";
+					if (cadComponent["BRepPath"])
+						brepPath = cadComponent["BRepPath"].as<std::string>();
+
+					// 优先尝试从文件加载 (针对拉伸、布尔运算后的物体)
+					bool loadedFromDisk = false;
+					if (!brepPath.empty() && std::filesystem::exists(brepPath))
 					{
-					case CADGeometryComponent::GeometryType::Cube:
-						shapeHandle = CADModeler::MakeCube(cadComp.Params.Width, cadComp.Params.Height, cadComp.Params.Depth);
-						break;
-					case CADGeometryComponent::GeometryType::Sphere:
-						shapeHandle = CADModeler::MakeSphere(cadComp.Params.Radius);
-						break;
-					case CADGeometryComponent::GeometryType::Cylinder:
-						shapeHandle = CADModeler::MakeCylinder(cadComp.Params.Radius, cadComp.Params.Height);
-						break;
-						// 注意：如果是 Imported 类型，这里无法重建，因为我们还没保存文件路径。
-						// 暂时让它为空，或者后续你可以添加 FilePath 字段到组件里。
+						BRep_Builder builder;
+						TopoDS_Shape shape;
+						if (BRepTools::Read(shape, brepPath.c_str(), builder))
+						{
+							shapeHandle = new TopoDS_Shape(shape);
+							loadedFromDisk = true;
+						}
+						else
+						{
+							RONG_CORE_ERROR("Failed to load BRep file: {0}", brepPath);
+						}
+					}
+
+					// 如果没从磁盘加载 (说明是纯参数化物体，或者文件丢失)，则尝试参数化重建
+					if (!shapeHandle)
+					{
+						switch (cadComp.Type)
+						{
+						case CADGeometryComponent::GeometryType::Cube:
+							shapeHandle = CADModeler::MakeCube(cadComp.Params.Width, cadComp.Params.Height, cadComp.Params.Depth);
+							break;
+						case CADGeometryComponent::GeometryType::Sphere:
+							shapeHandle = CADModeler::MakeSphere(cadComp.Params.Radius);
+							break;
+						case CADGeometryComponent::GeometryType::Cylinder:
+							shapeHandle = CADModeler::MakeCylinder(cadComp.Params.Radius, cadComp.Params.Height);
+							break;
+						}
 					}
 
 					cadComp.ShapeHandle = shapeHandle;
+					// ========================================================================
 
-					// C. 重新离散化生成 Mesh (OCCT Meshing)
+					// C. 重新生成网格 (Mesh + Edge)
 					if (shapeHandle)
 					{
 						TopoDS_Shape* occShape = (TopoDS_Shape*)shapeHandle;
 						std::vector<CubeVertex> verticesData;
 
-						// 调用你之前修改好的接口，填充 verticesData
-						auto va = CADMesher::CreateMeshFromShape(*occShape, verticesData);
+						// 1. 生成面网格
+						auto va = CADMesher::CreateMeshFromShape(*occShape, verticesData, cadComp.LinearDeflection);
 
 						if (va)
 						{
-							// 创建 MeshComponent 并存入数据
-							deserializedEntity.AddComponent<MeshComponent>(va, verticesData);
+							auto& meshComp = deserializedEntity.AddComponent<MeshComponent>(va, verticesData);
 
-							// 计算包围盒 (重要！为了 F 键聚焦)
-							deserializedEntity.GetComponent<MeshComponent>().BoundingBox = CADImporter::CalculateAABB(*occShape);
+							// 2. 更新包围盒
+							meshComp.BoundingBox = CADImporter::CalculateAABB(*occShape);
+
+							std::vector<LineVertex> lineVerts;
+							auto edgeVA = CADMesher::CreateEdgeMeshFromShape(
+								*occShape,
+								lineVerts,
+								meshComp.m_IDToEdgeMap, // 恢复 ID 映射表，确保能被选中
+								cadComp.LinearDeflection
+							);
+							meshComp.EdgeVA = edgeVA;
+							meshComp.LocalLines = lineVerts;
+							// =================================================================
 						}
 					}
 				}
