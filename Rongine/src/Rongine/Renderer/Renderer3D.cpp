@@ -3,6 +3,7 @@
 #include "RenderCommand.h" // 确保包含 RenderCommand
 #include <glm/gtc/matrix_transform.hpp>
 #include <array>
+#include <glad/glad.h>
 
 namespace Rongine {
 
@@ -203,6 +204,8 @@ namespace Rongine {
 		s_Data.BatchLineShader->bind();
 		s_Data.BatchLineShader->setMat4("u_ViewProjection", camera.getViewProjectionMatrix());
 
+		glDisable(GL_DEPTH_TEST);
+
 		s_Data.BatchLineVertexCount = 0;
 		s_Data.BatchLineVertexBufferPtr = s_Data.BatchLineVertexBufferBase;
 	}
@@ -219,6 +222,8 @@ namespace Rongine {
 
 			s_Data.Stats.DrawCalls++;
 		}
+
+		glEnable(GL_DEPTH_TEST);
 	}
 
 	void Renderer3D::drawLine(const glm::vec3& p0, const glm::vec3& p1, const glm::vec4& color)
@@ -248,29 +253,31 @@ namespace Rongine {
 		// 1. 批量计算并写入灰色网格线
 		for (int i = -steps; i <= steps; i++)
 		{
-			// 跳过中心线 (稍后用红绿轴覆盖)
 			if (i == 0) continue;
 
 			float pos = i * stepSize;
 
-			// 本地坐标点
+			// 本地坐标点 (延伸到负方向)
 			glm::vec4 p1_local = { pos, -size, 0.0f, 1.0f }; // 竖线
 			glm::vec4 p2_local = { pos,  size, 0.0f, 1.0f };
 			glm::vec4 p3_local = { -size, pos, 0.0f, 1.0f }; // 横线
 			glm::vec4 p4_local = { size, pos, 0.0f, 1.0f };
 
-			// CPU 变换到世界坐标 (BatchLine.glsl 不需要 Model 矩阵)
 			drawLine(glm::vec3(transform * p1_local), glm::vec3(transform * p2_local), greyColor);
 			drawLine(glm::vec3(transform * p3_local), glm::vec3(transform * p4_local), greyColor);
 		}
 
-		// 2. 写入坐标轴 (红 X, 绿 Y)
-		glm::vec3 origin = glm::vec3(transform * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
-		glm::vec3 xAxis = glm::vec3(transform * glm::vec4(size, 0.0f, 0.0f, 1.0f));
-		glm::vec3 yAxis = glm::vec3(transform * glm::vec4(0.0f, size, 0.0f, 1.0f));
+		// 2. 写入十字坐标轴 (贯穿全屏)
+		// X轴 (红): 从左到右 (-size 到 size)
+		glm::vec3 xStart = glm::vec3(transform * glm::vec4(-size, 0.0f, 0.0f, 1.0f));
+		glm::vec3 xEnd = glm::vec3(transform * glm::vec4(size, 0.0f, 0.0f, 1.0f));
 
-		drawLine(origin, xAxis, redColor);
-		drawLine(origin, yAxis, greenColor);
+		// Y轴 (绿): 从下到上 (-size 到 size)
+		glm::vec3 yStart = glm::vec3(transform * glm::vec4(0.0f, -size, 0.0f, 1.0f));
+		glm::vec3 yEnd = glm::vec3(transform * glm::vec4(0.0f, size, 0.0f, 1.0f));
+
+		drawLine(xStart, xEnd, redColor);
+		drawLine(yStart, yEnd, greenColor);
 	}
 
 	// --- 基础绘制 (Axis Aligned) ---

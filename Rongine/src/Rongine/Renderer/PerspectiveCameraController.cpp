@@ -104,7 +104,7 @@ namespace Rongine {
 		m_distance = glm::distance(cameraPosition, targetPoint);
 
 		glm::vec3 direction = glm::normalize(targetPoint - cameraPosition);
-		m_pitch = glm::asin(direction.y);
+		m_pitch = -glm::asin(direction.y);
 		m_yaw = glm::atan(direction.x, -direction.z);
 
 		updateView();

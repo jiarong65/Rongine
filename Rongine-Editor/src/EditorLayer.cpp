@@ -162,7 +162,7 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		if (m_IsSketchMode && m_SketchPlaneEntity)
 		{
 			auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
-			Rongine::Renderer3D::drawGrid(sc.SketchMatrix, 10.0f, 10);
+			Rongine::Renderer3D::drawGrid(sc.SketchMatrix, 10.0f, 25);
 		}
 		Rongine::Renderer3D::endLines(); 
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1519,9 +1519,6 @@ void EditorLayer::EnterSketchMode()
 			// 限制最小距离
 			viewDistance = std::max(viewDistance, 1.0f);
 		}
-
-		glm::vec3 camPos = center + normal * viewDistance;
-		m_cameraContorller.lookAt(camPos, center);
 
 		RONG_CLIENT_INFO("Entered Sketch Mode! Camera aligned to face.");
 	}

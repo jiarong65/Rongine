@@ -245,39 +245,52 @@ namespace Rongine {
         TopoDS_Face face = TopoDS::Face(CADFeature::GetSubShape(shape, TopAbs_FACE, faceID));
         if (face.IsNull()) return false;
 
-        // 2. 获取底层几何表面
-        TopLoc_Location loc;
-        Handle(Geom_Surface) surface = BRep_Tool::Surface(face, loc);
+        // 2. 检查底层几何是否为平面
+        // 使用 BRepAdaptor_Surface 可以自动处理 Location 变换，比手动 Transform 更稳健
+        BRepAdaptor_Surface adaptor(face);
+        if (adaptor.GetType() != GeomAbs_Plane) return false;
 
-        // 3. 检查是否为平面 (Geom_Plane)
-        // Handle 就像智能指针，用 DynamicType 判断类型
-        if (surface->DynamicType() != STANDARD_TYPE(Geom_Plane))
+        // 3. 计算面的几何中心 (UV Center)
+        double umin, umax, vmin, vmax;
+        BRepTools::UVBounds(face, umin, umax, vmin, vmax);
+        double centerU = (umin + umax) * 0.5;
+        double centerV = (vmin + vmax) * 0.5;
+
+        // 4. 计算中心点的 3D 坐标和切线方向
+        gp_Pnt centerP;
+        gp_Vec d1u, d1v;
+        adaptor.D1(centerU, centerV, centerP, d1u, d1v);
+
+        // 5. 计算法线
+        gp_Vec normal = d1u.Crossed(d1v);
+        if (normal.Magnitude() < 1e-7) return false; // 防止退化
+        normal.Normalize();
+
+        // 6. 处理拓扑方向 (REVERSED)
+        // 如果面是反向的，法线必须翻转
+        if (face.Orientation() == TopAbs_REVERSED)
         {
-            // 如果不是平面（比如圆柱面），暂时不支持在上面画草图
-            return false;
+            normal.Reverse();
         }
 
-        // 4. 获取平面定义
-        Handle(Geom_Plane) plane = Handle(Geom_Plane)::DownCast(surface);
-        gp_Pln pln = plane->Pln();
+        // 7. 构建正交坐标系
+        // 以 U 方向为 X 轴 (让网格贴合纹理方向)，法线为 Z 轴
+        gp_Vec xVec = d1u.Normalized();
+        gp_Vec zVec = normal;
+        // 重新计算 Y 轴以保证完全垂直 (X cross Z = -Y, or Z cross X = Y)
+        gp_Vec yVec = zVec.Crossed(xVec).Normalized();
+        // 再次校正 X 轴 (防止 d1u 和 d1v 不完全垂直的情况)
+        xVec = yVec.Crossed(zVec).Normalized();
 
-        // 应用拓扑的位置变换 (比如实体被移动过)
-        pln.Transform(loc.Transformation());
+        // 8. 填充 gp_Ax3 (给 OCC 用的，可选)
+        outAx3 = gp_Ax3(centerP, gp_Dir(zVec), gp_Dir(xVec));
 
-        // 5. 获取坐标系 (Position 包含了 原点、法线、X轴方向)
-        outAx3 = pln.Position();
-
-        // 6. 转换为 glm::mat4 (用于渲染网格和Gizmo)
-        gp_Dir xDir = outAx3.XDirection();
-        gp_Dir yDir = outAx3.YDirection();
-        gp_Dir zDir = outAx3.Direction(); // 法线
-        gp_Pnt origin = outAx3.Location();
-
-        // 构建旋转矩阵列向量
-        glm::vec3 right = { (float)xDir.X(), (float)xDir.Y(), (float)xDir.Z() };
-        glm::vec3 up = { (float)yDir.X(), (float)yDir.Y(), (float)yDir.Z() };
-        glm::vec3 front = { (float)zDir.X(), (float)zDir.Y(), (float)zDir.Z() };
-        glm::vec3 pos = { (float)origin.X(), (float)origin.Y(), (float)origin.Z() };
+        // 9. 填充 glm::mat4 
+        // 列主序构建矩阵
+        glm::vec3 right = { (float)xVec.X(), (float)xVec.Y(), (float)xVec.Z() };
+        glm::vec3 up = { (float)yVec.X(), (float)yVec.Y(), (float)yVec.Z() };
+        glm::vec3 front = { (float)zVec.X(), (float)zVec.Y(), (float)zVec.Z() };
+        glm::vec3 pos = { (float)centerP.X(), (float)centerP.Y(), (float)centerP.Z() };
 
         outMatrix = glm::mat4(1.0f);
         outMatrix[0] = glm::vec4(right, 0.0f);
