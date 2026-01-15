@@ -16,8 +16,8 @@
 #include <TopoDS_Edge.hxx>
 #include <BRepAdaptor_Curve.hxx>
 #include <GCPnts_TangentialDeflection.hxx>
-#include <CADFeature.cpp>
 #include <BRepFilletAPI_MakeFillet.hxx>
+#include <BRepTools.hxx>
 
 namespace Rongine {
 

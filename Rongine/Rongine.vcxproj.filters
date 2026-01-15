@@ -111,6 +111,9 @@
     <ClInclude Include="src\Rongine\CAD\CADModeler.h">
       <Filter>src\Rongine\CAD</Filter>
     </ClInclude>
+    <ClInclude Include="src\Rongine\Commands\CADModifyCommand.h">
+      <Filter>src\Rongine\Commands</Filter>
+    </ClInclude>
     <ClInclude Include="src\Rongine\Commands\Command.h">
       <Filter>src\Rongine\Commands</Filter>
     </ClInclude>
@@ -1500,7 +1503,6 @@
     <ClInclude Include="vendor\stb_image\stb_image.h">
       <Filter>vendor\stb_image</Filter>
     </ClInclude>
-    <ClInclude Include="src\Rongine\Commands\CADModifyCommand.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp">
@@ -1544,6 +1546,9 @@
     </ClCompile>
     <ClCompile Include="src\Rongine\CAD\CADModeler.cpp">
       <Filter>src\Rongine\CAD</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Commands\CADModifyCommand.cpp">
+      <Filter>src\Rongine\Commands</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongine\Commands\Command.cpp">
       <Filter>src\Rongine\Commands</Filter>
@@ -1641,6 +1646,5 @@
     <ClCompile Include="vendor\stb_image\stb_image.cpp">
       <Filter>vendor\stb_image</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Commands\CADModifyCommand.cpp" />
   </ItemGroup>
 </Project>

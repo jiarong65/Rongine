@@ -1300,6 +1300,7 @@ void EditorLayer::EnterFilletMode()
 
 	m_IsFilletMode = true;
 	m_FilletRadius = 0.2f; // 初始半径
+	m_FilletEdge = m_selectedEdge;
 
 	// 2. 计算 Gizmo 位置 (放在选中边的中点)
 	auto& tc = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
@@ -1383,7 +1384,7 @@ void EditorLayer::ExitFilletMode(bool apply)
 		// 1. 创建 Undo 命令 (备份当前状态)
 		auto* cmd = new Rongine::CADModifyCommand(m_selectedEntity);
 		// B. 执行操作
-		Rongine::CADMesher::ApplyFillet(m_selectedEntity, m_selectedEdge, m_FilletRadius);
+		Rongine::CADMesher::ApplyFillet(m_selectedEntity,m_FilletEdge,m_FilletRadius);
 
 		// C. 备份新状态并提交
 		cmd->CaptureNewState();
@@ -1403,5 +1404,6 @@ void EditorLayer::ExitFilletMode(bool apply)
 	// 重置状态
 	m_IsFilletMode = false;
 	m_FilletRadius = 0.0f;
+	m_FilletEdge = -1;
 	m_selectedEdge = -1; // 倒角后 Edge ID 会变，必须重置选择
 }

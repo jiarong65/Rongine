@@ -4,6 +4,12 @@
     <Filter Include="assets">
       <UniqueIdentifier>{583885F2-44DA-AFC8-2D95-C31C19D63619}</UniqueIdentifier>
     </Filter>
+    <Filter Include="assets\Scenes">
+      <UniqueIdentifier>{8876DDD2-F436-5909-BD71-A28629F19DE5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="assets\cache">
+      <UniqueIdentifier>{7BED6CAA-6750-FC4E-10D6-3405FC17C8D1}</UniqueIdentifier>
+    </Filter>
     <Filter Include="assets\models">
       <UniqueIdentifier>{2B0B5C10-97CB-D746-6006-21C4CC851C23}</UniqueIdentifier>
     </Filter>
@@ -43,6 +49,12 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="assets\Scenes\j01.rong">
+      <Filter>assets\Scenes</Filter>
+    </None>
+    <None Include="assets\cache\3.brep">
+      <Filter>assets\cache</Filter>
+    </None>
     <None Include="assets\models\j01.rong">
       <Filter>assets\models</Filter>
     </None>

@@ -168,6 +168,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="assets\Scenes\j01.rong" />
+    <None Include="assets\cache\3.brep" />
     <None Include="assets\models\j01.rong" />
     <None Include="assets\models\mypage.stp" />
     <None Include="assets\models\t0001.step" />

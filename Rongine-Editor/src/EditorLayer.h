@@ -93,6 +93,7 @@ private:
 	// --- 倒角模式状态 ---
 	bool m_IsFilletMode = false;
 	float m_FilletRadius = 0.0f;
+	int m_FilletEdge;
 	glm::mat4 m_FilletGizmoMatrix = glm::mat4(1.0f);
 };
 
