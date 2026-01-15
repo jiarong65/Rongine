@@ -10,6 +10,7 @@
 #include "Rongine/Renderer/Renderer3D.h"
 
 #include <TopoDS_Edge.hxx>
+#include <gp_Ax3.hxx> // OCCT 的坐标系类
 
 class TopoDS_Shape;
 
@@ -38,6 +39,17 @@ namespace Rongine {
         TagComponent() = default;
         TagComponent(const TagComponent&) = default;
         TagComponent(const std::string& tag) : Tag(tag) {}
+    };
+
+    // 草图组件：标记这个实体正在被当作草图平面使用
+    struct SketchComponent
+    {
+        bool IsActive = false;
+        gp_Ax3 PlaneLocalSystem; // OCCT 的局部坐标系 (原点, 法线, X轴)
+        glm::mat4 SketchMatrix;  // 转好的 GLM 矩阵，方便渲染
+
+        SketchComponent() = default;
+        SketchComponent(const SketchComponent&) = default;
     };
 
     struct TransformComponent

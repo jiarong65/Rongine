@@ -60,7 +60,7 @@ namespace Rongine {
 
 		s_Data.TextureSlots[0] = s_Data.WhiteTexture;
 
-		// 【新增】初始化 Model 矩阵为单位矩阵，防止第一帧 Batch 渲染出错
+		// 初始化 Model 矩阵为单位矩阵，防止第一帧 Batch 渲染出错
 		s_Data.TextureShader->setMat4("u_Model", glm::mat4(1.0f));
 
 		// --- 初始化 24 个顶点的标准位置 ---
@@ -107,6 +107,21 @@ namespace Rongine {
 		for (int i = 12; i < 16; i++) s_Data.CubeVertexNormals[i] = { -1.0f, 0.0f, 0.0f };// Left
 		for (int i = 16; i < 20; i++) s_Data.CubeVertexNormals[i] = { 0.0f, 1.0f, 0.0f }; // Top
 		for (int i = 20; i < 24; i++) s_Data.CubeVertexNormals[i] = { 0.0f, -1.0f, 0.0f };// Bottom
+
+
+		//线框
+		s_Data.BatchLineVA = VertexArray::create();
+
+		s_Data.BatchLineVB = VertexBuffer::create(s_Data.MaxLineVertices * sizeof(BatchLineVertex));
+		s_Data.BatchLineVB->setLayout({
+			{ ShaderDataType::Float3, "a_Position" },
+			{ ShaderDataType::Float4, "a_Color" }
+			});
+		s_Data.BatchLineVA->addVertexBuffer(s_Data.BatchLineVB);
+
+		s_Data.BatchLineVertexBufferBase = new BatchLineVertex[s_Data.MaxLineVertices];
+
+		s_Data.BatchLineShader = Shader::create("assets/shaders/BatchLine.glsl");
 	}
 
 	void Renderer3D::shutdown()
@@ -161,7 +176,7 @@ namespace Rongine {
 	{
 		if (s_Data.CubeIndexCount == 0) return;
 
-		// 【重要】Batch 渲染时，顶点已经在 CPU 变换过了，所以 GPU 的 u_Model 必须是 Identity
+		// Batch 渲染时，顶点已经在 CPU 变换过了，所以 GPU 的 u_Model 必须是 Identity
 		s_Data.TextureShader->setMat4("u_Model", glm::mat4(1.0f));
 		s_Data.TextureShader->setInt("u_EntityID", -1);
 		s_Data.TextureShader->setInt("u_SelectedEntityID", -1);
@@ -181,6 +196,81 @@ namespace Rongine {
 		s_Data.CubeIndexCount = 0;
 		s_Data.CubeVertexBufferPtr = s_Data.CubeVertexBufferBase;
 		s_Data.TextureSlotIndex = 1;
+	}
+
+	void Renderer3D::beginLines(const PerspectiveCamera& camera)
+	{
+		s_Data.BatchLineShader->bind();
+		s_Data.BatchLineShader->setMat4("u_ViewProjection", camera.getViewProjectionMatrix());
+
+		s_Data.BatchLineVertexCount = 0;
+		s_Data.BatchLineVertexBufferPtr = s_Data.BatchLineVertexBufferBase;
+	}
+
+	void Renderer3D::endLines()
+	{
+		if (s_Data.BatchLineVertexCount > 0)
+		{
+			uint32_t dataSize = (uint32_t)((uint8_t*)s_Data.BatchLineVertexBufferPtr - (uint8_t*)s_Data.BatchLineVertexBufferBase);
+			s_Data.BatchLineVB->setData(s_Data.BatchLineVertexBufferBase, dataSize);
+
+			s_Data.BatchLineVA->bind();
+			RenderCommand::drawLines(s_Data.BatchLineVA, s_Data.BatchLineVertexCount);
+
+			s_Data.Stats.DrawCalls++;
+		}
+	}
+
+	void Renderer3D::drawLine(const glm::vec3& p0, const glm::vec3& p1, const glm::vec4& color)
+	{
+		if (s_Data.BatchLineVertexCount >= Renderer3DData::MaxLineVertices)
+			return;
+
+		s_Data.BatchLineVertexBufferPtr->Position = p0;
+		s_Data.BatchLineVertexBufferPtr->Color = color;
+		s_Data.BatchLineVertexBufferPtr++;
+
+		s_Data.BatchLineVertexBufferPtr->Position = p1;
+		s_Data.BatchLineVertexBufferPtr->Color = color;
+		s_Data.BatchLineVertexBufferPtr++;
+
+		s_Data.BatchLineVertexCount += 2;
+	}
+
+	void Renderer3D::drawGrid(const glm::mat4& transform, float size, int steps)
+	{
+		float stepSize = size / steps;
+
+		glm::vec4 greyColor = { 0.6f, 0.6f, 0.6f, 0.5f };
+		glm::vec4 redColor = { 0.8f, 0.2f, 0.2f, 1.0f };
+		glm::vec4 greenColor = { 0.2f, 0.8f, 0.2f, 1.0f };
+
+		// 1. 批量计算并写入灰色网格线
+		for (int i = -steps; i <= steps; i++)
+		{
+			// 跳过中心线 (稍后用红绿轴覆盖)
+			if (i == 0) continue;
+
+			float pos = i * stepSize;
+
+			// 本地坐标点
+			glm::vec4 p1_local = { pos, -size, 0.0f, 1.0f }; // 竖线
+			glm::vec4 p2_local = { pos,  size, 0.0f, 1.0f };
+			glm::vec4 p3_local = { -size, pos, 0.0f, 1.0f }; // 横线
+			glm::vec4 p4_local = { size, pos, 0.0f, 1.0f };
+
+			// CPU 变换到世界坐标 (BatchLine.glsl 不需要 Model 矩阵)
+			drawLine(glm::vec3(transform * p1_local), glm::vec3(transform * p2_local), greyColor);
+			drawLine(glm::vec3(transform * p3_local), glm::vec3(transform * p4_local), greyColor);
+		}
+
+		// 2. 写入坐标轴 (红 X, 绿 Y)
+		glm::vec3 origin = glm::vec3(transform * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+		glm::vec3 xAxis = glm::vec3(transform * glm::vec4(size, 0.0f, 0.0f, 1.0f));
+		glm::vec3 yAxis = glm::vec3(transform * glm::vec4(0.0f, size, 0.0f, 1.0f));
+
+		drawLine(origin, xAxis, redColor);
+		drawLine(origin, yAxis, greenColor);
 	}
 
 	// --- 基础绘制 (Axis Aligned) ---
@@ -337,4 +427,3 @@ namespace Rongine {
 	Renderer3D::Statistics Renderer3D::getStatistics() { return s_Data.Stats; }
 	void Renderer3D::resetStatistics() { memset(&s_Data.Stats, 0, sizeof(Statistics)); }
 }
-

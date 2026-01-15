@@ -67,6 +67,9 @@
     <None Include="assets\models\ymq.CATPart">
       <Filter>assets\models</Filter>
     </None>
+    <None Include="assets\shaders\BatchLine.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
     <None Include="assets\shaders\FlatColor.glsl">
       <Filter>assets\shaders</Filter>
     </None>

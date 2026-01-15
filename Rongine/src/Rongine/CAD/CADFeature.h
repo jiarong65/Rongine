@@ -1,6 +1,10 @@
 #pragma once
 #include <glm/glm.hpp>
 
+#include <TopoDS_Shape.hxx>
+#include <TopAbs_ShapeEnum.hxx>
+#include <gp_Ax3.hxx>
+
 namespace Rongine {
 
     class CADFeature
@@ -17,5 +21,10 @@ namespace Rongine {
 
         static void* MakeFilletShape(void* shapeHandle, int edgeID, float radius);
         static glm::mat4 GetEdgeTransform(void* shapeHandle, int edgeID);
+
+        static bool GetPlanarFaceCoordinateSystem(const TopoDS_Shape& shape, int faceID, gp_Ax3& outAx3, glm::mat4& outMatrix);
+
+    private:
+        static TopoDS_Shape GetSubShape(const TopoDS_Shape& shape, TopAbs_ShapeEnum type, int index);
     };
 }

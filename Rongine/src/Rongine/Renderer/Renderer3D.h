@@ -24,7 +24,13 @@ namespace Rongine {
 		static void endScene();
 		static void flush();
 
+		static void beginLines(const PerspectiveCamera& camera);
+		static void endLines();
+
 		// --- 基础绘制 ---
+		static void drawLine(const glm::vec3& p0, const glm::vec3& p1, const glm::vec4& color);
+		static void drawGrid(const glm::mat4& transform, float size, int steps);
+
 		static void drawCube(const glm::vec3& position, const glm::vec3& size, const glm::vec4& color);
 		static void drawCube(const glm::vec3& position, const glm::vec3& size, const Ref<Texture2D>& texture, const glm::vec4& tintColor = glm::vec4(1.0f));
 
@@ -63,12 +69,20 @@ namespace Rongine {
 		int FaceID;
 	};
 
+	struct BatchLineVertex
+	{
+		glm::vec3 Position;
+		glm::vec4 Color;
+	};
+
 	struct Renderer3DData
 	{
 		static const uint32_t MaxCubes = 10000;
 		static const uint32_t MaxVertices = MaxCubes * 24;
 		static const uint32_t MaxIndices = MaxCubes * 36;
 		static const uint32_t MaxTextureSlots = 32;
+		static const uint32_t MaxLines = 10000;
+		static const uint32_t MaxLineVertices = MaxLines * 2;
 
 		int SelectedEntityID;
 		int SelectedFaceID;
@@ -83,9 +97,17 @@ namespace Rongine {
 		Ref<Shader> LineShader;
 		Ref<Texture2D> WhiteTexture;
 
+		Ref<VertexArray> BatchLineVA;
+		Ref<VertexBuffer> BatchLineVB;
+		Ref<Shader> BatchLineShader;
+
 		uint32_t CubeIndexCount = 0;
 		CubeVertex* CubeVertexBufferBase = nullptr;
 		CubeVertex* CubeVertexBufferPtr = nullptr;
+
+		uint32_t BatchLineVertexCount = 0;
+		BatchLineVertex* BatchLineVertexBufferBase = nullptr;
+		BatchLineVertex* BatchLineVertexBufferPtr = nullptr;
 
 		std::array<Ref<Texture2D>, MaxTextureSlots> TextureSlots;
 		uint32_t TextureSlotIndex = 1;

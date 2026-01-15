@@ -156,7 +156,16 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 			}
 			Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle);
 		}
-
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//线框渲染
+		Rongine::Renderer3D::beginLines(m_cameraContorller.getCamera());
+		if (m_IsSketchMode && m_SketchPlaneEntity)
+		{
+			auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
+			Rongine::Renderer3D::drawGrid(sc.SketchMatrix, 10.0f, 10);
+		}
+		Rongine::Renderer3D::endLines(); 
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		m_framebuffer->unbind();
 	}
 
@@ -467,15 +476,48 @@ void EditorLayer::onImGuiRender()
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 	ImGui::Begin("Viewport");
 
+	// ===================== 工具栏区域 =====================
+
+	ImGui::SetCursorPos(ImVec2(4, 4)); // 稍微向内偏移一点
+
+	// 绘制按钮
+	if (ImGui::Button("Box")) CreatePrimitive(Rongine::CADGeometryComponent::GeometryType::Cube);
+	ImGui::SameLine();
+	if (ImGui::Button("Sphere")) CreatePrimitive(Rongine::CADGeometryComponent::GeometryType::Sphere);
+	ImGui::SameLine();
+	if (ImGui::Button("Cylinder")) CreatePrimitive(Rongine::CADGeometryComponent::GeometryType::Cylinder);
+
+	ImGui::SameLine();
+	ImGui::Text("|");
+
+	ImGui::SameLine();
+	if (ImGui::Button("Extrude")) EnterExtrudeMode();
+	ImGui::SameLine();
+	if (ImGui::Button("Fillet")) EnterFilletMode();
+	ImGui::SameLine();
+	if (ImGui::Button("Sketch")) EnterSketchMode();
+
+	// ============================================================
+
+	// 计算工具栏的高度，以便把图片往下推
+	// GetFrameHeightWithSpacing() 获取当前样式下一行的高度
+	float toolbarHeight = ImGui::GetFrameHeightWithSpacing() + 4.0f; // +4 是上面的 SetCursorPos 偏移
+
 	////////////////////////////////////////////////////////////////////////////////////////////
-	// 计算视口边界并存入 m_viewportBounds
+	// 计算视口边界 (需要考虑工具栏的高度偏移！)
 	auto viewportMinRegion = ImGui::GetWindowContentRegionMin();
 	auto viewportMaxRegion = ImGui::GetWindowContentRegionMax();
 	auto viewportOffset = ImGui::GetWindowPos();
 
-	// 计算绝对屏幕坐标
-	m_viewportBounds[0] = { viewportMinRegion.x + viewportOffset.x, viewportMinRegion.y + viewportOffset.y };
-	m_viewportBounds[1] = { viewportMaxRegion.x + viewportOffset.x, viewportMaxRegion.y + viewportOffset.y };
+	// viewportBounds[0] 的 Y 轴需要加上工具栏高度，否则鼠标拾取会错位
+	m_viewportBounds[0] = {
+		viewportMinRegion.x + viewportOffset.x,
+		viewportMinRegion.y + viewportOffset.y + toolbarHeight
+	};
+	m_viewportBounds[1] = {
+		viewportMaxRegion.x + viewportOffset.x,
+		viewportMaxRegion.y + viewportOffset.y
+	};
 	////////////////////////////////////////////////////////////////////////////////////////////
 
 	// 输入状态管理
@@ -483,13 +525,22 @@ void EditorLayer::onImGuiRender()
 	m_viewportHovered = ImGui::IsWindowHovered();
 	Rongine::Application::get().getImGuiLayer()->blockEvents(!m_viewportFocused && !m_viewportHovered);
 
-	// 获取 Viewport 大小
+	// 获取 Viewport 大小 (减去工具栏高度)
 	ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-	m_viewportSize = { viewportPanelSize.x, viewportPanelSize.y };
+
+	ImGui::SetCursorPos(ImVec2(0, toolbarHeight));
+
+	// 更新视口大小变量 (减去工具栏高度)
+	m_viewportSize = { viewportPanelSize.x, viewportPanelSize.y - toolbarHeight };
+
+	// 防止最小化时出现负数导致崩溃
+	if (m_viewportSize.x < 0) m_viewportSize.x = 1;
+	if (m_viewportSize.y < 0) m_viewportSize.y = 1;
 
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// 绘制 FBO 纹理
 	uint32_t textureID = m_framebuffer->getColorAttachmentRendererID();
+	// 使用计算后的大小
 	ImGui::Image((void*)(uintptr_t)textureID, ImVec2{ m_viewportSize.x, m_viewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
@@ -963,7 +1014,7 @@ void EditorLayer::ImportSTEP()
 
 			auto& meshComp = cadEntity.AddComponent<Rongine::MeshComponent>(cadMeshVA, verticesData);
 
-			// ==================== 生成边框线】 ====================
+			// ==================== 生成边框线 ====================
 			std::vector<Rongine::LineVertex> lineVerts;
 			auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(shape, lineVerts, meshComp.m_IDToEdgeMap, 0.1f);
 			meshComp.EdgeVA = edgeVA;
@@ -1406,4 +1457,76 @@ void EditorLayer::ExitFilletMode(bool apply)
 	m_FilletRadius = 0.0f;
 	m_FilletEdge = -1;
 	m_selectedEdge = -1; // 倒角后 Edge ID 会变，必须重置选择
+}
+
+// EditorLayer.cpp
+
+void EditorLayer::EnterSketchMode()
+{
+	if (!m_selectedEntity || m_selectedFace == -1)
+	{
+		RONG_CLIENT_WARN("Please select a Planar Face to start Sketching!");
+		return;
+	}
+
+	// 检查 CAD 组件
+	if (!m_selectedEntity.HasComponent<Rongine::CADGeometryComponent>()) return;
+	auto& cad = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
+
+	// 计算面坐标系
+	gp_Ax3 sketchAx3;
+	glm::mat4 sketchMat;
+
+	if (Rongine::CADFeature::GetPlanarFaceCoordinateSystem(*(TopoDS_Shape*)cad.ShapeHandle, m_selectedFace, sketchAx3, sketchMat))
+	{
+		m_IsSketchMode = true;
+		m_SketchPlaneEntity = m_selectedEntity;
+
+		auto& sc = m_SketchPlaneEntity.HasComponent<Rongine::SketchComponent>() ?
+			m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>() :
+			m_SketchPlaneEntity.AddComponent<Rongine::SketchComponent>();
+
+		sc.IsActive = true;
+		sc.PlaneLocalSystem = sketchAx3;
+		sc.SketchMatrix = sketchMat;
+
+		glm::vec3 center = glm::vec3(sketchMat[3]); // 草图原点 (Target)
+		glm::vec3 normal = glm::vec3(sketchMat[2]); // 草图法线 (Z轴)
+
+		// 基于 AABB 包围盒
+		float viewDistance = 5.0f; // 默认备用距离
+
+		if (m_selectedEntity.HasComponent<Rongine::MeshComponent>())
+		{
+			auto& mesh = m_selectedEntity.GetComponent<Rongine::MeshComponent>();
+
+			// 获取包围盒尺寸
+			glm::vec3 size = mesh.BoundingBox.GetSize();
+
+			// 取长宽高中的最大值作为参考维度
+			float maxDim = std::max({ size.x, size.y, size.z });
+
+			// 根据 FOV 计算能容纳物体的距离
+			// 公式: distance = (size / 2) / tan(fov / 2)
+			float fovRad = glm::radians(m_cameraContorller.getFOV());
+
+			// 防止除以 0 
+			if (fovRad > 0.0f)
+			{
+				viewDistance = (maxDim * 1.0f) / std::tan(fovRad / 2.0f);
+			}
+
+			// 限制最小距离
+			viewDistance = std::max(viewDistance, 1.0f);
+		}
+
+		glm::vec3 camPos = center + normal * viewDistance;
+		m_cameraContorller.lookAt(camPos, center);
+
+		RONG_CLIENT_INFO("Entered Sketch Mode! Camera aligned to face.");
+	}
+	else
+	{
+		RONG_CLIENT_ERROR("Selected face is not planar! Cannot sketch on curved surfaces yet.");
+	}
 }

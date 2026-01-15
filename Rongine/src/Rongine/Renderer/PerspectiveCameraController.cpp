@@ -98,6 +98,18 @@ namespace Rongine {
 		updateView(); 
 	}
 
+	void PerspectiveCameraController::lookAt(const glm::vec3& cameraPosition, const glm::vec3& targetPoint)
+	{
+		m_focalPoint = targetPoint;
+		m_distance = glm::distance(cameraPosition, targetPoint);
+
+		glm::vec3 direction = glm::normalize(targetPoint - cameraPosition);
+		m_pitch = glm::asin(direction.y);
+		m_yaw = glm::atan(direction.x, -direction.z);
+
+		updateView();
+	}
+
 	bool PerspectiveCameraController::onMouseScrolled(MouseScrolledEvent& e)
 	{
 		float delta = e.getYOffset() * 0.1f;

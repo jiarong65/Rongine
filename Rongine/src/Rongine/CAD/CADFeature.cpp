@@ -3,7 +3,6 @@
 
 // --- OCCT 头文件 ---
 #include <TopoDS.hxx>
-#include <TopoDS_Shape.hxx>
 #include <TopoDS_Face.hxx>
 #include <TopExp_Explorer.hxx>
 #include <BRepPrimAPI_MakePrism.hxx>
@@ -13,6 +12,7 @@
 #include <gp_Dir.hxx>
 #include <BRep_Tool.hxx>
 #include <Geom_Surface.hxx>
+#include <Geom_Plane.hxx>
 #include <GeomLProp_SLProps.hxx>
 #include <BRepTools.hxx>
 #include <GeomAPI_ProjectPointOnSurf.hxx>
@@ -20,6 +20,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <BRepFilletAPI_MakeFillet.hxx>
+
 
 #include "Rongine/Core/Log.h"
 
@@ -236,5 +237,71 @@ namespace Rongine {
 
         // 3. 构建平移矩阵
         return glm::translate(glm::mat4(1.0f), glm::vec3((float)center.X(), (float)center.Y(), (float)center.Z()));
+    }
+
+    bool CADFeature::GetPlanarFaceCoordinateSystem(const TopoDS_Shape& shape, int faceID, gp_Ax3& outAx3, glm::mat4& outMatrix)
+    {
+        // 1. 获取面
+        TopoDS_Face face = TopoDS::Face(CADFeature::GetSubShape(shape, TopAbs_FACE, faceID));
+        if (face.IsNull()) return false;
+
+        // 2. 获取底层几何表面
+        TopLoc_Location loc;
+        Handle(Geom_Surface) surface = BRep_Tool::Surface(face, loc);
+
+        // 3. 检查是否为平面 (Geom_Plane)
+        // Handle 就像智能指针，用 DynamicType 判断类型
+        if (surface->DynamicType() != STANDARD_TYPE(Geom_Plane))
+        {
+            // 如果不是平面（比如圆柱面），暂时不支持在上面画草图
+            return false;
+        }
+
+        // 4. 获取平面定义
+        Handle(Geom_Plane) plane = Handle(Geom_Plane)::DownCast(surface);
+        gp_Pln pln = plane->Pln();
+
+        // 应用拓扑的位置变换 (比如实体被移动过)
+        pln.Transform(loc.Transformation());
+
+        // 5. 获取坐标系 (Position 包含了 原点、法线、X轴方向)
+        outAx3 = pln.Position();
+
+        // 6. 转换为 glm::mat4 (用于渲染网格和Gizmo)
+        gp_Dir xDir = outAx3.XDirection();
+        gp_Dir yDir = outAx3.YDirection();
+        gp_Dir zDir = outAx3.Direction(); // 法线
+        gp_Pnt origin = outAx3.Location();
+
+        // 构建旋转矩阵列向量
+        glm::vec3 right = { (float)xDir.X(), (float)xDir.Y(), (float)xDir.Z() };
+        glm::vec3 up = { (float)yDir.X(), (float)yDir.Y(), (float)yDir.Z() };
+        glm::vec3 front = { (float)zDir.X(), (float)zDir.Y(), (float)zDir.Z() };
+        glm::vec3 pos = { (float)origin.X(), (float)origin.Y(), (float)origin.Z() };
+
+        outMatrix = glm::mat4(1.0f);
+        outMatrix[0] = glm::vec4(right, 0.0f);
+        outMatrix[1] = glm::vec4(up, 0.0f);
+        outMatrix[2] = glm::vec4(front, 0.0f);
+        outMatrix[3] = glm::vec4(pos, 1.0f);
+
+        return true;
+    }
+
+
+    TopoDS_Shape CADFeature::GetSubShape(const TopoDS_Shape& shape, TopAbs_ShapeEnum type, int index)
+    {
+        TopExp_Explorer explorer(shape, type);
+        int current = 0;
+        while (explorer.More())
+        {
+            if (current == index)
+            {
+                return explorer.Current();
+            }
+            explorer.Next();
+            current++;
+        }
+        return TopoDS_Shape(); // 返回空形状
     }
 }

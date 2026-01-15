@@ -30,11 +30,15 @@ private:
 	void SaveSceneAs();
 	void OpenScene();
 	void OnBooleanOperation(Rongine::CADBoolean::Operation op);
+
 	void EnterExtrudeMode();
 	void ExitExtrudeMode(bool apply);   // apply=true(融合), false(取消)
 
 	void EnterFilletMode();
 	void ExitFilletMode(bool apply);
+
+	void EnterSketchMode();
+	void ExitSketchMode();
 
 private:
 	Rongine::Ref<Rongine::Shader> m_shader;
@@ -95,5 +99,9 @@ private:
 	float m_FilletRadius = 0.0f;
 	int m_FilletEdge;
 	glm::mat4 m_FilletGizmoMatrix = glm::mat4(1.0f);
+
+	// --- 草图模式状态 ---
+	bool m_IsSketchMode = false;
+	Rongine::Entity m_SketchPlaneEntity;
 };
 

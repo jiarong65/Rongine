@@ -26,6 +26,9 @@ namespace Rongine {
 
 		void setFocus(const glm::vec3& focalPoint, float distance);
 
+		void lookAt(const glm::vec3& cameraPosition, const glm::vec3& targetPoint);
+		float getFOV() const { return m_FOV; }
+
 	private:
 		bool onMouseScrolled(MouseScrolledEvent& e);
 		bool onWindowResized(WindowResizeEvent& e);
