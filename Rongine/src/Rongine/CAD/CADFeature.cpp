@@ -23,6 +23,8 @@
 
 
 #include "Rongine/Core/Log.h"
+#include <BRepBuilderAPI_MakePolygon.hxx>
+#include <BRepBuilderAPI_MakeFace.hxx>
 
 namespace Rongine {
 
@@ -299,6 +301,34 @@ namespace Rongine {
         outMatrix[3] = glm::vec4(pos, 1.0f);
 
         return true;
+    }
+
+    void* CADFeature::BuildFaceFromSketch(const std::vector<glm::vec3>& points)
+    {
+        if (points.size() < 3) return nullptr;
+
+        try
+        {
+            BRepBuilderAPI_MakePolygon mkPoly;
+
+            for (const auto& p : points)
+            {
+                mkPoly.Add(gp_Pnt(p.x, p.y, p.z));
+            }
+            mkPoly.Close(); // 闭合
+
+            if (!mkPoly.IsDone()) return nullptr;
+
+            BRepBuilderAPI_MakeFace mkFace(mkPoly.Wire(), true);
+
+            if (mkFace.IsDone())
+            {
+                return new TopoDS_Shape(mkFace.Shape());
+            }
+        }
+        catch (...) { RONG_CORE_ERROR("Failed to build face."); }
+
+        return nullptr;
     }
 
 

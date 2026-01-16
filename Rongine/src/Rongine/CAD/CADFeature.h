@@ -24,6 +24,8 @@ namespace Rongine {
 
         static bool GetPlanarFaceCoordinateSystem(const TopoDS_Shape& shape, int faceID, gp_Ax3& outAx3, glm::mat4& outMatrix);
 
+        static void* BuildFaceFromSketch(const std::vector<glm::vec3>& points);
+
     private:
         static TopoDS_Shape GetSubShape(const TopoDS_Shape& shape, TopAbs_ShapeEnum type, int index);
     };

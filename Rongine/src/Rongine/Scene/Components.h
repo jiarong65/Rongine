@@ -16,11 +16,17 @@ class TopoDS_Shape;
 
 namespace Rongine {
 
-    // 线框渲染用的顶点
+    struct SketchLine
+    {
+        glm::vec3 P0;
+        glm::vec3 P1;
+        glm::vec4 Color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    };
+
     struct LineVertex
     {
         glm::vec3 Position;
-        int EntityID; // 这里我们要存 EdgeID，复用 EntityID 这个名字传入 Shader
+        int EntityID; // 存 EdgeID，复用 EntityID 这个名字传入 Shader
     };
 
     struct IDComponent
@@ -41,12 +47,13 @@ namespace Rongine {
         TagComponent(const std::string& tag) : Tag(tag) {}
     };
 
-    // 草图组件：标记这个实体正在被当作草图平面使用
     struct SketchComponent
     {
         bool IsActive = false;
         gp_Ax3 PlaneLocalSystem; // OCCT 的局部坐标系 (原点, 法线, X轴)
         glm::mat4 SketchMatrix;  // 转好的 GLM 矩阵，方便渲染
+
+        std::vector<SketchLine> Lines;
 
         SketchComponent() = default;
         SketchComponent(const SketchComponent&) = default;

@@ -14,7 +14,7 @@ uniform mat4 u_ViewProjection;
 uniform mat4 u_Model;
 
 out vec3 v_Position;
-flat out vec3 v_Normal;
+out vec3 v_Normal;
 out vec4 v_Color;
 out vec2 v_TexCoord;
 out float v_TexIndex;
@@ -27,7 +27,7 @@ void main()
     vec4 worldPos = u_Model * vec4(a_Position, 1.0);
     v_Position = worldPos.xyz; 
     
-    v_Normal = mat3(u_Model) * a_Normal; 
+    v_Normal = mat3(transpose(inverse(u_Model))) * a_Normal;
     v_Color = a_Color;
     v_TexCoord = a_TexCoord;
     v_TexIndex = a_TexIndex;
@@ -47,7 +47,7 @@ layout(location = 0) out vec4 color;
 layout(location = 1) out ivec4 idOutput;    // 输出到 ID 纹理 (Attachment 1)
 
 in vec3 v_Position;
-flat in vec3 v_Normal;
+in vec3 v_Normal;
 in vec4 v_Color;
 in vec2 v_TexCoord;
 in float v_TexIndex;

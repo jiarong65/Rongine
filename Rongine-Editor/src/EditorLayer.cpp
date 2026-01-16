@@ -129,6 +129,117 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		{
 			m_IsCursorOnPlane = false;
 		}
+		///////////////////////////////////////////////////////////////////////////////////////////////
+		//吸附逻辑
+		if (m_IsCursorOnPlane)
+		{
+			m_IsSnapped = false;
+
+			float minD = 10000.0f;
+			glm::vec3 snapTarget = m_SketchCursorPos;
+
+			for (const auto& line : sc.Lines)
+			{
+				float d1 = glm::distance(m_SketchCursorPos, line.P0);
+				float d2 = glm::distance(m_SketchCursorPos, line.P1);
+
+				if (d1 < m_SnapDistance && d1 < minD) { minD = d1; snapTarget = line.P0; }
+				if (d2 < m_SnapDistance && d2 < minD) { minD = d2; snapTarget = line.P1; }
+			}
+
+			if (m_IsDrawing)
+			{
+				float dStart = glm::distance(m_SketchCursorPos, m_DrawStartPoint);
+				if (dStart < m_SnapDistance && dStart < minD) { minD = dStart; snapTarget = m_DrawStartPoint; }
+			}
+
+			if (minD < m_SnapDistance)
+			{
+				m_SketchCursorPos = snapTarget;
+				m_IsSnapped = true;
+			}
+		}
+	}
+	else 
+	{
+		m_IsCursorOnPlane = false;
+	}
+	////////////////////////////////////////////////////////////////////////////////////////////
+	// 草图绘制逻辑
+	if (m_IsSketchMode && m_IsCursorOnPlane && m_CurrentTool == SketchToolType::Line)
+	{
+		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		{
+			if (!m_IsDrawing)
+			{
+				// --- 开始新的一笔 ---
+				m_IsDrawing = true;
+				m_DrawStartPoint = m_SketchCursorPos;
+
+				// 清空并记录第一个点
+				m_CurrentChainPoints.clear();
+				m_CurrentChainPoints.push_back(m_DrawStartPoint);
+			}
+			else
+			{
+				// 检查是否闭合 (点击的点 == 起始点)
+				// 只有当至少画了3个点才允许闭合
+				bool isClosing = false;
+				if (m_CurrentChainPoints.size() >= 2)
+				{
+					// 如果吸附到了最开始的那个点
+					if (glm::distance(m_SketchCursorPos, m_CurrentChainPoints[0]) < m_SnapDistance)
+					{
+						isClosing = true;
+					}
+				}
+
+				// 添加线段逻辑
+				auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
+				sc.Lines.push_back({ m_DrawStartPoint, m_SketchCursorPos });
+				m_CurrentChainPoints.push_back(m_SketchCursorPos);
+
+				if (isClosing)
+				{
+					RONG_CLIENT_INFO("Loop Closed! Generating Face...");
+
+					// 生成 Face
+					void* newFaceShape = Rongine::CADFeature::BuildFaceFromSketch(m_CurrentChainPoints);
+
+					if (newFaceShape)
+					{
+						auto newEntity = m_activeScene->createEntity("Sketch Face");
+
+						auto& cad = newEntity.AddComponent<Rongine::CADGeometryComponent>();
+						cad.ShapeHandle = newFaceShape;
+						cad.Type = Rongine::CADGeometryComponent::GeometryType::Imported;
+
+						newEntity.AddComponent<Rongine::MeshComponent>();
+
+						Rongine::CADMesher::RebuildMesh(newEntity);
+
+						m_selectedEntity = newEntity;
+						m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
+
+						m_IsDrawing = false;
+						m_CurrentChainPoints.clear();
+
+						sc.Lines.clear();
+					}
+				}
+				else
+				{
+					m_DrawStartPoint = m_SketchCursorPos;
+				}
+			}
+		}
+
+		// 结束连续绘制
+		if (m_IsDrawing && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+		{
+			m_IsDrawing = false;
+			RONG_CLIENT_INFO("Finished Chain.");
+		}
 	}
 	////////////////////////////////////////////////////////////////////////////////////////////
 	//  开始渲染
@@ -180,11 +291,27 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//线框渲染
 		Rongine::Renderer3D::beginLines(m_cameraContorller.getCamera());
+		auto sketchView = m_activeScene->getAllEntitiesWith<Rongine::SketchComponent>();
+		for (auto entity : sketchView)
+		{
+			auto& sc = sketchView.get<Rongine::SketchComponent>(entity);
+			for (const auto& line : sc.Lines)
+			{
+				Rongine::Renderer3D::drawLine(line.P0, line.P1, line.Color);
+			}
+		}
 		if (m_IsSketchMode && m_SketchPlaneEntity)
 		{
 			auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
 			Rongine::Renderer3D::drawGrid(sc.SketchMatrix, 10.0f, 25);
 
+			//草图交互绘制
+			if (m_IsDrawing && m_CurrentTool == SketchToolType::Line)
+			{
+				Rongine::Renderer3D::drawLine(m_DrawStartPoint, m_SketchCursorPos, { 1.0f, 1.0f, 0.0f, 1.0f });
+			}
+
+			//草图光标
 			if (m_IsCursorOnPlane)
 			{
 				// 获取草图平面的局部坐标轴
@@ -196,9 +323,9 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 				float dist = glm::distance(camPos, m_SketchCursorPos);
 				float s = dist* 0.01f; // 光标大小
 				glm::vec3 p = m_SketchCursorPos;
-				glm::vec4 cursorColor = { 0.0f, 1.0f, 0.0f, 1.0f }; 
 
-				// 画沿着平面 Right 和 Up 方向的线，不再画世界坐标轴
+				glm::vec4 cursorColor = m_IsSnapped ? glm::vec4(1, 0, 0, 1) : glm::vec4(0, 1, 0, 1);
+
 				Rongine::Renderer3D::drawLine(p - planeRight * s, p + planeRight * s, cursorColor);
 				Rongine::Renderer3D::drawLine(p - planeUp * s, p + planeUp * s, cursorColor);
 			}
@@ -548,7 +675,13 @@ void EditorLayer::onImGuiRender()
 			ImGui::Text("SKETCHING ON FACE");
 
 			// 一排小按钮
-			if (ImGui::Button("L")) { /* Line */ } ImGui::SameLine();
+			if (ImGui::Button("L")) {
+				m_CurrentTool = m_CurrentTool==SketchToolType::Line? SketchToolType::None : SketchToolType::Line;
+				
+				m_IsDrawing = false; 
+				RONG_CLIENT_INFO("Selected Tool: LINE");
+			}
+			ImGui::SameLine();
 			if (ImGui::Button("R")) { /* Rect */ } ImGui::SameLine();
 			if (ImGui::Button("C")) { /* Circle */ }
 
@@ -1344,61 +1477,97 @@ void EditorLayer::ExitExtrudeMode(bool apply)
 {
 	if (!m_IsExtrudeMode) return;
 
-	if (apply && std::abs(m_ExtrudeHeight) > 0.001f)
-	{
-		auto& cadComp = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
-
-		auto* cmd = new Rongine::CADModifyCommand(m_selectedEntity);
-
-		void* prismPtr = Rongine::CADFeature::ExtrudeFace(cadComp.ShapeHandle, m_selectedFace, m_ExtrudeHeight);
-
-		if (prismPtr)
-		{
-			TopoDS_Shape* baseShape = (TopoDS_Shape*)cadComp.ShapeHandle;
-			TopoDS_Shape* toolShape = (TopoDS_Shape*)prismPtr;
-
-			// 2. 布尔运算 (融合)
-			BRepAlgoAPI_Fuse fuseAlgo(*baseShape, *toolShape);
-			fuseAlgo.Build();
-
-			if (fuseAlgo.IsDone())
-			{
-				// 3. 更新组件数据 
-				if (cadComp.ShapeHandle) delete (TopoDS_Shape*)cadComp.ShapeHandle;
-
-				// 应用新 Shape
-				cadComp.ShapeHandle = new TopoDS_Shape(fuseAlgo.Shape());
-				cadComp.Type = Rongine::CADGeometryComponent::GeometryType::Imported;
-
-				// 4. 重建网格
-				Rongine::CADMesher::RebuildMesh(m_selectedEntity);
-
-				cmd->CaptureNewState();
-				Rongine::CommandHistory::Push(cmd);
-
-				RONG_CLIENT_INFO("Extrude Applied.");
-			}
-			else
-			{
-				delete cmd; // 运算失败，撤销该命令
-			}
-			delete (TopoDS_Shape*)prismPtr; // 清理临时拉伸体
-		}
-		else
-		{
-			delete cmd; // 没生成拉伸体，清理命令
-		}
-	}
-
+	// 清理预览实体
 	if (m_PreviewEntity)
 	{
 		m_activeScene->destroyEntity(m_PreviewEntity);
 		m_PreviewEntity = {};
 	}
 
+	if (apply && std::abs(m_ExtrudeHeight) > 0.001f)
+	{
+		auto& cadComp = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
+		auto* cmd = new Rongine::CADModifyCommand(m_selectedEntity);
+
+		// 1. 生成拉伸体 (Prism)
+		void* prismPtr = Rongine::CADFeature::ExtrudeFace(cadComp.ShapeHandle, m_selectedFace, m_ExtrudeHeight);
+
+		if (prismPtr)
+		{
+			TopoDS_Shape* baseShape = (TopoDS_Shape*)cadComp.ShapeHandle;
+			TopoDS_Shape* toolShape = (TopoDS_Shape*)prismPtr;
+			TopoDS_Shape resultShape;
+			bool opSuccess = false;
+
+			try
+			{
+				// 判断：是融合还是替换
+				// 如果基底是实体 (Solid/CompSolid)，则尝试融合
+				if (baseShape->ShapeType() == TopAbs_SOLID || baseShape->ShapeType() == TopAbs_COMPSOLID)
+				{
+					// --- 情况 A: 实体 + 实体 -> 布尔融合 ---
+					BRepAlgoAPI_Fuse fuseAlgo(*baseShape, *toolShape);
+					fuseAlgo.Build();
+
+					if (fuseAlgo.IsDone())
+					{
+						resultShape = fuseAlgo.Shape();
+						opSuccess = true;
+						RONG_CLIENT_INFO("Boolean Fuse Success.");
+					}
+					else
+					{
+						RONG_CLIENT_WARN("Boolean Fuse Failed! Falling back to raw extrusion.");
+					}
+				}
+
+				// 如果基底只是面 (Sketch Face) 或者融合失败 
+				// 直接使用拉伸出来的实体作为结果 (替换旧的面)
+				if (!opSuccess)
+				{
+					resultShape = *toolShape; // 直接拷贝拉伸体
+					opSuccess = true;
+					RONG_CLIENT_INFO("Converted Face to Solid.");
+				}
+
+				// 3. 应用结果
+				if (opSuccess)
+				{
+					// 删除旧形状
+					if (cadComp.ShapeHandle) delete (TopoDS_Shape*)cadComp.ShapeHandle;
+
+					// 保存新形状 (堆上的副本)
+					cadComp.ShapeHandle = new TopoDS_Shape(resultShape);
+					cadComp.Type = Rongine::CADGeometryComponent::GeometryType::Imported;
+
+					// 4. 重建网格
+					Rongine::CADMesher::RebuildMesh(m_selectedEntity);
+
+					// 记录命令
+					cmd->CaptureNewState();
+					Rongine::CommandHistory::Push(cmd);
+				}
+				else
+				{
+					delete cmd;
+				}
+			}
+			catch (Standard_Failure& e)
+			{
+				RONG_CLIENT_ERROR("OCCT Error: {0}", e.GetMessageString());
+				delete cmd;
+			}
+
+			delete (TopoDS_Shape*)prismPtr; // 清理工具体
+		}
+		else
+		{
+			delete cmd;
+		}
+	}
+
 	m_IsExtrudeMode = false;
 	m_ExtrudeHeight = 0.0f;
-
 	m_selectedFace = -1;
 }
 
@@ -1599,6 +1768,8 @@ void EditorLayer::ExitSketchMode()
 {
 	m_IsSketchMode = false;
 	m_SketchPlaneEntity = {};
+
+	m_CurrentTool = SketchToolType::None;
 
 	RONG_CLIENT_INFO("Exited Sketch Mode.");
 }

@@ -12,6 +12,14 @@
 
 #include <glm/glm.hpp>
 
+enum class SketchToolType
+{
+	None = 0,
+	Line,
+	Rectangle,
+	Circle
+};
+
 class EditorLayer :public Rongine::Layer
 {
 public:
@@ -105,5 +113,15 @@ private:
 	Rongine::Entity m_SketchPlaneEntity;
 	glm::vec3 m_SketchCursorPos; 
 	bool m_IsCursorOnPlane = false; 
+
+	// --- 草图工具状态 ---
+	SketchToolType m_CurrentTool = SketchToolType::None; 
+	bool m_IsDrawing = false;      
+	glm::vec3 m_DrawStartPoint;  
+	// --- 吸附状态 ---
+	float m_SnapDistance = 0.2f; 
+	bool m_IsSnapped = false;  
+	// --- 连续绘制顶点序列 ---
+	std::vector<glm::vec3> m_CurrentChainPoints;
 };
 
