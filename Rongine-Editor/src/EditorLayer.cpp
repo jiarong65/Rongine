@@ -24,6 +24,7 @@
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
+#include <BRepAlgoAPI_Cut.hxx>
 
 // --- Timer 类 (性能分析用) ---
 template<typename Fn>
@@ -224,6 +225,8 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 
 							Rongine::CADMesher::RebuildMesh(newEntity);
 
+							cad.SourceEntity = (entt::entity)m_SketchPlaneEntity;
+
 							m_selectedEntity = newEntity;
 							m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
 
@@ -296,6 +299,8 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 						m_selectedEntity = newEntity;
 						m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
 
+						cad.SourceEntity = (entt::entity)m_SketchPlaneEntity;
+
 						sc.Lines.clear(); 
 					}
 				}
@@ -349,6 +354,7 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 
 							newEntity.AddComponent<Rongine::MeshComponent>();
 							Rongine::CADMesher::RebuildMesh(newEntity);
+							cad.SourceEntity = (entt::entity)m_SketchPlaneEntity;
 
 							m_selectedEntity = newEntity;
 							m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
@@ -468,6 +474,8 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 					Rongine::Renderer3D::drawLine(p1, p2, color);
 					Rongine::Renderer3D::drawLine(p2, p3, color);
 					Rongine::Renderer3D::drawLine(p3, p0, color);
+
+					break;
 				}
 				case SketchToolType::Circle: {
 					auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
@@ -1668,7 +1676,7 @@ void EditorLayer::ExitExtrudeMode(bool apply)
 {
 	if (!m_IsExtrudeMode) return;
 
-	// 清理预览实体
+	// 清理预览
 	if (m_PreviewEntity)
 	{
 		m_activeScene->destroyEntity(m_PreviewEntity);
@@ -1677,83 +1685,129 @@ void EditorLayer::ExitExtrudeMode(bool apply)
 
 	if (apply && std::abs(m_ExtrudeHeight) > 0.001f)
 	{
-		auto& cadComp = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
-		auto* cmd = new Rongine::CADModifyCommand(m_selectedEntity);
+		auto& currentCad = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
 
-		// 1. 生成拉伸体 (Prism)
-		void* prismPtr = Rongine::CADFeature::ExtrudeFace(cadComp.ShapeHandle, m_selectedFace, m_ExtrudeHeight);
+		// 1. 生成拉伸体 (Tool Shape - 这是一个实体 Solid)
+		void* toolShapePtr = Rongine::CADFeature::ExtrudeFace(currentCad.ShapeHandle, m_selectedFace, m_ExtrudeHeight);
 
-		if (prismPtr)
+		if (toolShapePtr)
 		{
-			TopoDS_Shape* baseShape = (TopoDS_Shape*)cadComp.ShapeHandle;
-			TopoDS_Shape* toolShape = (TopoDS_Shape*)prismPtr;
-			TopoDS_Shape resultShape;
+			TopoDS_Shape* toolShape = (TopoDS_Shape*)toolShapePtr;
 			bool opSuccess = false;
 
 			try
 			{
-				// 判断：是融合还是替换
-				// 如果基底是实体 (Solid/CompSolid)，则尝试融合
-				if (baseShape->ShapeType() == TopAbs_SOLID || baseShape->ShapeType() == TopAbs_COMPSOLID)
+				// ===============================================================
+				// 阶段 1：尝试与父物体进行布尔交互 (Cut / Fuse)
+				// ===============================================================
+				if (currentCad.SourceEntity != entt::null)
 				{
-					// --- 情况 A: 实体 + 实体 -> 布尔融合 ---
-					BRepAlgoAPI_Fuse fuseAlgo(*baseShape, *toolShape);
-					fuseAlgo.Build();
+					Rongine::Entity parentEntity = { currentCad.SourceEntity, m_activeScene.get() };
 
-					if (fuseAlgo.IsDone())
+					// 只有当父物体有效，且父物体本身是实体(Solid)时，布尔运算才有意义
+					if (parentEntity && parentEntity.HasComponent<Rongine::CADGeometryComponent>())
 					{
-						resultShape = fuseAlgo.Shape();
-						opSuccess = true;
-						RONG_CLIENT_INFO("Boolean Fuse Success.");
-					}
-					else
-					{
-						RONG_CLIENT_WARN("Boolean Fuse Failed! Falling back to raw extrusion.");
+						auto& parentCad = parentEntity.GetComponent<Rongine::CADGeometryComponent>();
+						TopoDS_Shape* baseShape = (TopoDS_Shape*)parentCad.ShapeHandle;
+
+						// 只有父物体是【实体】时，我们才尝试去切它或融合它
+						// 如果父物体只是个【面】(比如空地)，我们直接跳过这一步，进入阶段 2
+						if (baseShape && (baseShape->ShapeType() == TopAbs_SOLID || baseShape->ShapeType() == TopAbs_COMPSOLID))
+						{
+							// --- A. 坐标逆变换 (World -> Local) ---
+							auto& parentTrans = parentEntity.GetComponent<Rongine::TransformComponent>();
+							glm::mat4 parentModelMatrix = parentTrans.GetTransform();
+							glm::mat4 inverseMatrix = glm::inverse(parentModelMatrix);
+
+							gp_Trsf transform;
+							transform.SetValues(
+								inverseMatrix[0][0], inverseMatrix[1][0], inverseMatrix[2][0], inverseMatrix[3][0],
+								inverseMatrix[0][1], inverseMatrix[1][1], inverseMatrix[2][1], inverseMatrix[3][1],
+								inverseMatrix[0][2], inverseMatrix[1][2], inverseMatrix[2][2], inverseMatrix[3][2]
+							);
+
+							BRepBuilderAPI_Transform xform(*toolShape, transform);
+							TopoDS_Shape localToolShape = xform.Shape();
+							// ------------------------------------
+
+							TopoDS_Shape resultShape;
+							bool booleanDone = false;
+
+							// --- B. 执行布尔运算 ---
+							if (m_ExtrudeHeight < 0.0f)
+							{
+								// 负向 -> 挖孔
+								BRepAlgoAPI_Cut cutAlgo(*baseShape, localToolShape);
+								cutAlgo.Build();
+								if (cutAlgo.IsDone()) { resultShape = cutAlgo.Shape(); booleanDone = true; }
+							}
+							else
+							{
+								// 正向 -> 融合
+								BRepAlgoAPI_Fuse fuseAlgo(*baseShape, localToolShape);
+								fuseAlgo.Build();
+								if (fuseAlgo.IsDone()) { resultShape = fuseAlgo.Shape(); booleanDone = true; }
+							}
+
+							// --- C. 如果成功，更新父物体 ---
+							if (booleanDone)
+							{
+								if (parentCad.ShapeHandle) delete (TopoDS_Shape*)parentCad.ShapeHandle;
+								parentCad.ShapeHandle = new TopoDS_Shape(resultShape);
+
+								Rongine::CADMesher::RebuildMesh(parentEntity);
+
+								// 记录命令
+								auto* parentCmd = new Rongine::CADModifyCommand(parentEntity);
+								parentCmd->CaptureNewState();
+								Rongine::CommandHistory::Push(parentCmd);
+
+								opSuccess = true;
+								RONG_CLIENT_INFO("Boolean Operation on Parent Success.");
+
+								// 选中父物体
+								m_selectedEntity = parentEntity;
+								m_sceneHierarchyPanel.setSelectedEntity(parentEntity);
+							}
+						}
 					}
 				}
 
-				// 如果基底只是面 (Sketch Face) 或者融合失败 
-				// 直接使用拉伸出来的实体作为结果 (替换旧的面)
+				// ===============================================================
+				// 阶段 2：独立拉伸 (Face -> Solid)
+				// 如果没有父物体，或者父物体只是个面(无法布尔)，或者布尔失败
+				// 我们就直接把当前的面，替换为拉伸出来的实体
+				// ===============================================================
 				if (!opSuccess)
 				{
-					resultShape = *toolShape; // 直接拷贝拉伸体
-					opSuccess = true;
-					RONG_CLIENT_INFO("Converted Face to Solid.");
-				}
+					// 【关键修复】这里去掉了 m_ExtrudeHeight > 0 的限制
+					// 无论正负，只要之前的操作没生效，就把草图变成实体
 
-				// 3. 应用结果
-				if (opSuccess)
-				{
-					// 删除旧形状
-					if (cadComp.ShapeHandle) delete (TopoDS_Shape*)cadComp.ShapeHandle;
+					if (currentCad.ShapeHandle) delete (TopoDS_Shape*)currentCad.ShapeHandle;
 
-					// 保存新形状 (堆上的副本)
-					cadComp.ShapeHandle = new TopoDS_Shape(resultShape);
-					cadComp.Type = Rongine::CADGeometryComponent::GeometryType::Imported;
+					// 直接使用 toolShape (它已经是实体了)
+					currentCad.ShapeHandle = new TopoDS_Shape(*toolShape);
+					currentCad.Type = Rongine::CADGeometryComponent::GeometryType::Imported;
 
-					// 4. 重建网格
+					// 既然已经独立成体了，最好断开父子关系，防止以后逻辑混乱
+					currentCad.SourceEntity = entt::null;
+
 					Rongine::CADMesher::RebuildMesh(m_selectedEntity);
 
-					// 记录命令
-					cmd->CaptureNewState();
-					Rongine::CommandHistory::Push(cmd);
-				}
-				else
-				{
-					delete cmd;
+					auto* selfCmd = new Rongine::CADModifyCommand(m_selectedEntity);
+					selfCmd->CaptureNewState();
+					Rongine::CommandHistory::Push(selfCmd);
+
+					opSuccess = true;
+					RONG_CLIENT_INFO("Converted Face to Solid (Independent).");
 				}
 			}
 			catch (Standard_Failure& e)
 			{
 				RONG_CLIENT_ERROR("OCCT Error: {0}", e.GetMessageString());
-				delete cmd;
 			}
 
-			delete (TopoDS_Shape*)prismPtr; // 清理工具体
-		}
-		else
-		{
-			delete cmd;
+			delete (TopoDS_Shape*)toolShapePtr;
 		}
 	}
 

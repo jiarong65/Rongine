@@ -12,6 +12,8 @@
 #include <TopoDS_Edge.hxx>
 #include <gp_Ax3.hxx> // OCCT 的坐标系类
 
+#include "entt.hpp"
+
 class TopoDS_Shape;
 
 namespace Rongine {
@@ -133,6 +135,9 @@ namespace Rongine {
 
         float LinearDeflection = 0.1f;//精度
         float FilletRadius = 0.1f; // 倒角的半径
+
+        //父亲
+        entt::entity SourceEntity = entt::null;
 
         CADGeometryComponent() = default;
         CADGeometryComponent(const CADGeometryComponent&) = default;
