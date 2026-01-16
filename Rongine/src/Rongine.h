@@ -49,3 +49,5 @@
 #include "Rongine/Scene/Entity.h"
 #include "Rongine/Scene/Scene.h"
 #include "Rongine/Scene/SceneSerializer.h"
+
+#include "Rongine/Math/Math.h"

@@ -29,6 +29,8 @@ namespace Rongine {
 		void lookAt(const glm::vec3& cameraPosition, const glm::vec3& targetPoint);
 		float getFOV() const { return m_FOV; }
 
+		glm::vec3 getRayDirection(float mouseX, float mouseY, float screenWidth, float screenHeight) const;
+
 	private:
 		bool onMouseScrolled(MouseScrolledEvent& e);
 		bool onWindowResized(WindowResizeEvent& e);

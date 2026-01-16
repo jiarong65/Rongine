@@ -110,6 +110,19 @@ namespace Rongine {
 		updateView();
 	}
 
+	glm::vec3 PerspectiveCameraController::getRayDirection(float mouseX, float mouseY, float screenWidth, float screenHeight) const
+	{
+		float x = (2.0f * mouseX) / screenWidth - 1.0f;
+		float y = 1.0f - (2.0f * mouseY) / screenHeight; 
+
+		glm::vec4 rayClip = glm::vec4(x, y, -1.0f, 1.0f);
+		glm::vec4 rayEye = glm::inverse(m_camera.getProjectionMatrix()) * rayClip;
+		rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f); 
+
+		glm::vec3 rayWorld = glm::vec3(glm::inverse(m_camera.getViewMatrix()) * rayEye);
+		return glm::normalize(rayWorld);
+	}
+
 	bool PerspectiveCameraController::onMouseScrolled(MouseScrolledEvent& e)
 	{
 		float delta = e.getYOffset() * 0.1f;

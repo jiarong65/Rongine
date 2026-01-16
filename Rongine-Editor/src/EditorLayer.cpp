@@ -82,14 +82,11 @@ void EditorLayer::onDetach()
 	Rongine::Renderer3D::shutdown();
 }
 
-// 定义一个静态变量来控制旋转动画
-static float s_Rotation = 0.0f;
-
 void EditorLayer::onUpdate(Rongine::Timestep ts)
 {
 	PROFILE_SCOPE("EditorLayer::OnUpdate");
 
-	// 1. 自动调整 Framebuffer 和相机大小
+	// 自动调整 Framebuffer 和相机大小
 	if (m_viewportSize.x > 0.0f && m_viewportSize.y > 0.0f &&
 		(m_framebuffer->getSpecification().width != m_viewportSize.x || m_framebuffer->getSpecification().height != m_viewportSize.y))
 	{
@@ -97,12 +94,9 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		m_cameraContorller.onResize(m_viewportSize.x, m_viewportSize.y);
 	}
 
-	// 2. 相机输入控制
 	if (m_viewportFocused)
 		m_cameraContorller.onUpdate(ts);
 
-	// 3. 更新旋转角度
-	s_Rotation += ts * 45.0f; // 每秒转 45 度
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	if (Rongine::Input::isKeyPressed(Rongine::Key::Q)) m_gizmoType = -1;
@@ -110,6 +104,33 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	if (Rongine::Input::isKeyPressed(Rongine::Key::E)) m_gizmoType = ImGuizmo::ROTATE;
 	if (Rongine::Input::isKeyPressed(Rongine::Key::R)) m_gizmoType = ImGuizmo::SCALE;
 	//////////////////////////////////////////////////////////////////////////////////////////
+	//草图交互逻辑
+	if (m_IsSketchMode && m_SketchPlaneEntity)
+	{
+		auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
+		glm::vec3 planeOrigin = glm::vec3(sc.SketchMatrix[3]);
+		glm::vec3 planeNormal = glm::vec3(sc.SketchMatrix[2]); // Z轴法线
+
+		auto [mx, my] = ImGui::GetMousePos(); //屏幕绝对坐标，减去 Viewport 偏移
+		mx -= m_viewportBounds[0].x;
+		my -= m_viewportBounds[0].y;
+
+		float viewportWidth = m_viewportSize.x;
+		float viewportHeight = m_viewportSize.y;
+
+		if (mx >= 0 && my >= 0 && mx < viewportWidth && my < viewportHeight)
+		{
+			glm::vec3 rayDir = m_cameraContorller.getRayDirection(mx, my, viewportWidth, viewportHeight);
+			glm::vec3 rayOrigin = m_cameraContorller.getCamera().getPosition();
+
+			m_IsCursorOnPlane = Rongine::Math::RayPlaneIntersection(rayOrigin, rayDir, planeOrigin, planeNormal, m_SketchCursorPos);
+		}
+		else
+		{
+			m_IsCursorOnPlane = false;
+		}
+	}
+	////////////////////////////////////////////////////////////////////////////////////////////
 	//  开始渲染
 	Rongine::Renderer3D::resetStatistics();
 	{
@@ -163,6 +184,24 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		{
 			auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
 			Rongine::Renderer3D::drawGrid(sc.SketchMatrix, 10.0f, 25);
+
+			if (m_IsCursorOnPlane)
+			{
+				// 获取草图平面的局部坐标轴
+				// Matrix[0] = Right (X), Matrix[1] = Up (Y), Matrix[2] = Normal (Z)
+				glm::vec3 planeRight = glm::vec3(sc.SketchMatrix[0]);
+				glm::vec3 planeUp = glm::vec3(sc.SketchMatrix[1]);
+
+				glm::vec3 camPos = m_cameraContorller.getCamera().getPosition();
+				float dist = glm::distance(camPos, m_SketchCursorPos);
+				float s = dist* 0.01f; // 光标大小
+				glm::vec3 p = m_SketchCursorPos;
+				glm::vec4 cursorColor = { 0.0f, 1.0f, 0.0f, 1.0f }; 
+
+				// 画沿着平面 Right 和 Up 方向的线，不再画世界坐标轴
+				Rongine::Renderer3D::drawLine(p - planeRight * s, p + planeRight * s, cursorColor);
+				Rongine::Renderer3D::drawLine(p - planeUp * s, p + planeUp * s, cursorColor);
+			}
 		}
 		Rongine::Renderer3D::endLines(); 
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -449,8 +488,6 @@ void EditorLayer::onImGuiRender()
 
 		ImGui::EndMenuBar();
 	}
-
-
 	////////////////////////////////////////////////////////////////////////////////////////////
 	m_sceneHierarchyPanel.onImGuiRender();
 
@@ -496,6 +533,33 @@ void EditorLayer::onImGuiRender()
 	if (ImGui::Button("Fillet")) EnterFilletMode();
 	ImGui::SameLine();
 	if (ImGui::Button("Sketch")) EnterSketchMode();
+
+	if (m_IsSketchMode)
+	{
+		ImVec2 viewportPos = ImGui::GetWindowPos();
+		ImVec2 workPos = { viewportPos.x + 20, viewportPos.y + 50 }; // 左上角+偏移
+
+		ImGui::SetNextWindowPos(workPos);
+		ImGui::SetNextWindowBgAlpha(0.6f); // 半透明背景
+		ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+
+		if (ImGui::Begin("SketchOverlay", nullptr, flags))
+		{
+			ImGui::Text("SKETCHING ON FACE");
+
+			// 一排小按钮
+			if (ImGui::Button("L")) { /* Line */ } ImGui::SameLine();
+			if (ImGui::Button("R")) { /* Rect */ } ImGui::SameLine();
+			if (ImGui::Button("C")) { /* Circle */ }
+
+			// 退出按钮
+			ImGui::SameLine();
+			ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(0.8f, 0.2f, 0.2f, 1.0f));
+			if (ImGui::Button("EXIT")) { ExitSketchMode(); }
+			ImGui::PopStyleColor();
+		}
+		ImGui::End();
+	}
 
 	// ============================================================
 
@@ -1520,10 +1584,21 @@ void EditorLayer::EnterSketchMode()
 			viewDistance = std::max(viewDistance, 1.0f);
 		}
 
+		glm::vec3 camPos = center + normal * viewDistance;
+		m_cameraContorller.lookAt(camPos, center);
+
 		RONG_CLIENT_INFO("Entered Sketch Mode! Camera aligned to face.");
 	}
 	else
 	{
 		RONG_CLIENT_ERROR("Selected face is not planar! Cannot sketch on curved surfaces yet.");
 	}
+}
+
+void EditorLayer::ExitSketchMode()
+{
+	m_IsSketchMode = false;
+	m_SketchPlaneEntity = {};
+
+	RONG_CLIENT_INFO("Exited Sketch Mode.");
 }

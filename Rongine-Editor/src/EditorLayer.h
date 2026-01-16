@@ -103,5 +103,7 @@ private:
 	// --- 草图模式状态 ---
 	bool m_IsSketchMode = false;
 	Rongine::Entity m_SketchPlaneEntity;
+	glm::vec3 m_SketchCursorPos; 
+	bool m_IsCursorOnPlane = false; 
 };
 
