@@ -21,6 +21,9 @@
 #include <BRepGProp.hxx>
 #include <BRepAlgoAPI_Fuse.hxx>
 #include <BRepTools.hxx>
+#include <BRepBuilderAPI_MakeEdge.hxx>
+#include <BRepBuilderAPI_MakeFace.hxx>
+#include <BRepBuilderAPI_MakeWire.hxx>
 
 // --- Timer 类 (性能分析用) ---
 template<typename Fn>
@@ -166,72 +169,204 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	}
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// 草图绘制逻辑
-	if (m_IsSketchMode && m_IsCursorOnPlane && m_CurrentTool == SketchToolType::Line)
+	if (m_IsSketchMode && m_IsCursorOnPlane && m_CurrentTool != SketchToolType::None)
 	{
-		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-		{
-			if (!m_IsDrawing)
-			{
-				// --- 开始新的一笔 ---
-				m_IsDrawing = true;
-				m_DrawStartPoint = m_SketchCursorPos;
 
-				// 清空并记录第一个点
-				m_CurrentChainPoints.clear();
-				m_CurrentChainPoints.push_back(m_DrawStartPoint);
-			}
-			else
+		switch (m_CurrentTool) {
+		case SketchToolType::Line: {
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 			{
-				// 检查是否闭合 (点击的点 == 起始点)
-				// 只有当至少画了3个点才允许闭合
-				bool isClosing = false;
-				if (m_CurrentChainPoints.size() >= 2)
+				if (!m_IsDrawing)
 				{
-					// 如果吸附到了最开始的那个点
-					if (glm::distance(m_SketchCursorPos, m_CurrentChainPoints[0]) < m_SnapDistance)
+					// --- 开始新的一笔 ---
+					m_IsDrawing = true;
+					m_DrawStartPoint = m_SketchCursorPos;
+
+					// 清空并记录第一个点
+					m_CurrentChainPoints.clear();
+					m_CurrentChainPoints.push_back(m_DrawStartPoint);
+				}
+				else
+				{
+					// 检查是否闭合 (点击的点 == 起始点)
+					// 只有当至少画了3个点才允许闭合
+					bool isClosing = false;
+					if (m_CurrentChainPoints.size() >= 2)
 					{
-						isClosing = true;
+						// 如果吸附到了最开始的那个点
+						if (glm::distance(m_SketchCursorPos, m_CurrentChainPoints[0]) < m_SnapDistance)
+						{
+							isClosing = true;
+						}
+					}
+
+					// 添加线段逻辑
+					auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
+					sc.Lines.push_back({ m_DrawStartPoint, m_SketchCursorPos });
+					m_CurrentChainPoints.push_back(m_SketchCursorPos);
+
+					if (isClosing)
+					{
+						RONG_CLIENT_INFO("Loop Closed! Generating Face...");
+
+						// 生成 Face
+						void* newFaceShape = Rongine::CADFeature::BuildFaceFromSketch(m_CurrentChainPoints);
+
+						if (newFaceShape)
+						{
+							auto newEntity = m_activeScene->createEntity("Sketch Face");
+
+							auto& cad = newEntity.AddComponent<Rongine::CADGeometryComponent>();
+							cad.ShapeHandle = newFaceShape;
+							cad.Type = Rongine::CADGeometryComponent::GeometryType::Imported;
+
+							newEntity.AddComponent<Rongine::MeshComponent>();
+
+							Rongine::CADMesher::RebuildMesh(newEntity);
+
+							m_selectedEntity = newEntity;
+							m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
+
+							m_IsDrawing = false;
+							m_CurrentChainPoints.clear();
+
+							sc.Lines.clear();
+						}
+					}
+					else
+					{
+						m_DrawStartPoint = m_SketchCursorPos;
 					}
 				}
+			}
+			break;
+		}
+		case SketchToolType::Rectangle: {
+			auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
+			glm::vec3 right = glm::vec3(sc.SketchMatrix[0]); // X轴
+			glm::vec3 up = glm::vec3(sc.SketchMatrix[1]); // Y轴
 
-				// 添加线段逻辑
-				auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
-				sc.Lines.push_back({ m_DrawStartPoint, m_SketchCursorPos });
-				m_CurrentChainPoints.push_back(m_SketchCursorPos);
-
-				if (isClosing)
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			{
+				if (!m_IsDrawing)
 				{
-					RONG_CLIENT_INFO("Loop Closed! Generating Face...");
+					m_IsDrawing = true;
+					m_DrawStartPoint = m_SketchCursorPos;
+				}
+				else
+				{
+					m_IsDrawing = false;
 
-					// 生成 Face
-					void* newFaceShape = Rongine::CADFeature::BuildFaceFromSketch(m_CurrentChainPoints);
+					// 计算 4 个顶点
+					// 利用点积 (Dot Product) 投影来计算在平面内的宽和高
+					// P0 = Start, P2 = Current(End)
+					// 向量 V = End - Start
+					glm::vec3 v = m_SketchCursorPos - m_DrawStartPoint;
 
+					float w = glm::dot(v, right);
+					float h = glm::dot(v, up);
+
+					glm::vec3 p0 = m_DrawStartPoint;
+					glm::vec3 p1 = m_DrawStartPoint + right * w; // 右下
+					glm::vec3 p2 = m_SketchCursorPos;            // 对角 (右上)
+					glm::vec3 p3 = m_DrawStartPoint + up * h;    // 左上
+
+					// 存入线段数据 
+					sc.Lines.push_back({ p0, p1 });
+					sc.Lines.push_back({ p1, p2 });
+					sc.Lines.push_back({ p2, p3 });
+					sc.Lines.push_back({ p3, p0 });
+
+					RONG_CLIENT_INFO("Rectangle Created.");
+
+					std::vector<glm::vec3> rectPoints = { p0, p1, p2, p3, p0 }; 
+
+					void* newFaceShape = Rongine::CADFeature::BuildFaceFromSketch(rectPoints);
 					if (newFaceShape)
 					{
-						auto newEntity = m_activeScene->createEntity("Sketch Face");
+						auto newEntity = m_activeScene->createEntity("Sketch Rect");
 
 						auto& cad = newEntity.AddComponent<Rongine::CADGeometryComponent>();
 						cad.ShapeHandle = newFaceShape;
 						cad.Type = Rongine::CADGeometryComponent::GeometryType::Imported;
 
 						newEntity.AddComponent<Rongine::MeshComponent>();
-
 						Rongine::CADMesher::RebuildMesh(newEntity);
 
 						m_selectedEntity = newEntity;
 						m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
 
-						m_IsDrawing = false;
-						m_CurrentChainPoints.clear();
-
-						sc.Lines.clear();
+						sc.Lines.clear(); 
 					}
+				}
+			}
+			break;
+		}
+		case SketchToolType::Circle:{
+			auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
+			// 获取平面坐标轴 (用于构建 OCCT 的 gp_Ax2)
+			glm::vec3 right = glm::vec3(sc.SketchMatrix[0]);
+			glm::vec3 normal = glm::vec3(sc.SketchMatrix[2]);
+
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			{
+				if (!m_IsDrawing)
+				{
+					m_IsDrawing = true;
+					m_DrawStartPoint = m_SketchCursorPos; 
 				}
 				else
 				{
-					m_DrawStartPoint = m_SketchCursorPos;
+					float radius = glm::distance(m_DrawStartPoint, m_SketchCursorPos);
+
+					if (radius > 0.001f)
+					{
+						m_IsDrawing = false;
+
+						// 1. 构建 OCCT 的局部坐标系 gp_Ax2
+						// 参数: 原点(圆心), 主方向(法线), X方向(Right)
+						gp_Pnt center(m_DrawStartPoint.x, m_DrawStartPoint.y, m_DrawStartPoint.z);
+						gp_Dir norm(normal.x, normal.y, normal.z);
+						gp_Dir xDir(right.x, right.y, right.z);
+						gp_Ax2 axis(center, norm, xDir);
+
+						// 2. 构建几何圆 (Geometry)
+						gp_Circ circleGeom(axis, radius);
+
+						// 3. 构建拓扑边 (Edge) -> 线框 (Wire) -> 面 (Face)
+						BRepBuilderAPI_MakeEdge mkEdge(circleGeom);
+						BRepBuilderAPI_MakeWire mkWire(mkEdge.Edge());
+						BRepBuilderAPI_MakeFace mkFace(mkWire.Wire(), true); // true = OnlyPlane
+
+						if (mkFace.IsDone())
+						{
+							// 4. 创建实体
+							auto newEntity = m_activeScene->createEntity("Sketch Circle");
+
+							auto& cad = newEntity.AddComponent<Rongine::CADGeometryComponent>();
+							cad.ShapeHandle = new TopoDS_Shape(mkFace.Shape());
+							cad.Type = Rongine::CADGeometryComponent::GeometryType::Imported;
+
+							newEntity.AddComponent<Rongine::MeshComponent>();
+							Rongine::CADMesher::RebuildMesh(newEntity);
+
+							m_selectedEntity = newEntity;
+							m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
+
+							sc.Lines.clear();
+							RONG_CLIENT_INFO("Circle Created. Radius: {0}", radius);
+						}
+					}
 				}
 			}
+
+			if (m_IsDrawing && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+			{
+				m_IsDrawing = false;
+			}
+			break;
+		}
+		default:break;
 		}
 
 		// 结束连续绘制
@@ -306,9 +441,69 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 			Rongine::Renderer3D::drawGrid(sc.SketchMatrix, 10.0f, 25);
 
 			//草图交互绘制
-			if (m_IsDrawing && m_CurrentTool == SketchToolType::Line)
+			if (m_IsDrawing && m_CurrentTool != SketchToolType::None)
 			{
-				Rongine::Renderer3D::drawLine(m_DrawStartPoint, m_SketchCursorPos, { 1.0f, 1.0f, 0.0f, 1.0f });
+				switch (m_CurrentTool) {
+				case SketchToolType::Line:{
+					Rongine::Renderer3D::drawLine(m_DrawStartPoint, m_SketchCursorPos, { 1.0f, 1.0f, 0.0f, 1.0f });
+					break;
+				}
+				case SketchToolType::Rectangle: {
+					auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
+					glm::vec3 right = glm::vec3(sc.SketchMatrix[0]);
+					glm::vec3 up = glm::vec3(sc.SketchMatrix[1]);
+
+					glm::vec3 v = m_SketchCursorPos - m_DrawStartPoint;
+					float w = glm::dot(v, right);
+					float h = glm::dot(v, up);
+
+					glm::vec3 p0 = m_DrawStartPoint;
+					glm::vec3 p1 = m_DrawStartPoint + right * w;
+					glm::vec3 p2 = m_SketchCursorPos;
+					glm::vec3 p3 = m_DrawStartPoint + up * h;
+
+					glm::vec4 color = { 1.0f, 1.0f, 0.0f, 1.0f }; 
+
+					Rongine::Renderer3D::drawLine(p0, p1, color);
+					Rongine::Renderer3D::drawLine(p1, p2, color);
+					Rongine::Renderer3D::drawLine(p2, p3, color);
+					Rongine::Renderer3D::drawLine(p3, p0, color);
+				}
+				case SketchToolType::Circle: {
+					auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
+					glm::vec3 right = glm::vec3(sc.SketchMatrix[0]); // 面的 X 轴
+					glm::vec3 up = glm::vec3(sc.SketchMatrix[1]); // 面的 Y 轴
+
+					float radius = glm::distance(m_DrawStartPoint, m_SketchCursorPos);
+
+					glm::vec4 color = { 1.0f, 1.0f, 0.0f, 1.0f }; // 黄色
+
+					// 离散化画圆 (64段)
+					int segments = 64;
+					float step = 3.628318f / (float)segments; // 2*PI
+
+					// 预计算第一个点
+					glm::vec3 prevPoint = m_DrawStartPoint + right * radius;
+
+					for (int i = 1; i <= segments; i++)
+					{
+						float angle = (float)i * 2.0f * glm::pi<float>() / (float)segments;
+
+						// 参数方程: P = Center + Right * R * cos(a) + Up * R * sin(a)
+						glm::vec3 currPoint = m_DrawStartPoint
+							+ right * (radius * std::cos(angle))
+							+ up * (radius * std::sin(angle));
+
+						Rongine::Renderer3D::drawLine(prevPoint, currPoint, color);
+						prevPoint = currPoint;
+					}
+
+					Rongine::Renderer3D::drawLine(m_DrawStartPoint, m_SketchCursorPos, { 1,1,1,0.5f });
+					break;
+				}
+				default:break;
+				}
+				
 			}
 
 			//草图光标
@@ -674,16 +869,33 @@ void EditorLayer::onImGuiRender()
 		{
 			ImGui::Text("SKETCHING ON FACE");
 
-			// 一排小按钮
+			bool isActive = (m_CurrentTool == SketchToolType::Line);
+			if (isActive) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0.6f, 0.8f, 1));
 			if (ImGui::Button("L")) {
 				m_CurrentTool = m_CurrentTool==SketchToolType::Line? SketchToolType::None : SketchToolType::Line;
 				
 				m_IsDrawing = false; 
 				RONG_CLIENT_INFO("Selected Tool: LINE");
+			}ImGui::SameLine();
+			if (isActive)ImGui::PopStyleColor();
+
+			isActive = (m_CurrentTool == SketchToolType::Line);
+			if (isActive) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0.6f, 0.8f, 1));
+			if (ImGui::Button("R")) {
+				m_CurrentTool = SketchToolType::Rectangle;
+				m_IsDrawing = false;
+				RONG_CLIENT_INFO("Selected Tool: RECTANGLE");
+			} ImGui::SameLine();
+			if (isActive)ImGui::PopStyleColor();
+
+			isActive = (m_CurrentTool == SketchToolType::Line);
+			if (isActive) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0.6f, 0.8f, 1));
+			if (ImGui::Button("C")) {
+				m_CurrentTool = SketchToolType::Circle;
+				m_IsDrawing = false;
+				RONG_CLIENT_INFO("Selected Tool: CIRCLE");
 			}
-			ImGui::SameLine();
-			if (ImGui::Button("R")) { /* Rect */ } ImGui::SameLine();
-			if (ImGui::Button("C")) { /* Circle */ }
+			if (isActive)ImGui::PopStyleColor();
 
 			// 退出按钮
 			ImGui::SameLine();
@@ -693,43 +905,22 @@ void EditorLayer::onImGuiRender()
 		}
 		ImGui::End();
 	}
-
-	// ============================================================
-
-	// 计算工具栏的高度，以便把图片往下推
-	// GetFrameHeightWithSpacing() 获取当前样式下一行的高度
-	float toolbarHeight = ImGui::GetFrameHeightWithSpacing() + 4.0f; // +4 是上面的 SetCursorPos 偏移
-
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// 计算视口边界 (需要考虑工具栏的高度偏移！)
-	auto viewportMinRegion = ImGui::GetWindowContentRegionMin();
-	auto viewportMaxRegion = ImGui::GetWindowContentRegionMax();
-	auto viewportOffset = ImGui::GetWindowPos();
+	ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
+	m_viewportSize = { viewportPanelSize.x, viewportPanelSize.y };
 
-	// viewportBounds[0] 的 Y 轴需要加上工具栏高度，否则鼠标拾取会错位
-	m_viewportBounds[0] = {
-		viewportMinRegion.x + viewportOffset.x,
-		viewportMinRegion.y + viewportOffset.y + toolbarHeight
-	};
-	m_viewportBounds[1] = {
-		viewportMaxRegion.x + viewportOffset.x,
-		viewportMaxRegion.y + viewportOffset.y
-	};
+	auto viewportMinRegion = ImGui::GetCursorScreenPos();
+
+	// 4. 更新边界 (用于鼠标射线检测)
+	m_viewportBounds[0] = { viewportMinRegion.x, viewportMinRegion.y };
+	m_viewportBounds[1] = { viewportMinRegion.x + m_viewportSize.x, viewportMinRegion.y + m_viewportSize.y };
 	////////////////////////////////////////////////////////////////////////////////////////////
 
 	// 输入状态管理
 	m_viewportFocused = ImGui::IsWindowFocused();
 	m_viewportHovered = ImGui::IsWindowHovered();
 	Rongine::Application::get().getImGuiLayer()->blockEvents(!m_viewportFocused && !m_viewportHovered);
-
-	// 获取 Viewport 大小 (减去工具栏高度)
-	ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-
-	ImGui::SetCursorPos(ImVec2(0, toolbarHeight));
-
-	// 更新视口大小变量 (减去工具栏高度)
-	m_viewportSize = { viewportPanelSize.x, viewportPanelSize.y - toolbarHeight };
-
 	// 防止最小化时出现负数导致崩溃
 	if (m_viewportSize.x < 0) m_viewportSize.x = 1;
 	if (m_viewportSize.y < 0) m_viewportSize.y = 1;
@@ -1721,7 +1912,12 @@ void EditorLayer::EnterSketchMode()
 
 		sc.IsActive = true;
 		sc.PlaneLocalSystem = sketchAx3;
-		sc.SketchMatrix = sketchMat;
+
+
+		auto& tc = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
+		glm::mat4 entityWorldMatrix = tc.GetTransform();
+
+		sc.SketchMatrix = entityWorldMatrix * sketchMat;
 
 		glm::vec3 center = glm::vec3(sketchMat[3]); // 草图原点 (Target)
 		glm::vec3 normal = glm::vec3(sketchMat[2]); // 草图法线 (Z轴)

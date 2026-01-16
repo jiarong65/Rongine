@@ -119,7 +119,7 @@ private:
 	bool m_IsDrawing = false;      
 	glm::vec3 m_DrawStartPoint;  
 	// --- 吸附状态 ---
-	float m_SnapDistance = 0.2f; 
+	float m_SnapDistance = 0.04f; 
 	bool m_IsSnapped = false;  
 	// --- 连续绘制顶点序列 ---
 	std::vector<glm::vec3> m_CurrentChainPoints;

@@ -248,47 +248,41 @@ namespace Rongine {
         if (face.IsNull()) return false;
 
         // 2. 检查底层几何是否为平面
-        // 使用 BRepAdaptor_Surface 可以自动处理 Location 变换，比手动 Transform 更稳健
         BRepAdaptor_Surface adaptor(face);
         if (adaptor.GetType() != GeomAbs_Plane) return false;
 
-        // 3. 计算面的几何中心 (UV Center)
-        double umin, umax, vmin, vmax;
-        BRepTools::UVBounds(face, umin, umax, vmin, vmax);
-        double centerU = (umin + umax) * 0.5;
-        double centerV = (vmin + vmax) * 0.5;
+        GProp_GProps props;
+        BRepGProp::SurfaceProperties(face, props);
+        gp_Pnt centerP = props.CentreOfMass();
 
-        // 4. 计算中心点的 3D 坐标和切线方向
-        gp_Pnt centerP;
-        gp_Vec d1u, d1v;
-        adaptor.D1(centerU, centerV, centerP, d1u, d1v);
+        // 3. 获取平面几何信息 (只为了取方向)
+        gp_Pln plane = adaptor.Plane();
+        gp_Dir planeNormal = plane.Axis().Direction();
+        gp_Dir planeX = plane.XAxis().Direction();
 
-        // 5. 计算法线
-        gp_Vec normal = d1u.Crossed(d1v);
-        if (normal.Magnitude() < 1e-7) return false; // 防止退化
-        normal.Normalize();
-
-        // 6. 处理拓扑方向 (REVERSED)
-        // 如果面是反向的，法线必须翻转
+        // 4. 处理法线方向 (REVERSED)
         if (face.Orientation() == TopAbs_REVERSED)
         {
-            normal.Reverse();
+            planeNormal.Reverse();
         }
 
-        // 7. 构建正交坐标系
-        // 以 U 方向为 X 轴 (让网格贴合纹理方向)，法线为 Z 轴
-        gp_Vec xVec = d1u.Normalized();
-        gp_Vec zVec = normal;
-        // 重新计算 Y 轴以保证完全垂直 (X cross Z = -Y, or Z cross X = Y)
+        // 5. 构建正交坐标系
+        // Z轴 = 法线
+        gp_Vec zVec(planeNormal);
+
+        // X轴 = 平面的 X 方向 (保证网格纹理对齐)
+        gp_Vec xVec(planeX);
+
+        // 重新计算 Y 轴以保证正交 (Z cross X = Y)
         gp_Vec yVec = zVec.Crossed(xVec).Normalized();
-        // 再次校正 X 轴 (防止 d1u 和 d1v 不完全垂直的情况)
+
+        // 再次校正 X 轴 (防止精度误差)
         xVec = yVec.Crossed(zVec).Normalized();
 
-        // 8. 填充 gp_Ax3 (给 OCC 用的，可选)
+        // 6. 填充 gp_Ax3
         outAx3 = gp_Ax3(centerP, gp_Dir(zVec), gp_Dir(xVec));
 
-        // 9. 填充 glm::mat4 
-        // 列主序构建矩阵
+        // 7. 填充 glm::mat4
         glm::vec3 right = { (float)xVec.X(), (float)xVec.Y(), (float)xVec.Z() };
         glm::vec3 up = { (float)yVec.X(), (float)yVec.Y(), (float)yVec.Z() };
         glm::vec3 front = { (float)zVec.X(), (float)zVec.Y(), (float)zVec.Z() };
