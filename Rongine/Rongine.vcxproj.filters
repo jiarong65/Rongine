@@ -1504,6 +1504,7 @@
       <Filter>vendor\stb_image</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongine\Math\Math.h" />
+    <ClInclude Include="src\Rongine\Renderer\SpectralRenderer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp">
@@ -1648,5 +1649,6 @@
       <Filter>vendor\stb_image</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongine\Math\Math.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\SpectralRenderer.cpp" />
   </ItemGroup>
 </Project>

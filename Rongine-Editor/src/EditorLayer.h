@@ -123,5 +123,9 @@ private:
 	bool m_IsSnapped = false;  
 	// --- 连续绘制顶点序列 ---
 	std::vector<glm::vec3> m_CurrentChainPoints;
+
+	//光追测试
+	std::shared_ptr<Rongine::SpectralRenderer> m_SpectralRenderer;
+	bool m_ShowRayTracing = false; // 是否显示光追结果
 };
 

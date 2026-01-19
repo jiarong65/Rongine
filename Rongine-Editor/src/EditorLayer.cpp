@@ -79,6 +79,9 @@ void EditorLayer::onAttach()
 	//////////////////////////////////////////////////////////////////////////
 	//ui面板
 	m_sceneHierarchyPanel.setContext(m_activeScene);
+	//////////////////////////////////////////////////////////////////////////
+	//光追渲染器
+	m_SpectralRenderer = std::make_shared<Rongine::SpectralRenderer>();
 }
 
 void EditorLayer::onDetach()
@@ -96,6 +99,7 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	{
 		m_framebuffer->resize((uint32_t)m_viewportSize.x, (uint32_t)m_viewportSize.y);
 		m_cameraContorller.onResize(m_viewportSize.x, m_viewportSize.y);
+		m_SpectralRenderer->OnResize((uint32_t)m_viewportSize.x, (uint32_t)m_viewportSize.y);
 	}
 
 	if (m_viewportFocused)
@@ -383,7 +387,14 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		}
 	}
 	////////////////////////////////////////////////////////////////////////////////////////////
-	//  开始渲染
+	//光追渲染
+	if (m_ShowRayTracing)
+	{
+		// 渲染一帧
+		m_SpectralRenderer->Render(*m_activeScene, m_cameraContorller.getCamera());
+	}
+	////////////////////////////////////////////////////////////////////////////////////////////
+	//  开始光栅渲染
 	Rongine::Renderer3D::resetStatistics();
 	{
 		PROFILE_SCOPE("Renderer 3D");
@@ -836,6 +847,9 @@ void EditorLayer::onImGuiRender()
 	for (auto& result : m_profileResult)
 		if(result.name=="EditorLayer::OnUpdate")ImGui::Text("FPS: %.3f", 1000.0f/result.time);
 	m_profileResult.clear();
+
+	ImGui::Separator();
+	ImGui::Checkbox("Enable Ray Tracing (CPU)", &m_ShowRayTracing);
 	ImGui::End();
 
 	////////////////////////////////////////////////////////////////////////////////////////////
@@ -936,6 +950,10 @@ void EditorLayer::onImGuiRender()
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// 绘制 FBO 纹理
 	uint32_t textureID = m_framebuffer->getColorAttachmentRendererID();
+	if (m_ShowRayTracing)
+	{
+		textureID = m_SpectralRenderer->GetFinalTextureID();
+	}
 	// 使用计算后的大小
 	ImGui::Image((void*)(uintptr_t)textureID, ImVec2{ m_viewportSize.x, m_viewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 

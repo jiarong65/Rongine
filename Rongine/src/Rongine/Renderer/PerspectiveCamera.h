@@ -25,6 +25,10 @@ namespace Rongine {
 		const glm::mat4& getViewMatrix() const { return m_viewMatrix; }
 		const glm::mat4& getViewProjectionMatrix() const { return m_viewProjectionMatrix; }
 
+		//逆矩阵
+		glm::mat4 getInverseViewMatrix() const { return glm::inverse(m_viewMatrix); }
+		glm::mat4 getInverseProjectionMatrix() const { return glm::inverse(m_projectionMatrix); }
+
 		// 获取相机的方向向量 (用于移动计算)
 		glm::vec3 getForwardDirection() const;
 		glm::vec3 getRightDirection() const;

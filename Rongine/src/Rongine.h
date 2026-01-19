@@ -27,6 +27,7 @@
 #include "Rongine/Renderer/Framebuffer.h"
 
 #include "Rongine/Renderer/OrthographicCamera.h"
+#include "Rongine/Renderer/SpectralRenderer.h"
 
 #include "Rongine/ImGui/ImGuiLayer.h"
 #include "Rongine/ImGui/SceneHierarchyPanel.h"
