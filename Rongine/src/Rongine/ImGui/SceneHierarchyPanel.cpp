@@ -90,15 +90,17 @@ namespace Rongine {
 			TopoDS_Shape* occShape = (TopoDS_Shape*)newShapeHandle;
 			BRepTools::Clean(*occShape);
 			std::vector<CubeVertex> newVertices;
+			std::vector<uint32_t> newIndices;
 
 			// 调用 Mesher 生成新数据
-			auto newVA = CADMesher::CreateMeshFromShape(*occShape, newVertices,cadComp.LinearDeflection);
+			auto newVA = CADMesher::CreateMeshFromShape(*occShape, newVertices,newIndices,cadComp.LinearDeflection);
 
 			if (newVA)
 			{
 				// 4. 更新 MeshComponent
 				meshComp.VA = newVA;
 				meshComp.LocalVertices = newVertices; // 更新 CPU 顶点，保证 Gizmo 吸附正确
+				meshComp.LocalIndices = newIndices;
 				meshComp.BoundingBox = CADImporter::CalculateAABB(*occShape); // 更新包围盒，保证 F 键聚焦正确
 
 				// ==================== 生成边框线 ====================
@@ -125,14 +127,16 @@ namespace Rongine {
 			TopoDS_Shape* occShape = (TopoDS_Shape*)cadComp.ShapeHandle;
 			BRepTools::Clean(*occShape);
 			std::vector<CubeVertex> newVertices;
+			std::vector<uint32_t> newIndices;
 
 			// 传入当前的 精度
-			auto newVA = CADMesher::CreateMeshFromShape(*occShape, newVertices, cadComp.LinearDeflection);
+			auto newVA = CADMesher::CreateMeshFromShape(*occShape, newVertices, newIndices, cadComp.LinearDeflection);
 
 			if (newVA)
 			{
 				meshComp.VA = newVA;
 				meshComp.LocalVertices = newVertices;
+				meshComp.LocalIndices = newIndices;
 				// 更新AABB
 				meshComp.BoundingBox = CADImporter::CalculateAABB(*occShape);
 

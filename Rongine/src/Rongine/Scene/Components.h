@@ -98,6 +98,7 @@ namespace Rongine {
 
         std::vector<LineVertex> LocalLines;  // 边的内存数据 (用于做 CPU 射线检测)
         std::vector<CubeVertex> LocalVertices;
+        std::vector<uint32_t> LocalIndices;//索引数据
 
         std::map<int, TopoDS_Edge> m_IDToEdgeMap;
 
@@ -106,6 +107,9 @@ namespace Rongine {
         MeshComponent(const Ref<VertexArray>& va) : VA(va) {}
         MeshComponent(const Ref<VertexArray>& va, const std::vector<CubeVertex>& verts)
             : VA(va), LocalVertices(verts) {
+        }
+        MeshComponent(const Ref<VertexArray>& va, const std::vector<CubeVertex>& verts,const std::vector<uint32_t> indices)
+            : VA(va), LocalVertices(verts),LocalIndices(indices) {
         }
     };
 

@@ -1025,12 +1025,13 @@ void EditorLayer::onImGuiRender()
 
 					// 更新 Mesh
 					std::vector<Rongine::CubeVertex> verts;
-					auto va = Rongine::CADMesher::CreateMeshFromShape(*(TopoDS_Shape*)previewShape, verts, 0.5f); // 预览精度低一点没关系
+					std::vector<uint32_t> indices;
+					auto va = Rongine::CADMesher::CreateMeshFromShape(*(TopoDS_Shape*)previewShape, verts, indices, 0.5f); // 预览精度低一点没关系
 
 					if (m_PreviewEntity.HasComponent<Rongine::MeshComponent>())
 						m_PreviewEntity.RemoveComponent<Rongine::MeshComponent>(); // 移除旧的
 
-					m_PreviewEntity.AddComponent<Rongine::MeshComponent>(va, verts);
+					m_PreviewEntity.AddComponent<Rongine::MeshComponent>(va, verts,indices);
 
 					// 记得清理 previewShape 指针，因为它只是临时的
 					delete (TopoDS_Shape*)previewShape;
@@ -1125,12 +1126,13 @@ void EditorLayer::onImGuiRender()
 				{
 					// 更新预览实体的 Mesh
 					std::vector<Rongine::CubeVertex> verts;
-					auto va = Rongine::CADMesher::CreateMeshFromShape(*(TopoDS_Shape*)previewShape, verts, 0.5f); // 预览精度
+					std::vector<uint32_t> indices;
+					auto va = Rongine::CADMesher::CreateMeshFromShape(*(TopoDS_Shape*)previewShape, verts,indices, 0.5f); // 预览精度
 
 					if (m_PreviewEntity.HasComponent<Rongine::MeshComponent>())
 						m_PreviewEntity.RemoveComponent<Rongine::MeshComponent>();
 
-					m_PreviewEntity.AddComponent<Rongine::MeshComponent>(va, verts);
+					m_PreviewEntity.AddComponent<Rongine::MeshComponent>(va, verts,indices);
 
 					delete (TopoDS_Shape*)previewShape; // 只是预览，用完即弃
 				}
@@ -1420,7 +1422,8 @@ void EditorLayer::ImportSTEP()
 		TopoDS_Shape shape = Rongine::CADImporter::ImportSTEP(filepath);
 
 		std::vector<Rongine::CubeVertex> verticesData;
-		auto cadMeshVA = Rongine::CADMesher::CreateMeshFromShape(shape,verticesData);
+		std::vector<uint32_t> indices;
+		auto cadMeshVA = Rongine::CADMesher::CreateMeshFromShape(shape, verticesData, indices);
 
 		if (cadMeshVA) {
 			auto cadEntity = m_activeScene->createEntity("Imported CAD");
@@ -1433,6 +1436,7 @@ void EditorLayer::ImportSTEP()
 			auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(shape, lineVerts, meshComp.m_IDToEdgeMap, 0.1f);
 			meshComp.EdgeVA = edgeVA;
 			meshComp.LocalLines = lineVerts;
+			meshComp.LocalIndices = indices;
 			// ===========================================================
 
 			meshComp.BoundingBox = Rongine::CADImporter::CalculateAABB(shape);
@@ -1485,8 +1489,8 @@ void EditorLayer::CreatePrimitive(Rongine::CADGeometryComponent::GeometryType ty
 		TopoDS_Shape* occShape = (TopoDS_Shape*)shapeHandle;
 
 		std::vector<Rongine::CubeVertex> verticesData;
-		// 调用你之前修改好的 CreateMeshFromShape
-		auto va = Rongine::CADMesher::CreateMeshFromShape(*occShape, verticesData);
+		std::vector<uint32_t> indices;
+		auto va = Rongine::CADMesher::CreateMeshFromShape(*occShape, verticesData,indices);
 
 		if (va)
 		{
@@ -1499,6 +1503,7 @@ void EditorLayer::CreatePrimitive(Rongine::CADGeometryComponent::GeometryType ty
 
 			meshComp.EdgeVA = edgeVA;
 			meshComp.LocalLines = lineVerts;
+			meshComp.LocalIndices = indices;
 
 			// 计算包围盒
 			meshComp.BoundingBox = Rongine::CADImporter::CalculateAABB(*occShape);
@@ -1626,7 +1631,8 @@ void EditorLayer::OnBooleanOperation(Rongine::CADBoolean::Operation op)
 
 		// 生成 Mesh
 		std::vector<Rongine::CubeVertex> vertices;
-		auto va = Rongine::CADMesher::CreateMeshFromShape(*occShape, vertices);
+		std::vector<uint32_t> indices;
+		auto va = Rongine::CADMesher::CreateMeshFromShape(*occShape, vertices,indices);
 
 		if (va)
 		{
@@ -1638,6 +1644,7 @@ void EditorLayer::OnBooleanOperation(Rongine::CADBoolean::Operation op)
 			auto edgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(*occShape, lineVerts, meshComp.m_IDToEdgeMap, 0.1f);
 			meshComp.EdgeVA = edgeVA;
 			meshComp.LocalLines = lineVerts;
+			meshComp.LocalIndices = indices;
 			// ===========================================================
 			meshComp.BoundingBox = Rongine::CADImporter::CalculateAABB(*occShape);
 
@@ -1905,12 +1912,13 @@ void EditorLayer::EnterFilletMode()
 			RONG_CLIENT_INFO("MakeFilletShape su");
 			// 更新预览实体的 Mesh
 			std::vector<Rongine::CubeVertex> verts;
-			auto va = Rongine::CADMesher::CreateMeshFromShape(*(TopoDS_Shape*)previewShape, verts, 0.5f); // 预览精度
+			std::vector<uint32_t> indices;
+			auto va = Rongine::CADMesher::CreateMeshFromShape(*(TopoDS_Shape*)previewShape, verts,indices, 0.5f); // 预览精度
 
 			if (m_PreviewEntity.HasComponent<Rongine::MeshComponent>())
 				m_PreviewEntity.RemoveComponent<Rongine::MeshComponent>();
 
-			m_PreviewEntity.AddComponent<Rongine::MeshComponent>(va, verts);
+			m_PreviewEntity.AddComponent<Rongine::MeshComponent>(va, verts,indices);
 
 			delete (TopoDS_Shape*)previewShape; // 只是预览，用完即弃
 		}

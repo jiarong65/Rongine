@@ -21,20 +21,18 @@
 
 namespace Rongine {
 
-    Ref<VertexArray> CADMesher::CreateMeshFromShape(const TopoDS_Shape& shape, std::vector<CubeVertex>& outVertices, float deflection )
+    Ref<VertexArray> CADMesher::CreateMeshFromShape(const TopoDS_Shape& shape, std::vector<CubeVertex>& outVertices, std::vector<uint32_t>& outIndices, float deflection)
     {
         // 0. 清空传入的容器，确保数据干净
         outVertices.clear();
+        outIndices.clear(); 
 
         // 1. 离散化 (Meshing)
-        // deflection (0.1) 控制网格精度，越小越平滑
         BRepMesh_IncrementalMesh mesher(shape, deflection);
 
-        // 注意：vertices 变量删除了，直接使用 outVertices
-        std::vector<uint32_t> indices;
         uint32_t indexOffset = 0;
-
         int faceID = 0;
+
         // 2. 遍历所有的面 (Face)
         TopExp_Explorer explorer(shape, TopAbs_FACE);
         while (explorer.More())
@@ -47,6 +45,12 @@ namespace Rongine {
 
             if (!triangulation.IsNull())
             {
+                // ========================================================
+                // 获取面的方向
+                // 如果是 REVERSED，说明几何法线与逻辑法线相反，需要翻转顶点顺序
+                // ========================================================
+                bool isReversed = (face.Orientation() == TopAbs_REVERSED);
+
                 gp_Trsf trsf = location.Transformation();
 
                 int nodeCount = triangulation->NbNodes();
@@ -62,17 +66,13 @@ namespace Rongine {
 
                     CubeVertex v;
                     v.Position = { (float)p.X(), (float)p.Y(), (float)p.Z() };
-
-                    // TODO: 法线计算优化
-                    v.Normal = { 0.0f, 1.0f, 0.0f };
-
+                    v.Normal = { 0.0f, 1.0f, 0.0f }; // 简单默认法线
                     v.Color = { 0.8f, 0.8f, 0.8f, 1.0f };
                     v.TexCoord = { 0.0f, 0.0f };
                     v.TexIndex = 0.0f;
                     v.TilingFactor = 1.0f;
                     v.FaceID = faceID;
 
-                    // 【修改】推入到传入的 outVertices 中
                     outVertices.push_back(v);
                 }
 
@@ -84,26 +84,42 @@ namespace Rongine {
                     int n1, n2, n3;
                     tri.Get(n1, n2, n3);
 
-                    indices.push_back(currentFaceOffset + (n1 - 1));
-                    indices.push_back(currentFaceOffset + (n2 - 1));
-                    indices.push_back(currentFaceOffset + (n3 - 1));
+                    // OCCT 的索引是从 1 开始的，我们需要减 1 变成从 0 开始
+                    uint32_t idx1 = currentFaceOffset + (n1 - 1);
+                    uint32_t idx2 = currentFaceOffset + (n2 - 1);
+                    uint32_t idx3 = currentFaceOffset + (n3 - 1);
+
+                    // ========================================================
+                    // 根据 Orientation 调整顶点写入顺序
+                    // ========================================================
+                    if (isReversed)
+                    {
+                        // 如果是反向面，交换 2 和 3 的顺序 (1-3-2)
+                        // 存入 outIndices
+                        outIndices.push_back(idx1);
+                        outIndices.push_back(idx3);
+                        outIndices.push_back(idx2);
+                    }
+                    else
+                    {
+                        // 正常顺序 (1-2-3)
+                        outIndices.push_back(idx1);
+                        outIndices.push_back(idx2);
+                        outIndices.push_back(idx3);
+                    }
                 }
 
                 indexOffset += nodeCount;
             }
             explorer.Next();
-
             faceID++;
         }
 
         // 3. 创建 OpenGL 资源
-        // 【修改】检查 outVertices 是否为空
         if (outVertices.empty()) return nullptr;
 
         Ref<VertexArray> va = VertexArray::create();
 
-        // 创建 VertexBuffer
-        // 【修改】使用 outVertices 的数据指针和大小
         Ref<VertexBuffer> vb = VertexBuffer::create((float*)outVertices.data(), (uint32_t)(outVertices.size() * sizeof(CubeVertex)));
 
         vb->setLayout({
@@ -117,7 +133,8 @@ namespace Rongine {
             });
         va->addVertexBuffer(vb);
 
-        Ref<IndexBuffer> ib = IndexBuffer::create(indices.data(), (uint32_t)indices.size());
+        // 使用 outIndices 创建索引缓冲
+        Ref<IndexBuffer> ib = IndexBuffer::create(outIndices.data(), (uint32_t)outIndices.size());
         va->setIndexBuffer(ib);
 
         return va;
@@ -442,9 +459,11 @@ namespace Rongine {
 
         // 3. 重新生成面片网格 (Face Mesh)
         std::vector<CubeVertex> newVertices;
+        std::vector<uint32_t> newIndices;
         // 使用组件里存的精度参数
-        mesh.VA = CreateMeshFromShape(shape, newVertices, cad.LinearDeflection);
+        mesh.VA = CreateMeshFromShape(shape, newVertices, newIndices, cad.LinearDeflection);
         mesh.LocalVertices = newVertices; // 更新 CPU 端数据供拾取/Gizmo使用
+        mesh.LocalIndices = newIndices;
 
         // 4. 重新生成边框网格 (Edge Mesh) 并重建 m_IDToEdgeMap
         // 注意：CreateEdgeMeshFromShape 内部会填充 m_IDToEdgeMap
@@ -452,5 +471,6 @@ namespace Rongine {
 
         RONG_CORE_INFO("Rebuild Complete. Mapped {0} Edges.", mesh.m_IDToEdgeMap.size());
     }
+
 
 }

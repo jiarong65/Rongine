@@ -18,7 +18,7 @@ namespace Rongine {
 	public:
 		// 输入：OCCT 形状
 		// 输出：一个可以在 OpenGL 里画出来的 VertexArray
-		static Ref<VertexArray> CreateMeshFromShape(const TopoDS_Shape& shape, std::vector<CubeVertex>& outVertices, float deflection = 0.1f);
+		static Ref<VertexArray> CreateMeshFromShape(const TopoDS_Shape& shape, std::vector<CubeVertex>& outVertices, std::vector<uint32_t>& outIndices, float deflection = 0.1f);
 
 		static Ref<VertexArray> CreateEdgeMeshFromShape(const TopoDS_Shape& shape, std::vector<LineVertex>& outLines, float deflection = 0.1f);
 		static Ref<VertexArray> CreateEdgeMeshFromShape(Entity entity, const TopoDS_Shape& shape, std::vector<LineVertex>& outLines, float deflection);
@@ -27,6 +27,8 @@ namespace Rongine {
 		static void ApplyFillet(Entity entity, int edgeID, float radius);
 
 		static void RebuildMesh(Entity entity);
+
+
 	};
 
 }

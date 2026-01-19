@@ -1,12 +1,12 @@
-#include "Rongpch.h"
+ï»¿#include "Rongpch.h"
 #include "SpectralRenderer.h"
 #include <random>
-#include <execution>// C++17 ²¢ĞĞËã·¨
+#include <execution>// C++17 å¹¶è¡Œç®—æ³•
 #include <numeric>// for std::iota
 
 namespace Rongine {
 
-	// ¸¨Öú¹¤¾ß£º°Ñ float (0.0-1.0) ×ª³É RGBA8 (0-255) ²¢´ò°ü³É uint32
+	// è¾…åŠ©å·¥å…·ï¼šæŠŠ float (0.0-1.0) è½¬æˆ RGBA8 (0-255) å¹¶æ‰“åŒ…æˆ uint32
 	static uint32_t ConvertToRGBA(const glm::vec4& color)
 	{
 		uint8_t r = (uint8_t)(glm::clamp(color.r, 0.0f, 1.0f) * 255.0f);
@@ -27,105 +27,168 @@ namespace Rongine {
 		m_Width = width;
 		m_Height = height;
 
-		// ÖØĞÂ·ÖÅäÄÚ´æ
+		// é‡æ–°åˆ†é…å†…å­˜
 		m_ImageData.resize(m_Width * m_Height);
 
-		// ´´½¨»òÖØ½¨ GPU ÎÆÀí
-		// ×¢Òâ£ºÕâÀï¼ÙÉèÄãÓĞÒ»¸öÀàËÆÓÚ Texture2D::create(width, height) µÄ¿ÕÎÆÀí´´½¨½Ó¿Ú
-		// Èç¹ûÃ»ÓĞ£¬ÄãĞèÒªÈ¥ÊµÏÖÒ»¸öÄÜ½ÓÊÕ void* data µÄ Texture ¹¹Ôìº¯Êı
-		if (m_FinalTexture) m_FinalTexture.reset(); // ÊÍ·Å¾ÉµÄ
+		// åˆ›å»ºæˆ–é‡å»º GPU çº¹ç†
+		if (m_FinalTexture) m_FinalTexture.reset(); // é‡Šæ”¾æ—§çš„
 		m_FinalTexture = Texture2D::create(m_Width, m_Height);
 	}
 
-	void SpectralRenderer::Render(const Scene& scene, const PerspectiveCamera& camera)
+	void SpectralRenderer::Render( Scene& scene, const PerspectiveCamera& camera)
 	{
 		if (m_Width == 0 || m_Height == 0) return;
 
-		// ´´½¨Ò»¸öĞĞË÷ÒıµÄ¼¯ºÏ: 0, 1, 2, ..., height-1
+		// åˆ›å»ºä¸€ä¸ªè¡Œç´¢å¼•çš„é›†åˆ: 0, 1, 2, ..., height-1
 		std::vector<uint32_t> verticalIter(m_Height);
 		std::iota(verticalIter.begin(), verticalIter.end(), 0);
 
-		// Ê¹ÓÃ std::execution::par ÈÃËùÓĞ CPU ºËĞÄÒ»ÆğÅÜ
+		// ä½¿ç”¨ std::execution::par è®©æ‰€æœ‰ CPU æ ¸å¿ƒä¸€èµ·è·‘
 		std::for_each(std::execution::par, verticalIter.begin(), verticalIter.end(),
-			[this, &camera](uint32_t y)
+			[this, &camera,&scene](uint32_t y)
 			{
 				for (uint32_t x = 0; x < m_Width; x++)
 				{
-					glm::vec4 color = PerPixel(x, y, m_Width, m_Height, camera);
+					glm::vec4 color = PerPixel(x, y, m_Width, m_Height, camera,scene);
 
-					// Ğ´Èë Buffer
+					// å†™å…¥ Buffer
 					m_ImageData[x + y * m_Width] = ConvertToRGBA(color);
 				}
 			});
 
-		// °Ñ CPU Êı¾İÉÏ´«µ½ GPU
+		// æŠŠ CPU æ•°æ®ä¸Šä¼ åˆ° GPU
 		m_FinalTexture->setData(m_ImageData.data(), m_ImageData.size() * sizeof(uint32_t));
 	}
 
-	glm::vec4 SpectralRenderer::PerPixel(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const PerspectiveCamera& camera)
+	// è®¡ç®—åƒç´ 
+	glm::vec4 SpectralRenderer::PerPixel(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const PerspectiveCamera& camera, Scene& scene)
 	{
 		Ray ray;
 		ray.Origin = camera.getPosition();
 
-		// ¼ÆËãÉäÏß·½Ïò (´ÓÏà»ú´©¹ıÏñËØ)
-		// 1. ¹éÒ»»¯Éè±¸×ø±ê (NDC): [-1, 1]
-		// ×¢Òâ£ºy ĞèÒª·´×ª£¬ÒòÎªÆÁÄ»×ø±ê y ÏòÏÂ£¬¶ø OpenGL y ÏòÉÏ
 		glm::vec2 coord = { (float)x / (float)width, (float)y / (float)height };
-		coord = coord * 2.0f - 1.0f; // 0..1 -> -1..1
+		coord = coord * 2.0f - 1.0f;
 
-		// 2. ÀûÓÃÄæ¾ØÕó¼ÆËã·½Ïò (ÕâÊÇ×îÍ¨ÓÃµÄ·½·¨)
-		// Ä¿±êµãÔÚ View Space µÄÔ¶Æ½Ãæ
 		glm::vec4 target = camera.getInverseProjectionMatrix() * glm::vec4(coord.x, coord.y, 1.0f, 1.0f);
-
-		// ±ä»»µ½ World Space (Ö»Ğı×ª£¬²»Î»ÒÆ£¬ËùÒÔ w=0)
 		glm::vec3 rayDir = glm::vec3(camera.getInverseViewMatrix() * glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0));
 
 		ray.Direction = glm::normalize(rayDir);
 
-		// ·¢Éä¹âÏß
-		return glm::vec4(TraceRay(ray), 1.0f);
+		HitPayload payload = TraceRay(ray, scene);
+
+		if (payload.HitDistance < 0.0f)
+		{
+			return glm::vec4(0.1f, 0.1f, 0.1f, 1.0f); // èƒŒæ™¯è‰²
+		}
+
+		// ç®€å•çš„å…‰ç…§ï¼šN dot L (å‡è®¾æœ‰ä¸€ä¸ªå…‰åœ¨å³ä¸Šæ–¹)
+		glm::vec3 lightDir = glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f));
+		float lightIntensity = glm::max(glm::dot(payload.WorldNormal, lightDir), 0.0f);
+
+		glm::vec3 sphereColor(0.8f, 0.3f, 0.3f); // çº¢è‰²ç‰©ä½“
+		sphereColor *= lightIntensity;
+		sphereColor += payload.WorldNormal * 0.5f + 0.5f; // æ··åˆä¸€ç‚¹æ³•çº¿é¢œè‰²æ–¹ä¾¿è°ƒè¯•
+
+		return glm::vec4(sphereColor * 0.5f, 1.0f);
 	}
 
-	glm::vec3 SpectralRenderer::TraceRay(const Ray& ray)
+	// MÃ¶llerâ€“Trumbore ray-triangle intersection algorithm
+	bool SpectralRenderer::RayTriangleIntersect(const Ray& ray,
+		const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2,
+		float& t, glm::vec3& normal)
 	{
-		// --- ¼òµ¥µÄÇòÌåÇó½»²âÊÔ (Hello World) ---
+		const float EPSILON = 0.0000001f;
+		glm::vec3 edge1 = v1 - v0;
+		glm::vec3 edge2 = v2 - v0;
+		glm::vec3 h = glm::cross(ray.Direction, edge2);
+		float a = glm::dot(edge1, h);
 
-		// ¶¨ÒåÒ»¸öÇò
-		glm::vec3 spherePos = { 0.0f, 0.0f, 0.0f }; // Ô­µã
-		float radius = 0.5f;
+		if (a > -EPSILON && a < EPSILON) return false; // å…‰çº¿å¹³è¡Œäºä¸‰è§’å½¢
 
-		// Çó½â·½³Ì: (bx^2 + by^2)t^2 + (2(axbx + ayby))t + (ax^2 + ay^2 - r^2) = 0
-		// ¼ò»¯°æ£ºa = dot(rayDir, rayDir) = 1 (ÒòÎª¹éÒ»»¯ÁË)
-		// b = 2 * dot(oc, rayDir)
-		// c = dot(oc, oc) - r^2
+		float f = 1.0f / a;
+		glm::vec3 s = ray.Origin - v0;
+		float u = f * glm::dot(s, h);
+		if (u < 0.0f || u > 1.0f) return false;
 
-		glm::vec3 oc = ray.Origin - spherePos;
-		float a = glm::dot(ray.Direction, ray.Direction);
-		float b = 2.0f * glm::dot(oc, ray.Direction);
-		float c = glm::dot(oc, oc) - radius * radius;
+		glm::vec3 q = glm::cross(s, edge1);
+		float v = f * glm::dot(ray.Direction, q);
+		if (v < 0.0f || u + v > 1.0f) return false;
 
-		float discriminant = b * b - 4 * a * c;
-
-		if (discriminant > 0.0f)
+		float currentT = f * glm::dot(edge2, q);
+		if (currentT > EPSILON) // åªæœ‰ t > 0 æ‰ç®—å‡»ä¸­ï¼ˆå‰æ–¹ï¼‰
 		{
-			// »÷ÖĞÁËÇò
+			t = currentT;
+			// ç®€å•çš„é¢æ³•çº¿ (Flat Shading)
+			// å¦‚æœè¦å…‰æ»‘ç€è‰²ï¼Œéœ€è¦ç”¨ u,v æ’å€¼é¡¶ç‚¹æ³•çº¿
+			normal = glm::normalize(glm::cross(edge1, edge2));
+			return true;
+		}
+		return false;
+	}
 
-			// ¼ÆËã×î½üµÄ½»µã t
-			// t = (-b - sqrt(delta)) / 2a
-			float t = (-b - std::sqrt(discriminant)) / (2.0f * a);
+	SpectralRenderer::HitPayload SpectralRenderer::TraceRay(const Ray& ray, Scene& scene)
+	{
+		HitPayload payload;
+		payload.HitDistance = std::numeric_limits<float>::max(); // åˆå§‹åŒ–ä¸ºæ— ç©·è¿œ
 
-			if (t > 0.0f) // È·±£ÔÚÏà»úÇ°·½
+		// 1. è·å–åœºæ™¯ä¸­æ‰€æœ‰å¸¦ MeshComponent çš„ç‰©ä½“
+		auto view = scene.getAllEntitiesWith<TransformComponent, MeshComponent>();
+
+		// 2. éå†æ‰€æœ‰ç‰©ä½“ (Brute Forceï¼Œä»¥åç”¨ BVH åŠ é€Ÿ)
+		for (auto entityHandle : view)
+		{
+			auto [tc, mesh] = view.get<TransformComponent, MeshComponent>(entityHandle);
+
+			// è·³è¿‡æ²¡æœ‰é¡¶ç‚¹æ•°æ®çš„
+			if (mesh.LocalVertices.empty()) continue;
+
+			// è·å–æ¨¡å‹çŸ©é˜µ (Model Matrix)
+			glm::mat4 transform = tc.GetTransform();
+
+			// æå–æ³•çº¿çŸ©é˜µ (ç”¨äºå˜æ¢æ³•çº¿ï¼Œé˜²æ­¢éå‡åŒ€ç¼©æ”¾å¯¼è‡´æ³•çº¿é”™è¯¯)
+			glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(transform)));
+
+			// 3. éå†ç‰©ä½“ meshes é‡Œçš„æ‰€æœ‰ä¸‰è§’å½¢
+			// LocalVertices æ˜¯ CubeVertex ç»“æ„ä½“
+			size_t numIndices = mesh.LocalIndices.size();
+			for (size_t i = 0; i < numIndices; i += 3)
 			{
-				glm::vec3 hitPoint = ray.Origin + ray.Direction * t;
-				glm::vec3 normal = glm::normalize(hitPoint - spherePos);
+				// 1. ä»ç´¢å¼•æ•°ç»„æ‹¿é¡¶ç‚¹ä¸‹æ ‡
+				uint32_t idx0 = mesh.LocalIndices[i];
+				uint32_t idx1 = mesh.LocalIndices[i + 1];
+				uint32_t idx2 = mesh.LocalIndices[i + 2];
 
-				// ¼òµ¥µÄ¹âÕÕ¿ÉÊÓ»¯£º°Ñ·¨ÏßÓ³Éäµ½ÑÕÉ« (Normal * 0.5 + 0.5)
-				return normal * 0.5f + 0.5f;
+				// 2. ç”¨ä¸‹æ ‡å»é¡¶ç‚¹æ•°ç»„æ‹¿æ•°æ®
+				glm::vec3 localV0 = mesh.LocalVertices[idx0].Position;
+				glm::vec3 localV1 = mesh.LocalVertices[idx1].Position;
+				glm::vec3 localV2 = mesh.LocalVertices[idx2].Position;
+
+				// 3. å˜æ¢åˆ°ä¸–ç•Œåæ ‡
+				glm::vec3 worldV0 = glm::vec3(transform * glm::vec4(localV0, 1.0f));
+				glm::vec3 worldV1 = glm::vec3(transform * glm::vec4(localV1, 1.0f));
+				glm::vec3 worldV2 = glm::vec3(transform * glm::vec4(localV2, 1.0f));
+
+				float t = 0.0f;
+				glm::vec3 n;
+
+				if (RayTriangleIntersect(ray, worldV0, worldV1, worldV2, t, n))
+				{
+					if (t < payload.HitDistance)
+					{
+						payload.HitDistance = t;
+						payload.EntityID = (int)(uint32_t)entityHandle;
+						payload.WorldPosition = ray.Origin + ray.Direction * t;
+						payload.WorldNormal = n;
+					}
+				}
 			}
 		}
 
-		// Ã»»÷ÖĞ£º·µ»Ø±³¾°É« (ºÚÉ«»òÌì¿ÕÉ«)
-		return glm::vec3(0.1f, 0.1f, 0.1f);
+		// å¦‚æœæ²¡æ‰“ä¸­ä»»ä½•ä¸œè¥¿ï¼Œè·ç¦»é‡ç½®ä¸º -1
+		if (payload.HitDistance == std::numeric_limits<float>::max())
+			payload.HitDistance = -1.0f;
+
+		return payload;
 	}
 
 }

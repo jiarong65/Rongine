@@ -4,13 +4,13 @@
 #include "Rongine/Scene/Entity.h"
 #include "Rongine/Scene/Components.h"
 
-// --- ÒıÈë CAD Ïà¹ØµÄÍ·ÎÄ¼ş (ÓÃÓÚÖØ½¨¼¸ºÎÌå) ---
+// --- å¼•å…¥ CAD ç›¸å…³çš„å¤´æ–‡ä»¶ (ç”¨äºé‡å»ºå‡ ä½•ä½“) ---
 #include "Rongine/CAD/CADModeler.h"
 #include "Rongine/CAD/CADMesher.h"
 #include "Rongine/CAD/CADImporter.h"
 #include <TopoDS_Shape.hxx> 
 
-#include <BRepTools.hxx> // OCCT BRep ¶ÁĞ´¹¤¾ß
+#include <BRepTools.hxx> // OCCT BRep è¯»å†™å·¥å…·
 #include <filesystem>
 
 #include <yaml-cpp/yaml.h>
@@ -18,7 +18,7 @@
 
 namespace YAML {
 
-	// --- ¸¨Öú×ª»»Æ÷£ºÈÃ YAML Ö§³Ö glm::vec3 ---
+	// --- è¾…åŠ©è½¬æ¢å™¨ï¼šè®© YAML æ”¯æŒ glm::vec3 ---
 	template<>
 	struct convert<glm::vec3>
 	{
@@ -44,7 +44,7 @@ namespace YAML {
 		}
 	};
 
-	// --- ¸¨Öú×ª»»Æ÷£ºÈÃ YAML Ö§³Ö glm::vec4 ---
+	// --- è¾…åŠ©è½¬æ¢å™¨ï¼šè®© YAML æ”¯æŒ glm::vec4 ---
 	template<>
 	struct convert<glm::vec4>
 	{
@@ -75,7 +75,7 @@ namespace YAML {
 
 namespace Rongine {
 
-	// --- ¸¨ÖúÊä³öÔËËã·û ---
+	// --- è¾…åŠ©è¾“å‡ºè¿ç®—ç¬¦ ---
 	YAML::Emitter& operator<<(YAML::Emitter& out, const glm::vec3& v)
 	{
 		out << YAML::Flow;
@@ -96,22 +96,22 @@ namespace Rongine {
 	}
 
 	// =============================================================
-	// ºËĞÄ±£´æÂß¼­£ºĞòÁĞ»¯µ¥¸öÊµÌå
+	// æ ¸å¿ƒä¿å­˜é€»è¾‘ï¼šåºåˆ—åŒ–å•ä¸ªå®ä½“
 	// =============================================================
 	static void SerializeEntity(YAML::Emitter& out, Entity entity)
 	{
-		// ¼ì²éÊµÌåÓĞĞ§ĞÔ
-		if (!entity.HasComponent<IDComponent>()) // ¼ÙÉèÄãÓĞ IDComponent£¬Èç¹ûÃ»ÓĞÇëÓÃ uint32_t Ç¿×ª
+		// æ£€æŸ¥å®ä½“æœ‰æ•ˆæ€§
+		if (!entity.HasComponent<IDComponent>()) // å‡è®¾ä½ æœ‰ IDComponentï¼Œå¦‚æœæ²¡æœ‰è¯·ç”¨ uint32_t å¼ºè½¬
 		{
-			// Èç¹ûÃ»ÓĞ ID ×é¼ş£¬ÖÁÉÙÈ·±£ËüÊÇ¸öÓĞĞ§ÊµÌå
+			// å¦‚æœæ²¡æœ‰ ID ç»„ä»¶ï¼Œè‡³å°‘ç¡®ä¿å®ƒæ˜¯ä¸ªæœ‰æ•ˆå®ä½“
 		}
 
 		out << YAML::BeginMap; // Entity Start
 
-		// ĞòÁĞ»¯ÊµÌå ID (Èç¹ûÄã»¹Ã»ÓĞ IDComponent£¬ÕâÀï¼òµ¥×ª³ÉÕûÊı´æÒ»ÏÂ£¬ËäÈ»¼ÓÔØÊ±²»Ò»¶¨ÄÜ¸´Ô­Í¬Ò»¸öID)
+		// åºåˆ—åŒ–å®ä½“ ID (å¦‚æœä½ è¿˜æ²¡æœ‰ IDComponentï¼Œè¿™é‡Œç®€å•è½¬æˆæ•´æ•°å­˜ä¸€ä¸‹ï¼Œè™½ç„¶åŠ è½½æ—¶ä¸ä¸€å®šèƒ½å¤åŸåŒä¸€ä¸ªID)
 		out << YAML::Key << "Entity" << YAML::Value << (uint64_t)(uint32_t)entity;
 
-		// 1. Tag ×é¼ş (Ãû×Ö)
+		// 1. Tag ç»„ä»¶ (åå­—)
 		if (entity.HasComponent<TagComponent>())
 		{
 			out << YAML::Key << "TagComponent";
@@ -123,7 +123,7 @@ namespace Rongine {
 			out << YAML::EndMap; // TagComponent Map
 		}
 
-		// 2. Transform ×é¼ş (±ä»»)
+		// 2. Transform ç»„ä»¶ (å˜æ¢)
 		if (entity.HasComponent<TransformComponent>())
 		{
 			out << YAML::Key << "TransformComponent";
@@ -137,7 +137,7 @@ namespace Rongine {
 			out << YAML::EndMap; // TransformComponent Map
 		}
 
-		// 3. CAD Geometry ×é¼ş (ºËĞÄ)
+		// 3. CAD Geometry ç»„ä»¶ (æ ¸å¿ƒ)
 		if (entity.HasComponent<CADGeometryComponent>())
 		{
 			out << YAML::Key << "CADGeometryComponent";
@@ -145,10 +145,10 @@ namespace Rongine {
 
 			auto& cadComp = entity.GetComponent<CADGeometryComponent>();
 
-			// ±£´æÀàĞÍ (×ªÎª int ´æ´¢)
+			// ä¿å­˜ç±»å‹ (è½¬ä¸º int å­˜å‚¨)
 			out << YAML::Key << "Type" << YAML::Value << (int)cadComp.Type;
 
-			// ±£´æ²ÎÊı
+			// ä¿å­˜å‚æ•°
 			out << YAML::Key << "Params" << YAML::BeginMap;
 			out << YAML::Key << "Width" << YAML::Value << cadComp.Params.Width;
 			out << YAML::Key << "Height" << YAML::Value << cadComp.Params.Height;
@@ -165,13 +165,13 @@ namespace Rongine {
 			{
 				uint64_t uuid = entity.GetComponent<IDComponent>().ID; 
 
-				// ¹¹ÔìÏà¶ÔÂ·¾¶
+				// æ„é€ ç›¸å¯¹è·¯å¾„
 				brepFileName = "assets/cache/" + std::to_string(uuid) + ".brep";
 
-				// È·±£Ä¿Â¼´æÔÚ
+				// ç¡®ä¿ç›®å½•å­˜åœ¨
 				std::filesystem::create_directories("assets/cache");
 
-				// µ÷ÓÃ OCCT ±£´æÎÄ¼ş
+				// è°ƒç”¨ OCCT ä¿å­˜æ–‡ä»¶
 				TopoDS_Shape* shape = (TopoDS_Shape*)cadComp.ShapeHandle;
 				if (!BRepTools::Write(*shape, brepFileName.c_str()))
 				{
@@ -179,7 +179,7 @@ namespace Rongine {
 				}
 			}
 
-			// ½«Â·¾¶Ğ´Èë YAML
+			// å°†è·¯å¾„å†™å…¥ YAML
 			out << YAML::Key << "BRepPath" << YAML::Value << brepFileName;
 
 			out << YAML::EndMap; // CADGeometryComponent Map
@@ -189,7 +189,7 @@ namespace Rongine {
 	}
 
 	// =============================================================
-	// ±£´æÕû¸ö³¡¾°
+	// ä¿å­˜æ•´ä¸ªåœºæ™¯
 	// =============================================================
 	void SceneSerializer::Serialize(const std::string& filepath)
 	{
@@ -215,7 +215,7 @@ namespace Rongine {
 	}
 
 	// =============================================================
-	// ºËĞÄ¼ÓÔØÂß¼­£º´ÓÎÄ¼ş¶ÁÈ¡²¢ÖØ½¨³¡¾°
+	// æ ¸å¿ƒåŠ è½½é€»è¾‘ï¼šä»æ–‡ä»¶è¯»å–å¹¶é‡å»ºåœºæ™¯
 	// =============================================================
 	bool SceneSerializer::Deserialize(const std::string& filepath)
 	{
@@ -237,7 +237,7 @@ namespace Rongine {
 			{
 				uint64_t uuid = entity["Entity"].as<uint64_t>();
 
-				// 1. ¶ÁÈ¡Ãû×Ö²¢´´½¨ÊµÌå
+				// 1. è¯»å–åå­—å¹¶åˆ›å»ºå®ä½“
 				std::string name;
 				auto tagComponent = entity["TagComponent"];
 				if (tagComponent)
@@ -245,11 +245,11 @@ namespace Rongine {
 
 				Entity deserializedEntity = m_Context->createEntity(name);
 				if (deserializedEntity.HasComponent<IDComponent>())
-					deserializedEntity.GetComponent<IDComponent>().ID = uuid; // »Ö¸´ UUID
+					deserializedEntity.GetComponent<IDComponent>().ID = uuid; // æ¢å¤ UUID
 
 				RONG_CORE_TRACE("Deserialized entity '{0}' (UUID: {1})", name, uuid);
 
-				// 2. ¼ÓÔØ Transform
+				// 2. åŠ è½½ Transform
 				auto transformComponent = entity["TransformComponent"];
 				if (transformComponent)
 				{
@@ -259,13 +259,13 @@ namespace Rongine {
 					tc.Scale = transformComponent["Scale"].as<glm::vec3>();
 				}
 
-				// 3. ¼ÓÔØ CAD ×é¼ş²¢ÏÖ³¡ÖØ½¨ (Rebuild)
+				// 3. åŠ è½½ CAD ç»„ä»¶å¹¶ç°åœºé‡å»º (Rebuild)
 				auto cadComponent = entity["CADGeometryComponent"];
 				if (cadComponent)
 				{
 					auto& cadComp = deserializedEntity.AddComponent<CADGeometryComponent>();
 
-					// A. ¶ÁÈ¡²ÎÊı
+					// A. è¯»å–å‚æ•°
 					cadComp.Type = (CADGeometryComponent::GeometryType)cadComponent["Type"].as<int>();
 					auto params = cadComponent["Params"];
 					cadComp.Params.Width = params["Width"].as<float>();
@@ -278,13 +278,13 @@ namespace Rongine {
 					else
 						cadComp.LinearDeflection = 0.1f;
 
-					// ¼ÓÔØ BRep ÎÄ¼ş
+					// åŠ è½½ BRep æ–‡ä»¶
 					void* shapeHandle = nullptr;
 					std::string brepPath = "";
 					if (cadComponent["BRepPath"])
 						brepPath = cadComponent["BRepPath"].as<std::string>();
 
-					// ÓÅÏÈ³¢ÊÔ´ÓÎÄ¼ş¼ÓÔØ (Õë¶ÔÀ­Éì¡¢²¼¶ûÔËËãºóµÄÎïÌå)
+					// ä¼˜å…ˆå°è¯•ä»æ–‡ä»¶åŠ è½½ (é’ˆå¯¹æ‹‰ä¼¸ã€å¸ƒå°”è¿ç®—åçš„ç‰©ä½“)
 					bool loadedFromDisk = false;
 					if (!brepPath.empty() && std::filesystem::exists(brepPath))
 					{
@@ -301,7 +301,7 @@ namespace Rongine {
 						}
 					}
 
-					// Èç¹ûÃ»´Ó´ÅÅÌ¼ÓÔØ (ËµÃ÷ÊÇ´¿²ÎÊı»¯ÎïÌå£¬»òÕßÎÄ¼ş¶ªÊ§)£¬Ôò³¢ÊÔ²ÎÊı»¯ÖØ½¨
+					// å¦‚æœæ²¡ä»ç£ç›˜åŠ è½½ (è¯´æ˜æ˜¯çº¯å‚æ•°åŒ–ç‰©ä½“ï¼Œæˆ–è€…æ–‡ä»¶ä¸¢å¤±)ï¼Œåˆ™å°è¯•å‚æ•°åŒ–é‡å»º
 					if (!shapeHandle)
 					{
 						switch (cadComp.Type)
@@ -321,27 +321,31 @@ namespace Rongine {
 					cadComp.ShapeHandle = shapeHandle;
 					// ========================================================================
 
-					// C. ÖØĞÂÉú³ÉÍø¸ñ (Mesh + Edge)
+					// C. é‡æ–°ç”Ÿæˆç½‘æ ¼ (Mesh + Edge)
 					if (shapeHandle)
 					{
 						TopoDS_Shape* occShape = (TopoDS_Shape*)shapeHandle;
 						std::vector<CubeVertex> verticesData;
+						std::vector<uint32_t> newIndices;
 
-						// 1. Éú³ÉÃæÍø¸ñ
-						auto va = CADMesher::CreateMeshFromShape(*occShape, verticesData, cadComp.LinearDeflection);
+
+						// 1. ç”Ÿæˆé¢ç½‘æ ¼
+						auto va = CADMesher::CreateMeshFromShape(*occShape, verticesData, newIndices, cadComp.LinearDeflection);
 
 						if (va)
 						{
 							auto& meshComp = deserializedEntity.AddComponent<MeshComponent>(va, verticesData);
 
-							// 2. ¸üĞÂ°üÎ§ºĞ
+							// 2. æ›´æ–°åŒ…å›´ç›’
 							meshComp.BoundingBox = CADImporter::CalculateAABB(*occShape);
+							meshComp.LocalVertices = verticesData;
+							meshComp.LocalIndices = newIndices;
 
 							std::vector<LineVertex> lineVerts;
 							auto edgeVA = CADMesher::CreateEdgeMeshFromShape(
 								*occShape,
 								lineVerts,
-								meshComp.m_IDToEdgeMap, // »Ö¸´ ID Ó³Éä±í£¬È·±£ÄÜ±»Ñ¡ÖĞ
+								meshComp.m_IDToEdgeMap, // æ¢å¤ ID æ˜ å°„è¡¨ï¼Œç¡®ä¿èƒ½è¢«é€‰ä¸­
 								cadComp.LinearDeflection
 							);
 							meshComp.EdgeVA = edgeVA;
