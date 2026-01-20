@@ -146,6 +146,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Rongine\Renderer\RenderTypes.h" />
     <ClInclude Include="src\Rongine\Renderer\SpectralRenderer.h" />
     <ClInclude Include="src\Rongine\Math\Math.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLBuffer.h" />

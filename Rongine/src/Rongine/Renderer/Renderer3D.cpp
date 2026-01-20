@@ -1,6 +1,9 @@
 #include "Rongpch.h"
 #include "Renderer3D.h"
 #include "RenderCommand.h" // 确保包含 RenderCommand
+#include "Rongine/Scene/Entity.h" 
+#include "Rongine/Scene/Components.h"
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <array>
 #include <glad/glad.h>
@@ -366,7 +369,7 @@ namespace Rongine {
 	// ===========================================
 	//  Mesh Rendering
 	// ===========================================
-	void Renderer3D::drawModel(const Ref<VertexArray>& va, const glm::mat4& transform,int entityID)
+	void Renderer3D::drawModel(const Ref<VertexArray>& va, const glm::mat4& transform,int entityID, const MaterialComponent* material)
 	{
 		// 1. 如果批处理里有方块没画，先画掉 (flush 会使用 Identity Model 矩阵)
 		//flush();
@@ -390,6 +393,19 @@ namespace Rongine {
 		s_Data.TextureShader->setInt("u_HoveredEntityID", s_Data.HoveredEntityID);
 		s_Data.TextureShader->setInt("u_HoveredFaceID", s_Data.HoveredFaceID);
 
+		if (material)
+		{
+			s_Data.TextureShader->setFloat3("u_Albedo", material->Albedo);
+			s_Data.TextureShader->setFloat("u_Roughness", material->Roughness);
+			s_Data.TextureShader->setFloat("u_Metallic", material->Metallic);
+		}
+		else
+		{
+			s_Data.TextureShader->setFloat3("u_Albedo", glm::vec3(1.0f));
+			s_Data.TextureShader->setFloat("u_Roughness", 0.5f);
+			s_Data.TextureShader->setFloat("u_Metallic", 0.0f);
+		}
+
 		va->bind();
 
 		// 3. 显式传递 Index Count！
@@ -401,6 +417,50 @@ namespace Rongine {
 		// 4. 画完后，恢复 u_Model 为单位矩阵
 		// 否则之后如果再调用 drawCube，方块会飞到错误的地方
 		s_Data.TextureShader->setMat4("u_Model", glm::mat4(1.0f));
+	}
+
+	void Renderer3D::drawModel(Entity& en, const glm::mat4& transform,int entityID)
+	{
+		s_Data.TextureShader->bind();
+
+		s_Data.TextureShader->setMat4("u_Model", transform);
+		s_Data.TextureShader->setMat4("u_ViewProjection", s_Data.ViewProjection);
+
+		s_Data.WhiteTexture->bind(0);
+
+		if (en.HasComponent<MaterialComponent>())
+		{
+			const auto& mat = en.GetComponent<MaterialComponent>();
+
+			s_Data.TextureShader->setFloat3("u_Albedo", mat.Albedo);
+			s_Data.TextureShader->setFloat("u_Roughness", mat.Roughness);
+			s_Data.TextureShader->setFloat("u_Metallic", mat.Metallic);
+		}
+
+		s_Data.TextureShader->setInt("u_EntityID", entityID);
+
+		s_Data.TextureShader->setInt("u_SelectedEntityID", s_Data.SelectedEntityID);
+		s_Data.TextureShader->setInt("u_SelectedFaceID", s_Data.SelectedFaceID);
+
+		s_Data.TextureShader->setInt("u_HoveredEntityID", s_Data.HoveredEntityID);
+		s_Data.TextureShader->setInt("u_HoveredFaceID", s_Data.HoveredFaceID);
+
+
+		Ref<VertexArray> va = en.GetComponent<MeshComponent>().VA;
+		va->bind();
+
+		// 3. 显式传递 Index Count！
+		uint32_t count = va->getIndexBuffer()->getCount();
+		RenderCommand::drawIndexed(va, count);
+
+		s_Data.Stats.DrawCalls++;
+
+		//清理显存
+		s_Data.TextureShader->setMat4("u_Model", glm::mat4(1.0f));
+
+		s_Data.TextureShader->setFloat3("u_Albedo", glm::vec3(1.0f));
+		s_Data.TextureShader->setFloat("u_Roughness", 0.5f);
+		s_Data.TextureShader->setFloat("u_Metallic", 0.0f);
 	}
 
 	void Renderer3D::drawEdges(const Ref<VertexArray>& va, const glm::mat4& transform, const glm::vec4& color, int entityID, int selectedEdgeID)

@@ -424,6 +424,7 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		for (auto entityHandle : view)
 		{
 			auto [transform, mesh] = view.get<Rongine::TransformComponent, Rongine::MeshComponent>(entityHandle);
+			const Rongine::MaterialComponent* mat = m_activeScene->getRegistry().try_get<Rongine::MaterialComponent>(entityHandle);
 			if (m_selectedEntity == entityHandle && mesh.EdgeVA)
 			{
 				glEnable(GL_POLYGON_OFFSET_FILL);
@@ -431,14 +432,14 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 				// 设置偏移量：factor=1.0, units=1.0 是经验值
 				// 这会让面的深度值增加，相当于往屏幕里推远了一点点
 				glPolygonOffset(0.5f, 0.5f);
-				Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle);
+				Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle,mat);
 				glDisable(GL_POLYGON_OFFSET_FILL);
-
 
 				Rongine::Renderer3D::drawEdges(mesh.EdgeVA, transform.GetTransform(), { 0.0f, 0.0f, 0.0f, 1.0f }, (int)entityHandle, m_selectedEdge);
 				continue;
 			}
-			Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle);
+
+			Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle,mat);
 		}
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//线框渲染

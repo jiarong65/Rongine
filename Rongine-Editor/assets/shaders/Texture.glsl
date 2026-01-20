@@ -68,6 +68,65 @@ uniform vec3 u_Albedo;      // 颜色
 uniform float u_Roughness;  // 粗糙度
 uniform float u_Metallic;   // 金属度
 
+const float PI = 3.14159265359;
+
+// ----------------------------------------------------------------------------
+// 1. 正态分布函数 D (Trowbridge-Reitz GGX)
+// 决定高光亮斑的大小和锐利度
+float DistributionGGX(vec3 N, vec3 H, float roughness)
+{
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
+
+    float nom   = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return nom / max(denom, 0.0000001); // 防止除以0
+}
+
+// ----------------------------------------------------------------------------
+// 2. 几何函数 G (Smith's Schlick-GGX)
+// 模拟微表面的自遮挡，粗糙度越高，遮挡越多，光越暗
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0; // 直接光照下的 k 计算公式
+
+    float nom   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return nom / denom;
+}
+
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
+
+// ----------------------------------------------------------------------------
+// 3. 菲涅尔方程 F (Fresnel-Schlick)
+// 描述光线在不同角度下的反射率。F0 是 0 度角的反射率。
+vec3 FresnelSchlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+//模拟环境反射的菲涅尔 (带粗糙度阻尼)
+vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// ----------------------------------------------------------------------------
+
 void main()
 {
     // --- 1. 采样纹理颜色 ---
@@ -112,82 +171,116 @@ void main()
 
     // --- 2. PBR ---
 
-    // 基础色 = 材质颜色 * 纹理颜色 
-    vec3 albedo = u_Albedo * texColor.rgb;
-
-    vec3 normal = normalize(v_Normal);
-    vec3 viewDir = normalize(u_ViewPos - v_Position);
+    // B. 准备 PBR 参数
+    vec3 albedo     = pow(u_Albedo * texColor.rgb, vec3(2.2)); // 转换到线性空间计算
+    float roughness = u_Roughness;
+    float metallic  = u_Metallic;
     
-    vec3 lightDir = normalize(vec3(-1.0, 1.0, 1.0));
+    vec3 N = normalize(v_Normal);
+    vec3 V = normalize(u_ViewPos - v_Position);
+
+    // C. 基础反射率 F0
+    // 非金属(电介质)通常是 0.04，金属则是自身的 Albedo 颜色
+    vec3 F0 = vec3(0.04); 
+    F0 = mix(F0, albedo, metallic);
+
+    // ---------------------------------------------------------
+    // D. 光照计算 (针对单个定向光)
+    // ---------------------------------------------------------
     
+    // 定义一个定向光 (类似于太阳)
+    vec3 lightPos = u_ViewPos; 
+    vec3 L = normalize(lightPos - v_Position);
+    vec3 H = normalize(V + L);
+    vec3 radiance = vec3(3.0); // 光源强度 (可以调大一点让高光更亮)
 
-    // B. 漫反射 (Diffuse) - 展现物体形状
-    float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = diff * albedo; 
-
-    // C. 镜面光 (Specular) - 高光部分
-    vec3 halfwayDir = normalize(lightDir + viewDir);
-
-    float shininess = (1.0 - u_Roughness) * 256.0;
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), shininess); 
+    // Cook-Torrance BRDF
+    float NDF = DistributionGGX(N, H, roughness);   
+    float G   = GeometrySmith(N, V, L, roughness);      
+    vec3 F    = FresnelSchlick(max(dot(H, V), 0.0), F0);
+       
+    vec3 numerator    = NDF * G * F; 
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+    vec3 specular = numerator / denominator;
     
-    vec3 specularColor;
-    vec3 finalDiffuse;
+    // kS 是镜面反射比例 (等于 Fresnel)
+    vec3 kS = F;
+    // kD 是漫反射比例 (能量守恒：进来的光 - 反射掉的光)
+    vec3 kD = vec3(1.0) - kS;
+    // 金属没有漫反射 (被自由电子吸收了)，所以乘以 (1 - metallic)
+    kD *= 1.0 - metallic;	  
 
-    // 金属/非金属 逻辑区分
-    if (u_Metallic > 0.5) 
-    {
-        // 金属：漫反射很弱(黑色)，高光带有物体本身的颜色
-        specularColor = albedo; 
-        finalDiffuse = vec3(0.0); // 金属几乎没有漫反射
-    }
-    else 
-    {
-        // 塑料/电介质：高光是白色的，漫反射是物体颜色
-        specularColor = vec3(1.0); 
-        finalDiffuse = diffuse;
-    }
+    // N dot L (Lambert 因子)
+    float NdotL = max(dot(N, L), 0.0);        
 
-    vec3 finalSpecular = spec * specularColor;
+    // 最终出射光线 Lo
+    vec3 Lo = (kD * albedo / PI + specular) * radiance * NdotL;
 
-    // 环境光 (Ambient)
-    vec3 ambient = vec3(0.1) * albedo;
+    // -------------------------------------------------------------------------
+    //  伪造环境光 (Fake IBL) - 让金属看起来像金属
+    // -------------------------------------------------------------------------
+    
+    // A. 计算简单的环境漫反射 (Ambient Diffuse)
+    // 类似于半球光：上面亮，下面暗
+    vec3 up = vec3(0.0, 1.0, 0.0);
+    float hemiMix = (dot(N, up) * 0.5 + 0.5);
+    vec3 ambientLightColor = mix(vec3(0.1, 0.1, 0.15), vec3(0.3, 0.3, 0.35), hemiMix); // 地面灰蓝 -> 天空灰白
+    vec3 ambientDiffuse = kD * albedo * ambientLightColor;
+    
+    // B. 计算伪造的环境镜面反射 (Ambient Specular)
+    vec3 R = reflect(-V, N); // 反射向量
+    
+    // 伪造一个“天空盒”颜色：
+    // 假设天空是蓝色的，地平线是白色的，地面是深色的
+    float horizon = dot(R, up); // -1 (地) 到 1 (天)
+    vec3 skyColor = mix(vec3(0.1), vec3(0.5, 0.7, 1.0), smoothstep(-0.2, 0.5, horizon)); // 简单的蓝天梯度
+    
+    // 粗糙度越高，反射越模糊(也就是越接近平均色)
+    vec3 prefilteredColor = skyColor; 
+    
+    // 环境光的菲涅尔 (从 F0 到 1.0，取决于视角)
+    vec3 F_env = FresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    
+    // 最终的环境镜面光
+    vec3 ambientSpecular = prefilteredColor * F_env;
+    
+    // 粗糙度遮蔽：越粗糙，镜面反射越弱
+    // 这是一个经验近似，为了不写复杂的 LUT
+    ambientSpecular *= (1.0 - roughness); 
 
-    // 组合
-    vec3 lighting = ambient + finalDiffuse + finalSpecular;
+    vec3 ambient = ambientDiffuse + ambientSpecular;
 
-    // Gamma 矫正 (让颜色看起来更准确，不那么暗)
-    lighting = pow(lighting, vec3(1.0 / 2.2));
+    // -------------------------------------------------------------------------
 
-    vec4 finalColor = vec4(lighting, texColor.a);
+    vec3 colorLinear = ambient + Lo;
+    // ---------------------------------------------------------
+    // F. 后处理 (Tone Mapping & Gamma)
+    // ---------------------------------------------------------
+    
+    // HDR Tone Mapping (Reinhard) - 这是一个很简单的版本，防止过曝变纯白
+    colorLinear = colorLinear / (colorLinear + vec3(1.0));
+    
+    // Gamma Correction (转回 sRGB 空间显示)
+    colorLinear = pow(colorLinear, vec3(1.0/2.2)); 
 
-    // 1. 判断选中状态 (Selected) - 橙色
+    vec4 finalColor = vec4(colorLinear, texColor.a);
+
+    // --- 选中与悬停高亮逻辑 (保持不变) ---
     if (u_SelectedEntityID >= 0 && u_EntityID == u_SelectedEntityID)
     {
         if (v_FaceID == u_SelectedFaceID)
-        {
-            finalColor = mix(finalColor, vec4(1.0, 0.6, 0.0, 1.0), 0.5); // 选中：深橙色
-        }
+            finalColor = mix(finalColor, vec4(1.0, 0.6, 0.0, 1.0), 0.5); 
         else if (u_SelectedFaceID == -1)
-        {
-            finalColor = mix(finalColor, vec4(1.0, 1.0, 0.0, 1.0), 0.3); // 选中整体：黄色
-        }
+            finalColor = mix(finalColor, vec4(1.0, 1.0, 0.0, 1.0), 0.3);
     }
     
-    // 2. 判断悬停状态 (Hovered) - 浅亮色 (仅当该面没有被选中时才显示悬停色)
-    // 防止“选中”和“悬停”颜色叠加变得很怪
     bool isSelected = (u_EntityID == u_SelectedEntityID && v_FaceID == u_SelectedFaceID);
-    
     if (!isSelected && u_HoveredEntityID >= 0 && u_EntityID == u_HoveredEntityID)
     {
         if (v_FaceID == u_HoveredFaceID)
-        {
-             // 悬停：浅白色/淡黄色叠加，亮度提升
              finalColor = mix(finalColor, vec4(1.0, 1.0, 0.8, 1.0), 0.3); 
-        }
     }
     
     color = finalColor;
-
     idOutput = ivec4(u_EntityID, v_FaceID, -1, -1);
 }

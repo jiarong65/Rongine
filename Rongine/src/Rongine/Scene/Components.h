@@ -7,7 +7,7 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include "Rongine/Renderer/VertexArray.h" // 包含你的 VertexArray
-#include "Rongine/Renderer/Renderer3D.h"
+#include "Rongine/Renderer/RenderTypes.h"
 
 #include <TopoDS_Edge.hxx>
 #include <gp_Ax3.hxx> // OCCT 的坐标系类
