@@ -64,6 +64,10 @@ uniform int u_HoveredFaceID;
 
 uniform int u_EntityID; //实体id
 
+uniform vec3 u_Albedo;      // 颜色
+uniform float u_Roughness;  // 粗糙度
+uniform float u_Metallic;   // 金属度
+
 void main()
 {
     // --- 1. 采样纹理颜色 ---
@@ -106,34 +110,56 @@ void main()
         case 31: texColor *= texture(u_Textures[31], v_TexCoord * v_TilingFactor); break;
     }
 
-    // --- 2. Blinn-Phong 光照模型 ---
-    
-    // 设置一个固定的光源位置（在侧上方），比平行光更容易看出立体感
-    vec3 lightPos = vec3(2.0, 5.0, 5.0); 
-    
-    vec3 normal = normalize(v_Normal);
-    vec3 lightDir = normalize(lightPos - v_Position);
-    vec3 viewDir = normalize(u_ViewPos - v_Position);
+    // --- 2. PBR ---
 
-    // A. 环境光 (Ambient) - 基础亮度
-    float ambientStrength = 0.1;
-    vec3 ambient = ambientStrength * vec3(1.0);
+    // 基础色 = 材质颜色 * 纹理颜色 
+    vec3 albedo = u_Albedo * texColor.rgb;
+
+    vec3 normal = normalize(v_Normal);
+    vec3 viewDir = normalize(u_ViewPos - v_Position);
+    
+    vec3 lightDir = normalize(vec3(-1.0, 1.0, 1.0));
+    
 
     // B. 漫反射 (Diffuse) - 展现物体形状
     float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = diff * vec3(1.0); // 白光
+    vec3 diffuse = diff * albedo; 
 
-    // C. 镜面光 (Specular) - 【核心】高光部分
+    // C. 镜面光 (Specular) - 高光部分
     vec3 halfwayDir = normalize(lightDir + viewDir);
-    // 64.0 是反光度(Shininess)，数值越高，光点越小越锐利
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), 64.0); 
-    float specularStrength = 0.8; // 高光强度
-    vec3 specular = specularStrength * spec * vec3(1.0); // 白色高光
 
-    // 综合光照结果
-    vec3 lighting = (ambient + diffuse + specular);
+    float shininess = (1.0 - u_Roughness) * 256.0;
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), shininess); 
+    
+    vec3 specularColor;
+    vec3 finalDiffuse;
 
-    vec4 finalColor = vec4(lighting, 1.0) * texColor;
+    // 金属/非金属 逻辑区分
+    if (u_Metallic > 0.5) 
+    {
+        // 金属：漫反射很弱(黑色)，高光带有物体本身的颜色
+        specularColor = albedo; 
+        finalDiffuse = vec3(0.0); // 金属几乎没有漫反射
+    }
+    else 
+    {
+        // 塑料/电介质：高光是白色的，漫反射是物体颜色
+        specularColor = vec3(1.0); 
+        finalDiffuse = diffuse;
+    }
+
+    vec3 finalSpecular = spec * specularColor;
+
+    // 环境光 (Ambient)
+    vec3 ambient = vec3(0.1) * albedo;
+
+    // 组合
+    vec3 lighting = ambient + finalDiffuse + finalSpecular;
+
+    // Gamma 矫正 (让颜色看起来更准确，不那么暗)
+    lighting = pow(lighting, vec3(1.0 / 2.2));
+
+    vec4 finalColor = vec4(lighting, texColor.a);
 
     // 1. 判断选中状态 (Selected) - 橙色
     if (u_SelectedEntityID >= 0 && u_EntityID == u_SelectedEntityID)

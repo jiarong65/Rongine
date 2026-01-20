@@ -35,6 +35,10 @@ namespace Rongine {
 			glm::vec3 WorldPosition;
 			glm::vec3 WorldNormal;
 			int EntityID = -1;
+
+			glm::vec3 Albedo = { 0.8f, 0.8f, 0.8f };
+			float Roughness = 0.5f;
+			float Metallic = 0.0f;
 		};
 
 		//渲染每一个像素

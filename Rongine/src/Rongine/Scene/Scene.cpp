@@ -17,6 +17,7 @@ namespace Rongine {
         entity.AddComponent<IDComponent>(s_NextID++);
         auto& tag = entity.AddComponent<TagComponent>();
         tag.Tag = name.empty() ? "Entity" : name;
+        entity.AddComponent<MaterialComponent>();
         return entity;
     }
 

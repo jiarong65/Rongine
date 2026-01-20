@@ -433,5 +433,17 @@ namespace Rongine {
 				ImGui::TreePop();
 			}
 		}
+
+		// --- Materials  ---
+		if (entity.HasComponent<MaterialComponent>())
+		{
+			auto& mat = entity.GetComponent<MaterialComponent>();
+			if (ImGui::CollapsingHeader("Material"))
+			{
+				ImGui::ColorEdit3("Albedo", (float*)&mat.Albedo);
+				ImGui::SliderFloat("Roughness", &mat.Roughness, 0.0f, 1.0f);
+				ImGui::SliderFloat("Metallic", &mat.Metallic, 0.0f, 1.0f);
+			}
+		}
 	}
 }

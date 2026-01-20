@@ -1,8 +1,10 @@
 ﻿#include "Rongpch.h"
 #include "SpectralRenderer.h"
+#include "Rongine/Scene/Entity.h"
 #include <random>
 #include <execution>// C++17 并行算法
 #include <numeric>// for std::iota
+
 
 namespace Rongine {
 
@@ -81,15 +83,65 @@ namespace Rongine {
 			return glm::vec4(0.1f, 0.1f, 0.1f, 1.0f); // 背景色
 		}
 
-		// 简单的光照：N dot L (假设有一个光在右上方)
-		glm::vec3 lightDir = glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f));
-		float lightIntensity = glm::max(glm::dot(payload.WorldNormal, lightDir), 0.0f);
+		// ===========================================================
+		// 简单的光照计算 (Simple Lighting)
+		// ===========================================================
 
-		glm::vec3 sphereColor(0.8f, 0.3f, 0.3f); // 红色物体
-		sphereColor *= lightIntensity;
-		sphereColor += payload.WorldNormal * 0.5f + 0.5f; // 混合一点法线颜色方便调试
+		// 1. 定义光源 (比如从右上方射下来的白光)
+		glm::vec3 lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f)); // 光的方向 (指向光源的反方向)
+		glm::vec3 lightColor = { 1.0f, 1.0f, 1.0f };
 
-		return glm::vec4(sphereColor * 0.5f, 1.0f);
+		// 2. 准备向量
+		glm::vec3 normal = glm::normalize(payload.WorldNormal);
+		glm::vec3 viewDir = glm::normalize(camera.getPosition() - payload.WorldPosition);
+
+		// --- A. 漫反射 (Diffuse) ---
+		// 塑料和金属都有漫反射，但金属的漫反射通常很弱（甚至为0，全黑）
+		// N dot L
+		float diff = glm::max(glm::dot(normal, -lightDir), 0.0f);
+		glm::vec3 diffuse = diff * payload.Albedo;
+
+		// --- B. 高光 (Specular) ---
+		// 使用简单的反射向量算法
+		glm::vec3 reflectDir = glm::reflect(lightDir, normal);
+
+		// 粗糙度转光泽度 (Roughness -> Shininess)
+		// 粗糙度 0 -> 非常亮 (指数大), 粗糙度 1 -> 非常散 (指数小)
+		float shininess = (1.0f - payload.Roughness) * 256.0f;
+
+		float spec = std::pow(glm::max(glm::dot(viewDir, reflectDir), 0.0f), shininess);
+		glm::vec3 specular = spec * lightColor;
+
+		// --- C. 材质混合 (Mix) ---
+		glm::vec3 finalColor;
+
+		if (payload.Metallic > 0.5f)
+		{
+			// 金属模式：
+			// 漫反射几乎没有 (变黑)，原本的 Albedo 变成了高光的颜色 (有色高光)
+			// 简单的金属近似：Albedo 作用于 Specular
+			glm::vec3 kS = payload.Albedo;
+			glm::vec3 kD = glm::vec3(0.0f); // 金属几乎没漫反射
+
+			finalColor = kD * diff + specular * kS;
+		}
+		else
+		{
+			// 塑料/非金属模式：
+			// 高光通常是白色的，Albedo 作用于漫反射
+			float specularIntensity = 0.5f; // 塑料的高光强度通常固定
+			finalColor = diffuse + specular * specularIntensity;
+		}
+
+		// --- D. 环境光 (Ambient) ---
+		// 稍微加一点底色，防止背光面全黑
+		glm::vec3 ambient = payload.Albedo * 0.1f;
+		finalColor += ambient;
+
+		// 简单的 Gamma 矫正 
+		 finalColor = glm::pow(finalColor, glm::vec3(1.0f / 2.2f));
+
+		return glm::vec4(finalColor, 1.0f);
 	}
 
 	// Möller–Trumbore ray-triangle intersection algorithm
@@ -179,6 +231,22 @@ namespace Rongine {
 						payload.EntityID = (int)(uint32_t)entityHandle;
 						payload.WorldPosition = ray.Origin + ray.Direction * t;
 						payload.WorldNormal = n;
+					}
+
+					Entity entity = { entityHandle, &scene };
+					if (entity.HasComponent<MaterialComponent>())
+					{
+						const auto& material = entity.GetComponent<MaterialComponent>();
+						payload.Albedo = material.Albedo;
+						payload.Roughness = material.Roughness;
+						payload.Metallic = material.Metallic;
+					}
+					else
+					{
+						// 默认材质 (灰色塑料)
+						payload.Albedo = { 0.8f, 0.8f, 0.8f };
+						payload.Roughness = 0.5f;
+						payload.Metallic = 0.0f;
 					}
 				}
 			}

@@ -146,4 +146,11 @@ namespace Rongine {
         CADGeometryComponent() = default;
         CADGeometryComponent(const CADGeometryComponent&) = default;
     };
+
+    struct MaterialComponent
+    {
+        glm::vec3 Albedo = { 1.0f, 1.0f, 1.0f }; // 颜色 (RGB)
+        float Roughness = 0.5f;                  // 粗糙度 (0.0 = 镜面, 1.0 = 哑光)
+        float Metallic = 0.0f;                   // 金属度 (0.0 = 塑料, 1.0 = 金属)
+    };
 }
