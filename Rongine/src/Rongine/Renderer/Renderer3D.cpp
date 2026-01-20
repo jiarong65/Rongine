@@ -186,6 +186,8 @@ namespace Rongine {
 		s_Data.TextureShader->setInt("u_SelectedEntityID", -1);
 		s_Data.TextureShader->setInt("u_HoveredEntityID", -1);
 		s_Data.TextureShader->setFloat3("u_Albedo", glm::vec3(1.0f));
+		s_Data.TextureShader->setFloat("u_Roughness", 0.5f);
+		s_Data.TextureShader->setFloat("u_Metallic", 0.0f);
 
 		for (uint32_t i = 0; i < s_Data.TextureSlotIndex; i++)
 			s_Data.TextureSlots[i]->bind(i);

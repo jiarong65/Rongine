@@ -146,6 +146,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Platform\OpenGL\OpenGLComputeShader.h" />
     <ClInclude Include="src\Rongine\Renderer\RenderTypes.h" />
     <ClInclude Include="src\Rongine\Renderer\SpectralRenderer.h" />
     <ClInclude Include="src\Rongine\Math\Math.h" />
@@ -199,6 +200,7 @@
     <ClInclude Include="src\Rongine\Renderer\Shader.h" />
     <ClInclude Include="src\Rongine\Renderer\Texture.h" />
     <ClInclude Include="src\Rongine\Renderer\VertexArray.h" />
+    <ClInclude Include="src\Rongine\Renderer\ComputeShader.h" />
     <ClInclude Include="src\Rongine\Scene\Components.h" />
     <ClInclude Include="src\Rongine\Scene\Entity.h" />
     <ClInclude Include="src\Rongine\Scene\Scene.h" />
@@ -629,6 +631,8 @@
     <ClInclude Include="vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Platform\OpenGL\OpenGLComputeShader.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\ComputeShader.cpp" />
     <ClCompile Include="src\Rongine\Renderer\SpectralRenderer.cpp" />
     <ClCompile Include="src\Rongine\Math\Math.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp" />
