@@ -51,6 +51,11 @@ namespace Rongine {
 		m_layerStack.pushOverLayer(layer);
 	}
 
+	float Application::getTime()
+	{
+		return (float)glfwGetTime();
+	}
+
 	void Application::run() {
 		WindowResizeEvent e(1280,720);
 		RONG_CLIENT_TRACE( e.toString());

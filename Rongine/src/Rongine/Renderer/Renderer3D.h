@@ -8,6 +8,9 @@
 #include "Rongine/Renderer/RenderCommand.h"
 #include "Rongine/Scene/Scene.h"
 #include "RenderTypes.h"
+#include "Rongine/Renderer/ShaderStorageBuffer.h"
+#include "Rongine/Renderer/ComputeShader.h"
+#include "Rongine/Renderer/Framebuffer.h"
 
 #include <glm/glm.hpp>
 
@@ -48,6 +51,8 @@ namespace Rongine {
 		static void drawEdges(const Ref<VertexArray>& va, const glm::mat4& transform, const glm::vec4& color, int entityID, int selectedEdgeID = -1);
 
 
+
+
 		// --- 统计信息 ---
 		struct Statistics
 		{
@@ -56,6 +61,11 @@ namespace Rongine {
 			uint32_t GetTotalVertexCount() { return CubeCount * 24; } // 24 vertices per cube
 			uint32_t GetTotalIndexCount() { return CubeCount * 36; }  // 36 indices per cube
 		};
+
+		// cs光追
+		static void UploadSceneDataToGPU(Scene* scene);
+		static void RenderComputeFrame(float time);
+		static Ref<Texture2D> GetComputeOutputTexture();
 
 		static Statistics getStatistics();
 		static void resetStatistics();
@@ -109,5 +119,16 @@ namespace Rongine {
 		Renderer3D::Statistics Stats;
 
 		glm::mat4 ViewProjection;
+
+		// SSBO
+		Ref<ShaderStorageBuffer> VerticesSSBO;
+		Ref<ShaderStorageBuffer> TrianglesSSBO;
+
+		// 临时缓存，避免每帧都重新分配 vector 内存
+		std::vector<GPUVertex> HostVertices;
+		std::vector<TriangleData> HostTriangles;
+
+		Ref<Texture2D> ComputeOutputTexture; // 画布
+		Ref<ComputeShader> RaytracingShader; // 画笔 
 	};
 }

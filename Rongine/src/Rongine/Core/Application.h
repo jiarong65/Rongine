@@ -29,6 +29,8 @@ namespace Rongine {
 		void pushLayer(Layer* layer);
 		void pushOverLayer(Layer* layer);
 
+		float getTime();
+
 		inline Window& getWindow() { return *m_window; }
 		inline static Application& get() { return *s_instance; }
 	protected:

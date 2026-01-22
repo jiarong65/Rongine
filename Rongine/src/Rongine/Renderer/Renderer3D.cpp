@@ -126,6 +126,17 @@ namespace Rongine {
 		s_Data.BatchLineVertexBufferBase = new BatchLineVertex[s_Data.MaxLineVertices];
 
 		s_Data.BatchLineShader = Shader::create("assets/shaders/BatchLine.glsl");
+
+
+		//  初始化光线追踪资源
+		// 使用新的 Spec 创建高精度纹理
+		TextureSpecification spec;
+		spec.Width = 1280;
+		spec.Height = 720;
+		spec.Format = ImageFormat::RGBA32F; 
+		s_Data.ComputeOutputTexture = Texture2D::create(spec);
+
+		s_Data.RaytracingShader = ComputeShader::create("assets/shaders/Raytrace.glsl");
 	}
 
 	void Renderer3D::shutdown()
@@ -492,6 +503,150 @@ namespace Rongine {
 		// count = 总字节数 / 单个顶点的步长
 		uint32_t vertexCount = vb->getSize() / vb->getLayout().getStride();
 		RenderCommand::drawLines(va, vertexCount);
+	}
+
+
+	void Renderer3D::UploadSceneDataToGPU(Scene* scene)
+	{
+		s_Data.HostVertices.clear();
+		s_Data.HostTriangles.clear();
+
+		auto view = scene->getRegistry().view<TransformComponent, MeshComponent>();
+
+		for (auto entityHandle : view)
+		{
+			auto [tc, mesh] = view.get<TransformComponent, MeshComponent>(entityHandle);
+
+			if (mesh.LocalVertices.empty() || mesh.LocalIndices.empty())
+				continue;
+
+			glm::mat4 transform = tc.GetTransform();
+			glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(transform)));
+
+			uint32_t vertexOffset = (uint32_t)s_Data.HostVertices.size();
+
+			// 获取材质ID (暂时简单处理：用实体ID作为材质索引，或者从 MaterialComponent 获取)
+			// 注意：目前 shader 里 TriangleData.MaterialID 是 uint，我们需要决定怎么传
+			// 假设如果有材质组件，就把材质打包上传；这里先填 0
+			uint32_t materialIndex = 0;
+			// if (scene->Reg().all_of<MaterialComponent>(entityHandle)) { ... }
+
+			// --- 转换并合并顶点 ---
+			for (const auto& v : mesh.LocalVertices)
+			{
+				GPUVertex gpuV;
+
+				// 位置变换： Model * vec4(pos, 1.0)
+				gpuV.Position = glm::vec3(transform * glm::vec4(v.Position, 1.0f));
+
+				// 法线变换： NormalMatrix * normal (归一化)
+				gpuV.Normal = glm::normalize(normalMatrix * v.Normal);
+
+				gpuV.TexCoord = v.TexCoord;
+
+				// 填充 Padding 保持 0，防止脏数据
+				gpuV._pad1 = 0.0f;
+				gpuV._pad2 = 0.0f;
+				gpuV._pad3 = { 0.0f, 0.0f };
+
+				s_Data.HostVertices.push_back(gpuV);
+			}
+
+			// --- 合并索引  ---
+			for (size_t i = 0; i < mesh.LocalIndices.size(); i += 3)
+			{
+				// 边界检查：防止索引越界
+				if (i + 2 >= mesh.LocalIndices.size()) break;
+
+				TriangleData tri;
+
+				tri.v0 = mesh.LocalIndices[i + 0] + vertexOffset;
+				tri.v1 = mesh.LocalIndices[i + 1] + vertexOffset;
+				tri.v2 = mesh.LocalIndices[i + 2] + vertexOffset;
+
+				tri.MaterialID = materialIndex;
+
+				s_Data.HostTriangles.push_back(tri);
+			}
+		}
+
+		// 上传到 GPU (SSBO)
+		if (s_Data.HostVertices.empty()) return;
+
+		size_t vertSize = s_Data.HostVertices.size() * sizeof(GPUVertex);
+		size_t triSize = s_Data.HostTriangles.size() * sizeof(TriangleData);
+
+		// --- 处理 Vertices SSBO ---
+		if (!s_Data.VerticesSSBO)
+		{
+			// 分配刚好够用的大小 
+			s_Data.VerticesSSBO = ShaderStorageBuffer::create((uint32_t)vertSize, ShaderStorageBufferUsage::DynamicDraw);
+		}
+		else
+		{
+			// 容量不够，扩容 (简单直接 Resize，可以做成指数扩容策略)
+			s_Data.VerticesSSBO->resize((uint32_t)vertSize);
+		}
+
+		// 上传数据
+		s_Data.VerticesSSBO->bind(1); // Binding Point 1
+		s_Data.VerticesSSBO->setData(s_Data.HostVertices.data(), (uint32_t)vertSize);
+
+
+		// --- 处理 Triangles SSBO ---
+		if (!s_Data.TrianglesSSBO)
+		{
+			s_Data.TrianglesSSBO = ShaderStorageBuffer::create((uint32_t)triSize, ShaderStorageBufferUsage::DynamicDraw);
+		}
+		else
+		{
+			s_Data.TrianglesSSBO->resize((uint32_t)triSize);
+		}
+
+		// 上传数据
+		s_Data.TrianglesSSBO->bind(2); // Binding Point 2
+		s_Data.TrianglesSSBO->setData(s_Data.HostTriangles.data(), (uint32_t)triSize);
+	}
+
+	void Renderer3D::RenderComputeFrame(float time)
+	{
+		auto& shader = s_Data.RaytracingShader;
+		auto& texture = s_Data.ComputeOutputTexture;
+
+		if (!shader || !texture) return;
+
+		shader->bind();
+
+		// 1. 绑定图像单元 (Image Unit)
+		// 第一个参数 0 对应 shader 里的 binding = 0
+		// 使用 GL_WRITE_ONLY 模式写入
+		glBindImageTexture(0, texture->getRendererID(), 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+
+		// 2. 设置 Uniforms
+		shader->setFloat("u_Time", time);
+
+		// 3. 绑定 SSBO 数据 (场景几何体)
+		// 只有当 SSBO 存在且有数据时才绑定
+		if (s_Data.VerticesSSBO) s_Data.VerticesSSBO->bind(1);
+		if (s_Data.TrianglesSSBO) s_Data.TrianglesSSBO->bind(2);
+
+		// 4. 计算工作组数量
+		// 本地工作组大小设为 8x8 (和 Shader 里的 local_size 对应)
+		uint32_t width = texture->getWidth();
+		uint32_t height = texture->getHeight();
+
+		uint32_t groupX = (width + 8 - 1) / 8;
+		uint32_t groupY = (height + 8 - 1) / 8;
+
+		// 5. 发射计算！
+		shader->dispatch(groupX, groupY, 1);
+
+		shader->unbind();
+	}
+
+	Ref<Texture2D> Renderer3D::GetComputeOutputTexture()
+	{
+		return s_Data.ComputeOutputTexture;
 	}
 
 	Renderer3D::Statistics Renderer3D::getStatistics() { return s_Data.Stats; }

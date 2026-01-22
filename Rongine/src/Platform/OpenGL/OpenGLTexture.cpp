@@ -54,6 +54,29 @@ namespace Rongine {
 		stbi_image_free(data);
 	}
 
+	OpenGLTexture2D::OpenGLTexture2D(const TextureSpecification& specification)
+		: m_specification(specification), m_width(specification.Width), m_height(specification.Height)
+	{
+		m_internalFormat = GL_RGBA8;
+		m_dataFormat = GL_RGBA;
+
+		if (specification.Format == ImageFormat::RGBA32F)
+		{
+			m_internalFormat = GL_RGBA32F;
+			m_dataFormat = GL_RGBA;
+		}
+
+		glCreateTextures(GL_TEXTURE_2D, 1, &m_rendererID);
+		glTextureStorage2D(m_rendererID, 1, m_internalFormat, m_width, m_height);
+
+		// 设置过滤器
+		glTextureParameteri(m_rendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTextureParameteri(m_rendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		glTextureParameteri(m_rendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTextureParameteri(m_rendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	}
+
 	OpenGLTexture2D::~OpenGLTexture2D()
 	{
 		glDeleteTextures(1, &m_rendererID);

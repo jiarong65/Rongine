@@ -3,6 +3,24 @@
 
 namespace Rongine {
 
+	enum class ImageFormat
+	{
+		None = 0,
+		R8,
+		RGB8,
+		RGBA8,
+		RGBA32F // 32位浮点，光线追踪必须用这个！
+	};
+
+	struct TextureSpecification
+	{
+		uint32_t Width = 1;
+		uint32_t Height = 1;
+		ImageFormat Format = ImageFormat::RGBA8;
+		bool GenerateMips = true;
+	};
+
+
 	class Texture
 	{
 	public:
@@ -24,6 +42,8 @@ namespace Rongine {
 	public:
 		static Ref<Texture2D> create(uint32_t width, uint32_t height);
 		static Ref<Texture2D> create(const std::string& path);
+
+		static Ref<Texture2D> create(const TextureSpecification& specification);
 	};
 
 

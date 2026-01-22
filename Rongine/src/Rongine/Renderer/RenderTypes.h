@@ -19,4 +19,31 @@ namespace Rongine {
 		glm::vec3 Position;
 		glm::vec4 Color;
 	};
+
+	//SSBO
+	struct GPUVertex
+	{
+		glm::vec3 Position;
+		float _pad1;       // 填充位，保证 16 字节对齐
+		glm::vec3 Normal;
+		float _pad2;
+		glm::vec2 TexCoord;
+		glm::vec2 _pad3;   // 填充到 16 字节
+	};
+
+	struct GPUMaterial
+	{
+		glm::vec3 Albedo;
+		float Roughness;
+		float Metallic;
+		float IOR;         // 折射率
+		float _pad1;
+		float _pad2;
+	};
+
+	struct TriangleData
+	{
+		uint32_t v0, v1, v2; // 顶点的索引
+		uint32_t MaterialID; // 材质索引
+	};
 }

@@ -10,6 +10,7 @@ namespace Rongine {
 	public:
 		OpenGLTexture2D(uint32_t width,uint32_t height);
 		OpenGLTexture2D(const std::string& path);
+		OpenGLTexture2D(const TextureSpecification& specification);
 		virtual ~OpenGLTexture2D() override;
 
 		virtual uint32_t getWidth() const override { return m_width; }
@@ -25,6 +26,8 @@ namespace Rongine {
 			return m_rendererID == ((OpenGLTexture2D&)other).m_rendererID;
 		}
 	private:
+		TextureSpecification m_specification;
+
 		std::string m_path;
 		uint32_t m_width;
 		uint32_t m_height;

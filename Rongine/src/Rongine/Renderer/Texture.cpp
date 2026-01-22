@@ -34,6 +34,23 @@ namespace Rongine {
 		RONG_CORE_ASSERT(false,"Unknown RendererAPI!");
 		return nullptr;
 	}
+
+
+	Ref<Texture2D> Texture2D::create(const TextureSpecification& specification)
+	{
+		switch (Renderer::getAPI())
+		{
+		case RendererAPI::API::None: {
+			RONG_CORE_ASSERT(false, "RendererAPI::None is currently not supported!");
+			return nullptr;
+		}
+		case RendererAPI::API::OpenGL: {
+			return CreateRef<OpenGLTexture2D>(specification);
+		}
+		}
+		RONG_CORE_ASSERT(false, "Unknown RendererAPI!");
+		return nullptr;
+	}
 }
 
 
