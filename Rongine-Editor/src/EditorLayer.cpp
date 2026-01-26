@@ -82,6 +82,11 @@ void EditorLayer::onAttach()
 	//////////////////////////////////////////////////////////////////////////
 	//光追渲染器
 	m_SpectralRenderer = std::make_shared<Rongine::SpectralRenderer>();
+
+	//////////////////////////////////////////////////////////////////////////
+	m_sceneHierarchyPanel.setSceneChangedCallback([this]() {
+		m_SceneChanged = true;
+	});
 }
 
 void EditorLayer::onDetach()
@@ -100,6 +105,8 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		m_framebuffer->resize((uint32_t)m_viewportSize.x, (uint32_t)m_viewportSize.y);
 		m_cameraContorller.onResize(m_viewportSize.x, m_viewportSize.y);
 		m_SpectralRenderer->OnResize((uint32_t)m_viewportSize.x, (uint32_t)m_viewportSize.y);
+
+		Rongine::Renderer3D::ResizeComputeOutput((uint32_t)m_viewportSize.x, (uint32_t)m_viewportSize.y);
 	}
 
 	if (m_viewportFocused)
@@ -397,7 +404,7 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 			m_SceneChanged = false; // 重置标志位
 		}
 
-		Rongine::Renderer3D::RenderComputeFrame((float)Rongine::Application::get().getTime());
+		Rongine::Renderer3D::RenderComputeFrame(m_cameraContorller.getCamera(), (float)Rongine::Application::get().getTime());
 		uint32_t id = Rongine::Renderer3D::GetComputeOutputTexture()->getRendererID();
 		RONG_CLIENT_INFO("RayTrace Texture ID: {0}", id);
 		// cpu光追测试，渲染一帧
@@ -1054,6 +1061,7 @@ void EditorLayer::onImGuiRender()
 					delete (TopoDS_Shape*)previewShape;
 				}
 			}
+
 		}
 
 		// 屏幕 UI 按钮
@@ -1318,6 +1326,8 @@ void EditorLayer::onImGuiRender()
 
 					RONG_CLIENT_INFO("Gizmo Transform Command Pushed");
 				}
+
+				m_SceneChanged = true;
 			}
 		}
 	}

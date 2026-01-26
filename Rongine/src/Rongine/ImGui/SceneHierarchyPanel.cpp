@@ -347,6 +347,9 @@ namespace Rongine {
 									s_ActiveCommand->CaptureNewState();
 									CommandHistory::Push(s_ActiveCommand);
 									s_ActiveCommand = nullptr; // 归属权移交
+
+									if (m_SceneChangedCallback)
+										m_SceneChangedCallback();
 								}
 								else
 								{
@@ -384,6 +387,9 @@ namespace Rongine {
 				{
 					cadComp.LinearDeflection = std::max(cadComp.LinearDeflection, 0.001f);
 					meshQualityChanged = true;
+
+					if (m_SceneChangedCallback)
+						m_SceneChangedCallback();
 				}
 				if (ImGui::IsItemHovered())
 					ImGui::SetTooltip("Deflection Value: Smaller = Smoother (High CPU Cost)\nLarger = Coarser (Low CPU Cost)");
@@ -416,6 +422,9 @@ namespace Rongine {
 						m_selectedEdge = -1;
 					}
 					ImGui::PopStyleColor();
+
+					if (m_SceneChangedCallback)
+						m_SceneChangedCallback();
 				}
 
 				ImGui::TreePop();
@@ -440,9 +449,16 @@ namespace Rongine {
 			auto& mat = entity.GetComponent<MaterialComponent>();
 			if (ImGui::CollapsingHeader("Material"))
 			{
-				ImGui::ColorEdit3("Albedo", (float*)&mat.Albedo);
-				ImGui::SliderFloat("Roughness", &mat.Roughness, 0.0f, 1.0f);
-				ImGui::SliderFloat("Metallic", &mat.Metallic, 0.0f, 1.0f);
+				bool changed = false;
+
+				if (ImGui::ColorEdit3("Albedo", (float*)&mat.Albedo)) changed = true;
+				if (ImGui::SliderFloat("Roughness", &mat.Roughness, 0.0f, 1.0f)) changed = true;
+				if (ImGui::SliderFloat("Metallic", &mat.Metallic, 0.0f, 1.0f)) changed = true;
+
+				if (changed && m_SceneChangedCallback)
+				{
+					m_SceneChangedCallback();
+				}
 			}
 		}
 	}

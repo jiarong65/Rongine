@@ -33,12 +33,12 @@ namespace Rongine {
 
 	struct GPUMaterial
 	{
-		glm::vec3 Albedo;
-		float Roughness;
-		float Metallic;
-		float IOR;         // 折射率
-		float _pad1;
-		float _pad2;
+		glm::vec3 Albedo;  
+		float Roughness;   
+
+		float Metallic;    
+		float Emission;    
+		glm::vec2 _padding;
 	};
 
 	struct TriangleData

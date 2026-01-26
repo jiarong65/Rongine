@@ -64,8 +64,9 @@ namespace Rongine {
 
 		// cs光追
 		static void UploadSceneDataToGPU(Scene* scene);
-		static void RenderComputeFrame(float time);
+		static void RenderComputeFrame(const PerspectiveCamera& camera,float time);
 		static Ref<Texture2D> GetComputeOutputTexture();
+		static void ResizeComputeOutput(uint32_t width, uint32_t height);
 
 		static Statistics getStatistics();
 		static void resetStatistics();
@@ -123,10 +124,12 @@ namespace Rongine {
 		// SSBO
 		Ref<ShaderStorageBuffer> VerticesSSBO;
 		Ref<ShaderStorageBuffer> TrianglesSSBO;
+		Ref<ShaderStorageBuffer> MaterialsSSBO;
 
 		// 临时缓存，避免每帧都重新分配 vector 内存
 		std::vector<GPUVertex> HostVertices;
 		std::vector<TriangleData> HostTriangles;
+		std::vector<GPUMaterial> HostMaterials;
 
 		Ref<Texture2D> ComputeOutputTexture; // 画布
 		Ref<ComputeShader> RaytracingShader; // 画笔 

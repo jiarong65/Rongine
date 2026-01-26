@@ -22,14 +22,18 @@ namespace Rongine {
 		void setSelectedEdge(int edgeID) { m_selectedEdge = edgeID; }
 		int getSelectedEdge() const { return m_selectedEdge; }
 
+		void setSceneChangedCallback(const std::function<void()>& callback) { m_SceneChangedCallback = callback; }
+
 	private:
 		void drawEntityNode(Entity entity);
 		void drawComponents(Entity entity);
 
 	private:
 		Ref<Scene> m_context;
-		Entity m_selectionContext; // µ±Ç°ÔÚÃæ°åÀïÑ¡ÖĞµÄÎïÌå
+		Entity m_selectionContext; // å½“å‰åœ¨é¢æ¿é‡Œé€‰ä¸­çš„ç‰©ä½“
 
-		int m_selectedEdge=-2;		//µ±Ç°Ñ¡ÖĞµÄ±ß
+		int m_selectedEdge=-2;		//å½“å‰é€‰ä¸­çš„è¾¹
+
+		std::function<void()> m_SceneChangedCallback;
 	};
 }

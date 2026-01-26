@@ -510,6 +510,7 @@ namespace Rongine {
 	{
 		s_Data.HostVertices.clear();
 		s_Data.HostTriangles.clear();
+		s_Data.HostMaterials.clear();
 
 		auto view = scene->getRegistry().view<TransformComponent, MeshComponent>();
 
@@ -520,16 +521,33 @@ namespace Rongine {
 			if (mesh.LocalVertices.empty() || mesh.LocalIndices.empty())
 				continue;
 
+			// ====================  材质处理逻辑 ====================
+			GPUMaterial gpuMat;
+
+			// 设置默认值 (灰色)
+			gpuMat.Albedo = { 0.8f, 0.8f, 0.8f };
+			gpuMat.Roughness = 0.5f;
+			gpuMat.Metallic = 0.0f;
+			gpuMat.Emission = 0.0f;
+
+			Entity entity = { entityHandle, scene };
+			if (entity.HasComponent<MaterialComponent>())
+			{
+				auto& mat = entity.GetComponent<MaterialComponent>();
+				gpuMat.Albedo = mat.Albedo;
+				gpuMat.Roughness = mat.Roughness;
+				gpuMat.Metallic = mat.Metallic;
+			}
+
+			// 3. 将材质存入 HostMaterials，并记录当前的索引 ID
+			uint32_t currentMatIndex = (uint32_t)s_Data.HostMaterials.size();
+			s_Data.HostMaterials.push_back(gpuMat);
+			// ============================================================
+
 			glm::mat4 transform = tc.GetTransform();
 			glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(transform)));
 
 			uint32_t vertexOffset = (uint32_t)s_Data.HostVertices.size();
-
-			// 获取材质ID (暂时简单处理：用实体ID作为材质索引，或者从 MaterialComponent 获取)
-			// 注意：目前 shader 里 TriangleData.MaterialID 是 uint，我们需要决定怎么传
-			// 假设如果有材质组件，就把材质打包上传；这里先填 0
-			uint32_t materialIndex = 0;
-			// if (scene->Reg().all_of<MaterialComponent>(entityHandle)) { ... }
 
 			// --- 转换并合并顶点 ---
 			for (const auto& v : mesh.LocalVertices)
@@ -564,7 +582,7 @@ namespace Rongine {
 				tri.v1 = mesh.LocalIndices[i + 1] + vertexOffset;
 				tri.v2 = mesh.LocalIndices[i + 2] + vertexOffset;
 
-				tri.MaterialID = materialIndex;
+				tri.MaterialID = currentMatIndex;
 
 				s_Data.HostTriangles.push_back(tri);
 			}
@@ -606,9 +624,27 @@ namespace Rongine {
 		// 上传数据
 		s_Data.TrianglesSSBO->bind(2); // Binding Point 2
 		s_Data.TrianglesSSBO->setData(s_Data.HostTriangles.data(), (uint32_t)triSize);
+
+		// --- 处理 Materials SSBO ---
+		if (!s_Data.HostMaterials.empty())
+		{
+			size_t matSize = s_Data.HostMaterials.size() * sizeof(GPUMaterial);
+
+			if (!s_Data.MaterialsSSBO) 
+			{
+				s_Data.MaterialsSSBO = ShaderStorageBuffer::create((uint32_t)matSize, ShaderStorageBufferUsage::DynamicDraw);
+			}
+			else 
+			{
+				s_Data.MaterialsSSBO->resize((uint32_t)matSize);
+			}
+
+			s_Data.MaterialsSSBO->bind(3); // Binding Point = 3
+			s_Data.MaterialsSSBO->setData(s_Data.HostMaterials.data(), (uint32_t)matSize);
+		}
 	}
 
-	void Renderer3D::RenderComputeFrame(float time)
+	void Renderer3D::RenderComputeFrame(const PerspectiveCamera& camera,float time)
 	{
 		auto& shader = s_Data.RaytracingShader;
 		auto& texture = s_Data.ComputeOutputTexture;
@@ -622,13 +658,20 @@ namespace Rongine {
 		// 使用 GL_WRITE_ONLY 模式写入
 		glBindImageTexture(0, texture->getRendererID(), 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
+		glm::mat4 invProj = glm::inverse(camera.getProjectionMatrix());
+		glm::mat4 invView = glm::inverse(camera.getViewMatrix());
+
 		// 2. 设置 Uniforms
 		shader->setFloat("u_Time", time);
+		shader->setMat4("u_InverseProjection", invProj);
+		shader->setMat4("u_InverseView", invView);
+		shader->setFloat3("u_CameraPos", camera.getPosition());
 
 		// 3. 绑定 SSBO 数据 (场景几何体)
 		// 只有当 SSBO 存在且有数据时才绑定
 		if (s_Data.VerticesSSBO) s_Data.VerticesSSBO->bind(1);
 		if (s_Data.TrianglesSSBO) s_Data.TrianglesSSBO->bind(2);
+		if (s_Data.MaterialsSSBO) s_Data.MaterialsSSBO->bind(3);
 
 		// 4. 计算工作组数量
 		// 本地工作组大小设为 8x8 (和 Shader 里的 local_size 对应)
@@ -647,6 +690,26 @@ namespace Rongine {
 	Ref<Texture2D> Renderer3D::GetComputeOutputTexture()
 	{
 		return s_Data.ComputeOutputTexture;
+	}
+
+	void Renderer3D::ResizeComputeOutput(uint32_t width, uint32_t height)
+	{
+		// 1. 安全检查：如果尺寸没变，或者尺寸无效，直接返回
+		if (s_Data.ComputeOutputTexture &&
+			s_Data.ComputeOutputTexture->getWidth() == width &&
+			s_Data.ComputeOutputTexture->getHeight() == height)
+		{
+			return;
+		}
+
+		if (width == 0 || height == 0) return;
+
+		// 2. 重新创建高精度纹理
+		TextureSpecification spec;
+		spec.Width = width;
+		spec.Height = height;
+		spec.Format = ImageFormat::RGBA32F; // 必须保持 RGBA32F
+		s_Data.ComputeOutputTexture = Texture2D::create(spec);
 	}
 
 	Renderer3D::Statistics Renderer3D::getStatistics() { return s_Data.Stats; }
