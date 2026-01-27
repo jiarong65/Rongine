@@ -119,6 +119,15 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	if (Rongine::Input::isKeyPressed(Rongine::Key::E)) m_gizmoType = ImGuizmo::ROTATE;
 	if (Rongine::Input::isKeyPressed(Rongine::Key::R)) m_gizmoType = ImGuizmo::SCALE;
 	//////////////////////////////////////////////////////////////////////////////////////////
+	//检查相机是否移动
+	static glm::mat4 s_LastViewProj = glm::mat4(0.0f);
+	glm::mat4 currentViewProj = m_cameraContorller.getCamera().getViewProjectionMatrix();
+
+	bool cameraMoved = (s_LastViewProj != currentViewProj);
+	s_LastViewProj = currentViewProj;
+
+	bool reset = m_SceneChanged || cameraMoved;
+	//////////////////////////////////////////////////////////////////////////////////////////
 	//草图交互逻辑
 	if (m_IsSketchMode && m_SketchPlaneEntity)
 	{
@@ -404,7 +413,9 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 			m_SceneChanged = false; // 重置标志位
 		}
 
-		Rongine::Renderer3D::RenderComputeFrame(m_cameraContorller.getCamera(), (float)Rongine::Application::get().getTime());
+		Rongine::Renderer3D::RenderComputeFrame(m_cameraContorller.getCamera(), 
+			(float)Rongine::Application::get().getTime(),
+			reset);
 		uint32_t id = Rongine::Renderer3D::GetComputeOutputTexture()->getRendererID();
 		RONG_CLIENT_INFO("RayTrace Texture ID: {0}", id);
 		// cpu光追测试，渲染一帧
@@ -1304,6 +1315,8 @@ void EditorLayer::onImGuiRender()
 				}
 				tc.Rotation = glm::eulerAngles(orientation);
 			}
+
+			m_SceneChanged = true;
 		}
 		else
 		{
@@ -1327,7 +1340,7 @@ void EditorLayer::onImGuiRender()
 					RONG_CLIENT_INFO("Gizmo Transform Command Pushed");
 				}
 
-				m_SceneChanged = true;
+				
 			}
 		}
 	}

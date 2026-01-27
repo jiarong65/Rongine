@@ -644,19 +644,26 @@ namespace Rongine {
 		}
 	}
 
-	void Renderer3D::RenderComputeFrame(const PerspectiveCamera& camera,float time)
+	void Renderer3D::RenderComputeFrame(const PerspectiveCamera& camera,float time, bool resetAccumulation)
 	{
-		auto& shader = s_Data.RaytracingShader;
-		auto& texture = s_Data.ComputeOutputTexture;
+		if (resetAccumulation)
+			s_Data.FrameIndex = 1;
+		else
+			s_Data.FrameIndex++;
 
-		if (!shader || !texture) return;
+		auto& shader = s_Data.RaytracingShader;
+		auto& outputTexture = s_Data.ComputeOutputTexture;
+		auto& accumulationTexture = s_Data.AccumulationTexture;
+
+		if (!shader || !outputTexture || !accumulationTexture) return;
 
 		shader->bind();
 
 		// 1. 绑定图像单元 (Image Unit)
 		// 第一个参数 0 对应 shader 里的 binding = 0
 		// 使用 GL_WRITE_ONLY 模式写入
-		glBindImageTexture(0, texture->getRendererID(), 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+		glBindImageTexture(0, outputTexture->getRendererID(), 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+		glBindImageTexture(4, accumulationTexture->getRendererID(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
 		glm::mat4 invProj = glm::inverse(camera.getProjectionMatrix());
 		glm::mat4 invView = glm::inverse(camera.getViewMatrix());
@@ -666,6 +673,7 @@ namespace Rongine {
 		shader->setMat4("u_InverseProjection", invProj);
 		shader->setMat4("u_InverseView", invView);
 		shader->setFloat3("u_CameraPos", camera.getPosition());
+		shader->setInt("u_FrameIndex", s_Data.FrameIndex);
 
 		// 3. 绑定 SSBO 数据 (场景几何体)
 		// 只有当 SSBO 存在且有数据时才绑定
@@ -675,8 +683,8 @@ namespace Rongine {
 
 		// 4. 计算工作组数量
 		// 本地工作组大小设为 8x8 (和 Shader 里的 local_size 对应)
-		uint32_t width = texture->getWidth();
-		uint32_t height = texture->getHeight();
+		uint32_t width = outputTexture->getWidth();
+		uint32_t height = outputTexture->getHeight();
 
 		uint32_t groupX = (width + 8 - 1) / 8;
 		uint32_t groupY = (height + 8 - 1) / 8;
@@ -710,6 +718,14 @@ namespace Rongine {
 		spec.Height = height;
 		spec.Format = ImageFormat::RGBA32F; // 必须保持 RGBA32F
 		s_Data.ComputeOutputTexture = Texture2D::create(spec);
+
+		// 创建累积纹理
+		spec.Width = width;
+		spec.Height = height;
+		spec.Format = ImageFormat::RGBA32F;
+		s_Data.AccumulationTexture = Texture2D::create(spec);
+
+		s_Data.FrameIndex = 1;
 	}
 
 	Renderer3D::Statistics Renderer3D::getStatistics() { return s_Data.Stats; }

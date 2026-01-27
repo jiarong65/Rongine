@@ -64,7 +64,7 @@ namespace Rongine {
 
 		// cs光追
 		static void UploadSceneDataToGPU(Scene* scene);
-		static void RenderComputeFrame(const PerspectiveCamera& camera,float time);
+		static void RenderComputeFrame(const PerspectiveCamera& camera,float time,bool resetAccumulation=false);
 		static Ref<Texture2D> GetComputeOutputTexture();
 		static void ResizeComputeOutput(uint32_t width, uint32_t height);
 
@@ -132,6 +132,9 @@ namespace Rongine {
 		std::vector<GPUMaterial> HostMaterials;
 
 		Ref<Texture2D> ComputeOutputTexture; // 画布
+		Ref<Texture2D> AccumulationTexture;  // 累加 
 		Ref<ComputeShader> RaytracingShader; // 画笔 
+
+		uint32_t FrameIndex = 1;             // 帧数
 	};
 }
