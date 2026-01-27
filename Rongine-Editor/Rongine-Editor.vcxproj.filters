@@ -80,6 +80,7 @@
       <Filter>assets\shaders</Filter>
     </None>
     <None Include="assets\shaders\Raytrace.glsl" />
+    <None Include="assets\shaders\SpectralRaytrace.glsl" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\models\mypage.jpg">

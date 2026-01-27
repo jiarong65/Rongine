@@ -137,6 +137,7 @@ namespace Rongine {
 		s_Data.ComputeOutputTexture = Texture2D::create(spec);
 
 		s_Data.RaytracingShader = ComputeShader::create("assets/shaders/Raytrace.glsl");
+		s_Data.SpectralShader = ComputeShader::create("assets/shaders/SpectralRaytrace.glsl");
 	}
 
 	void Renderer3D::shutdown()
@@ -156,6 +157,10 @@ namespace Rongine {
 		s_Data.HoveredFaceID = faceID;
 		s_Data.HoveredEdgeID = edgeID;
 	}
+
+	void Renderer3D::setSpectralRendering(bool enable) { s_Data.UseSpectralRendering = enable; }
+
+	bool Renderer3D::isSpectralRendering() { return s_Data.UseSpectralRendering; }
 
 	void Renderer3D::beginScene(const PerspectiveCamera& camera)
 	{
@@ -651,7 +656,12 @@ namespace Rongine {
 		else
 			s_Data.FrameIndex++;
 
-		auto& shader = s_Data.RaytracingShader;
+		Ref<ComputeShader> shader;
+		if (s_Data.UseSpectralRendering)
+			shader = s_Data.SpectralShader;
+		else
+			shader = s_Data.RaytracingShader;
+
 		auto& outputTexture = s_Data.ComputeOutputTexture;
 		auto& accumulationTexture = s_Data.AccumulationTexture;
 

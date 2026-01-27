@@ -882,7 +882,14 @@ void EditorLayer::onImGuiRender()
 	m_profileResult.clear();
 
 	ImGui::Separator();
-	ImGui::Checkbox("Enable Ray Tracing (CPU)", &m_ShowRayTracing);
+	ImGui::Checkbox("Enable RGB Ray Tracing (GPU)", &m_ShowRayTracing);
+
+	static bool useSpectral = false;
+	if (ImGui::Checkbox("Enable Spectral Rendering", &useSpectral))
+	{
+		Rongine::Renderer3D::setSpectralRendering(useSpectral);
+		m_SceneChanged = true;
+	}
 	ImGui::End();
 
 	////////////////////////////////////////////////////////////////////////////////////////////

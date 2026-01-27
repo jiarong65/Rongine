@@ -178,6 +178,7 @@
     <None Include="assets\shaders\FlatColor.glsl" />
     <None Include="assets\shaders\Line.glsl" />
     <None Include="assets\shaders\Raytrace.glsl" />
+    <None Include="assets\shaders\SpectralRaytrace.glsl" />
     <None Include="assets\shaders\Texture.glsl" />
   </ItemGroup>
   <ItemGroup>

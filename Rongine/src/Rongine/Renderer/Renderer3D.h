@@ -28,6 +28,9 @@ namespace Rongine {
 		static void setSelection(int entityID, int faceID);
 		static void setHover(int entityID, int faceID, int edgeID);
 
+		static void setSpectralRendering(bool enable);
+		static bool isSpectralRendering();
+
 		static void beginScene(const PerspectiveCamera& camera);
 		static void endScene();
 		static void flush();
@@ -133,8 +136,10 @@ namespace Rongine {
 
 		Ref<Texture2D> ComputeOutputTexture; // 画布
 		Ref<Texture2D> AccumulationTexture;  // 累加 
-		Ref<ComputeShader> RaytracingShader; // 画笔 
+		Ref<ComputeShader> RaytracingShader; // 画笔
+		Ref<ComputeShader> SpectralShader;   //光谱画笔
 
 		uint32_t FrameIndex = 1;             // 帧数
+		bool UseSpectralRendering = false;   // 光谱光追开关
 	};
 }
