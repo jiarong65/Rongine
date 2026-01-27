@@ -38,7 +38,9 @@ namespace Rongine {
 
 		float Metallic;    
 		float Emission;    
-		glm::vec2 _padding;
+
+		int SpectralIndex = -1; //默认为 -1 表示使用 RGB
+		float _padding = 0.0f;  
 	};
 
 	struct TriangleData

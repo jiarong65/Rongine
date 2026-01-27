@@ -246,7 +246,7 @@ namespace Rongine {
 		// --- Transform (变换) ---
 		if (entity.HasComponent<TransformComponent>())
 		{
-			if (ImGui::TreeNodeEx((void*)typeid(TransformComponent).hash_code(), ImGuiTreeNodeFlags_DefaultOpen, "Transform"))
+			if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				auto& tc = entity.GetComponent<TransformComponent>();
 
@@ -298,14 +298,12 @@ namespace Rongine {
 					// --- 普通模式 (允许缩放) ---
 					ImGui::DragFloat3("Scale", glm::value_ptr(tc.Scale), 0.1f);
 				}
-
-				ImGui::TreePop();
 			}
 		}
 
 		if (entity.HasComponent<CADGeometryComponent>())
 		{
-			if (ImGui::TreeNodeEx((void*)typeid(CADGeometryComponent).hash_code(), ImGuiTreeNodeFlags_DefaultOpen, "CAD Geometry"))
+			if (ImGui::CollapsingHeader("CAD Geometry", ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				auto& cadComp = entity.GetComponent<CADGeometryComponent>();
 
@@ -426,20 +424,17 @@ namespace Rongine {
 					if (m_SceneChangedCallback)
 						m_SceneChangedCallback();
 				}
-
-				ImGui::TreePop();
 			}
 		}
 
 		// --- Mesh  ---
 		if (entity.HasComponent<MeshComponent>())
 		{
-			if (ImGui::TreeNodeEx((void*)typeid(MeshComponent).hash_code(), ImGuiTreeNodeFlags_DefaultOpen, "Mesh"))
+			if (ImGui::CollapsingHeader("Mesh", ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				auto& mesh = entity.GetComponent<MeshComponent>();
 				ImGui::Text("Vertices: %zu", mesh.LocalVertices.size());
 				ImGui::Text("Edges Mapped: %zu", mesh.m_IDToEdgeMap.size());
-				ImGui::TreePop();
 			}
 		}
 
@@ -447,17 +442,90 @@ namespace Rongine {
 		if (entity.HasComponent<MaterialComponent>())
 		{
 			auto& mat = entity.GetComponent<MaterialComponent>();
-			if (ImGui::CollapsingHeader("Material"))
+			if (ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				bool changed = false;
 
+				// 如果存在光谱组件，普通 RGB 颜色会被覆盖，给个提示并禁用编辑
+				bool hasSpectral = entity.HasComponent<SpectralMaterialComponent>();
+
+				if (hasSpectral)
+				{
+					ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "[Overridden by Spectral Data]");
+					BeginDisabled(); // 禁用 RGB 编辑
+				}
+
 				if (ImGui::ColorEdit3("Albedo", (float*)&mat.Albedo)) changed = true;
+
+				if (hasSpectral) EndDisabled(); // 恢复可用
+
+				// 粗糙度和金属度通常是通用的，即使在光谱模式下也有效
 				if (ImGui::SliderFloat("Roughness", &mat.Roughness, 0.0f, 1.0f)) changed = true;
 				if (ImGui::SliderFloat("Metallic", &mat.Metallic, 0.0f, 1.0f)) changed = true;
+
+				//  添加升级按钮
+				if (!hasSpectral)
+				{
+					ImGui::Spacing();
+					ImGui::Separator();
+					if (ImGui::Button("Upgrade to Spectral Material", ImVec2(-1, 0)))
+					{
+						auto& newSpec = entity.AddComponent<SpectralMaterialComponent>("New Spectral");
+
+						// 初始化一个默认的平坦光谱 (防止空数据崩溃或不显示)
+						// 32 个采样点，反射率 0.8 (浅灰色)
+						newSpec.SpectrumValues.resize(32, 0.8f);
+
+						if (m_SceneChangedCallback) m_SceneChangedCallback();
+					}
+				}
 
 				if (changed && m_SceneChangedCallback)
 				{
 					m_SceneChangedCallback();
+				}
+			}
+		}
+
+		if (entity.HasComponent<SpectralMaterialComponent>())
+		{
+			if (ImGui::CollapsingHeader("Spectral Material", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				auto& specComp = entity.GetComponent<SpectralMaterialComponent>();
+
+				// 1. 材质名称修改
+				char buffer[256];
+				memset(buffer, 0, sizeof(buffer));
+				strcpy_s(buffer, sizeof(buffer), specComp.Name.c_str());
+				if (ImGui::InputText("Spec Name", buffer, sizeof(buffer)))
+				{
+					specComp.Name = std::string(buffer);
+				}
+
+				// 2. 曲线可视化 (X轴: 380-780nm, Y轴: 反射率)
+				if (!specComp.SpectrumValues.empty())
+				{
+					ImGui::Text("Reflectance Curve (380nm - 780nm)");
+					ImGui::PlotLines("##Spectrum",
+						specComp.SpectrumValues.data(),
+						(int)specComp.SpectrumValues.size(),
+						0,
+						NULL,
+						0.0f, 1.0f, // Y轴范围 0~1
+						ImVec2(0, 80)); // 高度 80px
+				}
+				else
+				{
+					ImGui::TextColored(ImVec4(1, 0, 0, 1), "No spectral data available.");
+				}
+
+				ImGui::Spacing();
+
+				// 3. 移除按钮 (回退到 RGB)
+				if (ImGui::Button("Remove Spectral Data", ImVec2(-1, 0)))
+				{
+					entity.RemoveComponent<SpectralMaterialComponent>();
+					if (m_SceneChangedCallback) m_SceneChangedCallback();
 				}
 			}
 		}

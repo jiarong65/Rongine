@@ -1,30 +1,24 @@
 #version 450 core
 
 // ===============================================================================================
-// SpectralRaytrace.glsl - ¹âÆ×Â·¾¶×·×ÙÆ÷ (Spectral Path Tracer)
+// SpectralRaytrace.glsl - å…‰è°±è·¯å¾„è¿½è¸ªå™¨ (ä¿®å¤ç‰ˆ)
 // ===============================================================================================
 
-// 1. ¶¨Òå¹¤×÷×é´óĞ¡
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-// Binding 0: Êä³öÏÔÊ¾ (sRGB) - ÓÃÓÚÖ±½ÓÏÔÊ¾µ½ÆÁÄ»
 layout(rgba32f, binding = 0) uniform image2D img_output;
-
-// Binding 4: ÀÛ»ı»º³åÇø (XYZ ÏßĞÔ¿Õ¼ä) - ÓÃÓÚ´æ´¢¹âÆ×ÀÛ»ı½á¹û
-// ×¢Òâ£º¹âÆ×äÖÈ¾µÄÖĞ¼ä½á¹ûÍ¨³£±£´æÎª XYZ É«¿Õ¼ä£¬¾«¶È¸ü¸ßÇÒ·ûºÏÎïÀíµş¼ÓÔ­Àí
 layout(rgba32f, binding = 4) uniform image2D img_accum; 
 
-// ³£Á¿¶¨Òå
 const float PI = 3.14159265359;
 const float INFINITY = 10000.0;
 const float EPSILON = 0.001;
 
-// ¿É¼û¹â²¨³¤·¶Î§ (nm)
-const float LAMBDA_MIN = 380.0;
-const float LAMBDA_MAX = 780.0;
+// é»˜è®¤å…œåº•èŒƒå›´
+const float LAMBDA_MIN_CONST = 380.0;
+const float LAMBDA_MAX_CONST = 780.0;
 
 // ===============================================================================================
-// 2. Êı¾İ½á¹¹ (±ØĞëÓë C++ RenderTypes.h ÑÏ¸ñ¶ÔÆë)
+// æ•°æ®ç»“æ„ 
 // ===============================================================================================
 
 struct GPUVertex {
@@ -38,40 +32,45 @@ struct TriangleData {
     uint MaterialID;
 };
 
-// ¹âÆ×²ÄÖÊ½á¹¹ (¸´ÓÃ RGB ½á¹¹£¬Í¨¹ı Uplifting Ëã·¨×ª»»)
 struct GPUMaterial {
-    vec4 AlbedoRoughness; // rgb = Albedo, a = Roughness
-    vec4 MetalEmission;   // r = Metallic, g = Emission
+    vec4 AlbedoRoughness; 
+    float Metallic;       
+    float Emission;       
+    int   SpectralIndex;  // å…³é”®ï¼šç”¨äºåˆ¤æ–­æ˜¯å¦ä½¿ç”¨çœŸå®å…‰è°±
+    float _pad;           
 };
 
 // ===============================================================================================
-// 3. SSBO °ó¶¨
+// SSBO ç»‘å®š
 // ===============================================================================================
 
 layout(std430, binding = 1) readonly buffer VerticesBuffer { GPUVertex Vertices[]; };
 layout(std430, binding = 2) readonly buffer TrianglesBuffer { TriangleData Triangles[]; };
 layout(std430, binding = 3) readonly buffer MaterialsBuffer { GPUMaterial Materials[]; };
+// [å…³é”®] å…‰è°±æ•°æ®ä»“åº“
+layout(std430, binding = 5) readonly buffer SpectralCurvesBuffer { float Curves[]; };
 
 // ===============================================================================================
-// 4. Uniforms
+// Uniforms
 // ===============================================================================================
 
 uniform float u_Time;
 uniform mat4 u_InverseProjection;
 uniform mat4 u_InverseView;
 uniform vec3 u_CameraPos;
-uniform int u_FrameIndex; // µ±Ç°ÀÛ»ıÖ¡Êı
+uniform int u_FrameIndex; 
+
+uniform float u_LambdaMin; 
+uniform float u_LambdaMax;
 
 // ===============================================================================================
-// 5. Ëæ»úÊıÉú³ÉÆ÷ (PCG Hash)
+// è¾…åŠ©å‡½æ•°
 // ===============================================================================================
 
 uint seed = 0;
-
 void InitRNG(uvec2 pixel_coords, uint frame) {
     seed = pixel_coords.y * 1920 + pixel_coords.x + frame * 719393;
 }
-
 float RandomFloat() {
     seed = seed * 747796405 + 2891336453;
     uint result = ((seed >> ((seed >> 28) + 4)) ^ seed) * 277803737;
@@ -79,32 +78,18 @@ float RandomFloat() {
     return float(result) / 4294967295.0;
 }
 
-// ===============================================================================================
-// 6. É«²Ê¿ÆÑ§ºËĞÄ (Color Science)
-// ===============================================================================================
-
-// XYZ µ½ sRGB µÄ×ª»» (°üÀ¨ Gamma Ğ£Õı)
 vec3 XYZToDisplayRGB(vec3 xyz) {
-    // 1. XYZ -> Linear RGB (Rec.709 ±ê×¼¾ØÕó)
     vec3 linearRGB = vec3(
         3.2404542 * xyz.x - 1.5371385 * xyz.y - 0.4985314 * xyz.z,
        -0.9692660 * xyz.x + 1.8760108 * xyz.y + 0.0415560 * xyz.z,
         0.0556434 * xyz.x - 0.2040259 * xyz.y + 1.0572252 * xyz.z
     );
-
-    // 2. Linear RGB -> sRGB (Gamma 2.2 ½üËÆ)
-    // ±ØĞë clamp ·ÀÖ¹¸ºÖµµ¼ÖÂ pow ´íÎó
     linearRGB = max(linearRGB, vec3(0.0));
     return pow(linearRGB, vec3(1.0/2.2));
 }
 
-// CIE 1931 Color Matching Functions (CMF) µÄ¶à¸ßË¹ÄâºÏ½üËÆ
-// ÊäÈë: ²¨³¤ lambda (nm)
-// Êä³ö: ¸Ã²¨³¤¶ÔÓ¦µÄ CIE XYZ ÏìÓ¦Öµ
 vec3 WavelengthToXYZ(float lambda) {
     float x = 0.0, y = 0.0, z = 0.0;
-    
-    // ÄâºÏ²ÎÊı (À´×ÔÍ¼ĞÎÑ§ÎÄÏ×)
     float d1 = (lambda - 442.0) * ((lambda < 442.0) ? 0.0624 : 0.0374);
     float d2 = (lambda - 599.8) * ((lambda < 599.8) ? 0.0264 : 0.0323);
     float d3 = (lambda - 501.1) * ((lambda < 501.1) ? 0.0490 : 0.0382);
@@ -117,38 +102,47 @@ vec3 WavelengthToXYZ(float lambda) {
     d1 = (lambda - 437.0) * ((lambda < 437.0) ? 0.0845 : 0.0278);
     d2 = (lambda - 459.0) * ((lambda < 459.0) ? 0.0385 : 0.0725);
     z = 1.217 * exp(-0.5 * d1 * d1) + 0.681 * exp(-0.5 * d2 * d2);
-
     return vec3(x, y, z);
 }
 
-// [¹Ø¼üËã·¨] RGB ÉıÎ¬ (RGB Uplifting)
-// ½« RGB ÑÕÉ«×ª»»ÎªÌØ¶¨²¨³¤ÏÂµÄ¹âÆ×·´ÉäÂÊ
-// ÊäÈë: albedo (RGB), lambda (µ±Ç°²¨³¤ nm)
-// Êä³ö: ·´ÉäÂÊ (0.0 ~ 1.0)
 float GetReflectanceFromRGB(vec3 albedo, float lambda)
 {
-    // ¶¨Òå R, G, B Èı¸öÍ¨µÀµÄÖĞĞÄ²¨³¤ (nm) ºÍ ¿í¶È (·½²î)
-    // À¶É«ÖĞĞÄ ~460nm, ÂÌÉ« ~535nm, ºìÉ« ~610nm
     float meanB = 460.0; float sigB = 30.0;
     float meanG = 535.0; float sigG = 35.0;
     float meanR = 610.0; float sigR = 40.0;
-
-    // ¼ÆËã¸ßË¹È¨ÖØ (Gaussian Weight)
-    // µ±Ç°²¨³¤ÀëÄÄ¸öÑÕÉ«Í¨µÀÔ½½ü£¬¾ÍÔ½ÊÜ¸ÃÍ¨µÀÖµµÄÓ°Ïì
     float wB = exp(-0.5 * pow((lambda - meanB) / sigB, 2.0));
     float wG = exp(-0.5 * pow((lambda - meanG) / sigG, 2.0));
     float wR = exp(-0.5 * pow((lambda - meanR) / sigR, 2.0));
-
-    // »ìºÏ·´ÉäÂÊ
     float reflectance = albedo.b * wB + albedo.g * wG + albedo.r * wR;
-    
-    // ÏŞÖÆ·¶Î§
     return clamp(reflectance, 0.0, 1.0);
 }
 
-// ===============================================================================================
-// 7. ¼¸ºÎÇó½»
-// ===============================================================================================
+// [æ–°å¢] ä» SSBO ä¸­é‡‡æ ·çœŸå®å…‰è°±æ•°æ®
+float SampleMeasuredSpectrum(int curveIndex, float lambda)
+{
+    // æ•°æ®è§„èŒƒå®šä¹‰ (éœ€ä¸ C++ ä¸Šä¼ é€»è¾‘ä¸€è‡´)
+    float startLambda = 400.0; // å‡è®¾æ•°æ®ä» 400nm å¼€å§‹
+    float step        = 10.0;  // æ­¥é•¿ 10nm
+    int   sampleCount = 32;    // æ€»ç‚¹æ•° (C++ resize ä¸º 32)
+
+    // è®¡ç®—ç´¢å¼•
+    float t = (lambda - startLambda) / step;
+    
+    // è¾¹ç•Œå¤„ç†
+    if (t < 0.0) return Curves[curveIndex * sampleCount];
+    if (t >= float(sampleCount - 1)) return Curves[curveIndex * sampleCount + sampleCount - 1];
+
+    // çº¿æ€§æ’å€¼
+    int idx0 = int(floor(t));
+    int idx1 = idx0 + 1;
+    float fractPart = t - float(idx0);
+
+    int globalIdx0 = curveIndex * sampleCount + idx0;
+    int globalIdx1 = curveIndex * sampleCount + idx1;
+
+    // ä» SSBO è¯»å–å¹¶æ’å€¼
+    return mix(Curves[globalIdx0], Curves[globalIdx1], fractPart);
+}
 
 float HitTriangle(vec3 rayOrigin, vec3 rayDir, vec3 v0, vec3 v1, vec3 v2) {
     vec3 edge1 = v1 - v0;
@@ -168,34 +162,38 @@ float HitTriangle(vec3 rayOrigin, vec3 rayDir, vec3 v0, vec3 v1, vec3 v2) {
 }
 
 // ===============================================================================================
-// 8. Ö÷º¯Êı (Main)
+// ä¸»å‡½æ•°
 // ===============================================================================================
 
 void main() 
 {
-    // »ñÈ¡ÏñËØ×ø±ê
     ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
     ivec2 img_size = imageSize(img_output);
     if (pixel_coords.x >= img_size.x || pixel_coords.y >= img_size.y) return;
 
-    // A. ³õÊ¼»¯Ëæ»úÊıÖÖ×Ó
     InitRNG(pixel_coords, u_FrameIndex);
 
-    // B. [¹âÆ×ºËĞÄ] Ëæ»ú²ÉÑùÒ»¸öÖ÷²¨³¤ (Hero Wavelength)
-    // Ã¿Ò»Ö¡£¬Ã¿¸öÏñËØÖ»¼ÆËãÕâÒ»¸ö²¨³¤µÄÎïÀíĞĞÎª
-    float lambda = LAMBDA_MIN + RandomFloat() * (LAMBDA_MAX - LAMBDA_MIN);
+    // --- æ³¢é•¿é‡‡æ ·é€»è¾‘ (UI æ§åˆ¶èŒƒå›´) ---
+    float safeMin = max(u_LambdaMin, LAMBDA_MIN_CONST);
+    float safeMax = min(u_LambdaMax, LAMBDA_MAX_CONST);
+    
+    // å¦‚æœ Uniform æœªåˆå§‹åŒ–(ä¸º0)ï¼Œå¼ºè¡Œå›é€€åˆ°å…¨å…‰è°±
+    if (safeMin >= safeMax || safeMin < 1.0) {
+        safeMin = LAMBDA_MIN_CONST;
+        safeMax = LAMBDA_MAX_CONST;
+    }
 
-    // C. ¿¹¾â³İ¶¶¶¯ (Jitter)
+    float lambda = safeMin + RandomFloat() * (safeMax - safeMin);
+
+    // æ‘„åƒæœºå°„çº¿ç”Ÿæˆ
     vec2 jitter = vec2(RandomFloat(), RandomFloat()) - 0.5;
     vec2 uv = (vec2(pixel_coords) + 0.5 + jitter) / vec2(img_size) * 2.0 - 1.0;
-
-    // D. Éú³ÉÉäÏß
     vec4 target = u_InverseProjection * vec4(uv, 1.0, 1.0);
     vec3 rayDirView = normalize(target.xyz / target.w);
     vec3 rayDir = normalize(mat3(u_InverseView) * rayDirView);
     vec3 rayOrigin = u_CameraPos;
 
-    // E. ³¡¾°Çó½» (Ñ°ÕÒ×î½ü½»µã)
+    // åœºæ™¯æ±‚äº¤
     float closestT = INFINITY;
     int hitIndex = -1;
     uint numTriangles = Triangles.length();
@@ -206,62 +204,55 @@ void main()
         if (t > 0.0 && t < closestT) { closestT = t; hitIndex = int(i); }
     }
 
-    // F. µ¥É«¹âÕÕ¼ÆËã (Monochromatic Shading)
-    // ×¢Òâ£ºÕâÀïµÄ energy ½ö½öÊÇÒ»¸ö±êÁ¿ (Scalar)£¬´ú±í¸Ã²¨³¤µÄÇ¿¶È
+    // --- æ ¸å¿ƒå…‰ç…§è®¡ç®— ---
     float energy = 0.0; 
 
     if (hitIndex != -1) {
         TriangleData tri = Triangles[hitIndex];
         GPUMaterial mat = Materials[tri.MaterialID];
         
-        // 1. »ñÈ¡ RGB ÑÕÉ«
-        vec3 albedoRGB = mat.AlbedoRoughness.rgb;
-        
-        // 2. [¹Ø¼ü] Ê¹ÓÃ Uplifting Ëã·¨¹ÀËãµ±Ç°²¨³¤ÏÂµÄ·´ÉäÂÊ
-        float reflectance = GetReflectanceFromRGB(albedoRGB, lambda);
-        
-        // 3. ÁÁ¶È²¹³¥ (ÒòÎª¸ßË¹²ÉÑù±È½ÏÕ­£¬»ı·ÖÄÜÁ¿¿ÉÄÜ»áËğÊ§£¬ÉÔÎ¢ÔöÇ¿Ò»µã)
-        reflectance *= 2.5;
-        reflectance = min(reflectance, 1.0);
+        float reflectance = 0.0;
 
-        // 4. ¼òµ¥µÄ Lambert ¹âÕÕ (±êÁ¿ÔËËã)
-        vec3 hitPos = rayOrigin + rayDir * closestT;
+        // [æ ¸å¿ƒä¿®å¤] åˆ†æ”¯é€»è¾‘ï¼šå¦‚æœæœ‰çœŸå®å…‰è°±ç´¢å¼•ï¼Œä½¿ç”¨æŸ¥è¡¨ï¼›å¦åˆ™ä½¿ç”¨ RGB å‡ç»´
+        if (mat.SpectralIndex >= 0)
+        {
+            // ä½¿ç”¨æµ‹é‡æ•°æ® (Binding 5)
+            reflectance = SampleMeasuredSpectrum(mat.SpectralIndex, lambda);
+            // çœŸå®æ•°æ®é€šå¸¸ä¸éœ€è¦äº®åº¦è¡¥å¿ï¼Œç›´æ¥ clamp
+            reflectance = clamp(reflectance, 0.0, 1.0);
+        }
+        else
+        {
+            // ä½¿ç”¨ RGB å‡ç»´ç®—æ³• (æ—§é€»è¾‘)
+            vec3 albedoRGB = mat.AlbedoRoughness.rgb;
+            reflectance = GetReflectanceFromRGB(albedoRGB, lambda);
+            reflectance *= 2.5; // å‡ç»´è¡¥å¿
+            reflectance = min(reflectance, 1.0);
+        }
+
+        // ç®€å•çš„ Lambert å…‰ç…§
         vec3 v0 = Vertices[tri.v0].Position;
         vec3 v1 = Vertices[tri.v1].Position;
         vec3 v2 = Vertices[tri.v2].Position;
-        vec3 N = normalize(cross(v1 - v0, v2 - v0)); // Flat Normal
-        
-        // ¼òµ¥µÄ¹Ì¶¨¹âÔ´·½Ïò
+        vec3 N = normalize(cross(v1 - v0, v2 - v0)); 
         vec3 L = normalize(vec3(0.5, 1.0, 0.5));
         float NdotL = max(dot(N, L), 0.0);
         
-        // ×îÖÕµ¥É«ÄÜÁ¿ = ·´ÉäÂÊ * ¼¸ºÎÒò×Ó * ¹âÇ¿ (10.0)
         energy = reflectance * NdotL * 10.0; 
     } else {
-        // Ìì¿Õ¹â (¼ÙÉèÊÇÈ«¹âÆ×°×¹â)
         energy = 1.0; 
     }
 
-    // G. ¹âÆ××ªÉ« (Spectral to XYZ)
-    // ½«¼ÆËã³öµÄµ¥²¨³¤ÄÜÁ¿£¬³ËÒÔ¸Ã²¨³¤¶ÔÓ¦µÄ XYZ ÏìÓ¦ÇúÏß
+    // å…‰è°±è½¬è‰²ä¸ç´¯ç§¯
     vec3 xyzColor = WavelengthToXYZ(lambda) * energy;
 
-    // H. Ê±¼äÀÛ»ı (Temporal Accumulation) - ÔÚ XYZ ¿Õ¼ä½øĞĞ
     vec3 accumulatedXYZ = xyzColor;
-    
-    // Èç¹û²»ÊÇµÚÒ»Ö¡£¬¶ÁÈ¡ÀúÊ·Êı¾İ²¢Ïà¼Ó
     if (u_FrameIndex > 1) {
         accumulatedXYZ += imageLoad(img_accum, pixel_coords).rgb;
     }
-    
-    // Ğ´ÈëÀÛ»ı»º³åÇø
     imageStore(img_accum, pixel_coords, vec4(accumulatedXYZ, 1.0));
 
-    // I. Æ½¾ùÓëÊä³ö (Average & Display)
-    // ¼ÆËãÆ½¾ù XYZ
     vec3 averagedXYZ = accumulatedXYZ / float(u_FrameIndex);
-    
-    // ×ª»»µ½ sRGB ½øĞĞÏÔÊ¾
     vec3 finalRGB = XYZToDisplayRGB(averagedXYZ);
     
     imageStore(img_output, pixel_coords, vec4(finalRGB, 1.0));

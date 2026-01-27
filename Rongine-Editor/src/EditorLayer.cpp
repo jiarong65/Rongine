@@ -890,6 +890,25 @@ void EditorLayer::onImGuiRender()
 		Rongine::Renderer3D::setSpectralRendering(useSpectral);
 		m_SceneChanged = true;
 	}
+
+	if (useSpectral)
+	{
+		static float lambdaRange[2] = { 380.0f, 780.0f };
+
+		if (ImGui::DragFloatRange2("Wavelength",
+			&lambdaRange[0], &lambdaRange[1], // 当前值
+			1.0f,                             // 拖动速度
+			380.0f, 780.0f,                   // 最小/最大限制
+			"Min: %.0f nm", "Max: %.0f nm"))  // 显示格式
+		{
+			Rongine::Renderer3D::SetSpectralRange(lambdaRange[0], lambdaRange[1]);
+		}
+
+		float bandwidth = lambdaRange[1] - lambdaRange[0];
+		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Bandwidth: %.0f nm", bandwidth);
+	}
+
+	ImGui::Separator();
 	ImGui::End();
 
 	////////////////////////////////////////////////////////////////////////////////////////////

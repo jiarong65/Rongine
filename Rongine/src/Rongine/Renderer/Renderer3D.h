@@ -66,6 +66,7 @@ namespace Rongine {
 		};
 
 		// cs光追
+		static void SetSpectralRange(float start, float end);
 		static void UploadSceneDataToGPU(Scene* scene);
 		static void RenderComputeFrame(const PerspectiveCamera& camera,float time,bool resetAccumulation=false);
 		static Ref<Texture2D> GetComputeOutputTexture();
@@ -141,5 +142,12 @@ namespace Rongine {
 
 		uint32_t FrameIndex = 1;             // 帧数
 		bool UseSpectralRendering = false;   // 光谱光追开关
+
+		//光谱曲线
+		std::vector<float> HostSpectralCurves;
+		Ref<ShaderStorageBuffer> SpectralCurvesSSBO;
+
+		float SpectralStart = 380.0f;
+		float SpectralEnd = 780.0f;
 	};
 }

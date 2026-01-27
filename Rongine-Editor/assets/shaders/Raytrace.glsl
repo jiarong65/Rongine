@@ -36,7 +36,10 @@ struct TriangleData {
 // 使用 vec4 强制对齐，防止 std430 布局问题
 struct GPUMaterial {
     vec4 AlbedoRoughness; // rgb = Albedo (Color), a = Roughness
-    vec4 MetalEmission;   // r = Metallic, g = Emission, b,a = Padding
+    float Metallic;       // Offset: 16
+    float Emission;       // Offset: 20
+    int   SpectralIndex;  // Offset: 24 (对应 C++ 的 int)
+    float _pad;           // Offset: 28
 };
 
 // ===============================================================================================
@@ -241,8 +244,8 @@ void main()
         // 解包材质属性
         vec3 albedo     = pow(rawMat.AlbedoRoughness.rgb, vec3(2.2)); // sRGB -> Linear
         float roughness = rawMat.AlbedoRoughness.w;
-        float metallic  = rawMat.MetalEmission.x;
-        float emission  = rawMat.MetalEmission.y;
+        float metallic  = rawMat.Metallic;
+        float emission  = rawMat.Emission;
 
         // 计算交点位置与法线
         vec3 hitPos = rayOrigin + rayDir * closestT;

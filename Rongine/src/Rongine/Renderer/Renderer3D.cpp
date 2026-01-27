@@ -511,11 +511,24 @@ namespace Rongine {
 	}
 
 
+	void Renderer3D::SetSpectralRange(float start, float end)
+	{
+		if (s_Data.SpectralStart != start || s_Data.SpectralEnd != end)
+		{
+			s_Data.SpectralStart = start;
+			s_Data.SpectralEnd = end;
+
+			s_Data.FrameIndex = 1;
+		}
+	}
+
 	void Renderer3D::UploadSceneDataToGPU(Scene* scene)
 	{
+		// 1. 清空所有 Host 缓存
 		s_Data.HostVertices.clear();
 		s_Data.HostTriangles.clear();
 		s_Data.HostMaterials.clear();
+		s_Data.HostSpectralCurves.clear(); // [新增] 清空光谱数据
 
 		auto view = scene->getRegistry().view<TransformComponent, MeshComponent>();
 
@@ -526,19 +539,49 @@ namespace Rongine {
 			if (mesh.LocalVertices.empty() || mesh.LocalIndices.empty())
 				continue;
 
-			// ====================  材质处理逻辑 ====================
+			// ==================== 材质处理逻辑 ====================
 			GPUMaterial gpuMat;
 
-			// 设置默认值 (灰色)
+			// 默认值初始化
 			gpuMat.Albedo = { 0.8f, 0.8f, 0.8f };
 			gpuMat.Roughness = 0.5f;
 			gpuMat.Metallic = 0.0f;
 			gpuMat.Emission = 0.0f;
+			gpuMat.SpectralIndex = -1; // 默认 -1：表示使用 RGB Uplifting
+			gpuMat._padding = 0.0f;
 
 			Entity entity = { entityHandle, scene };
+
+			// A. 优先检查是否有 [光谱材质组件]
+			if (entity.HasComponent<SpectralMaterialComponent>())
+			{
+				auto& specComp = entity.GetComponent<SpectralMaterialComponent>();
+
+				// 只有当有有效数据时才处理
+				// 假设我们约定每条曲线固定 32 个采样点 (方便 Shader 索引计算)
+				if (!specComp.SpectrumValues.empty())
+				{
+					// 计算当前曲线在 Buffer 中的索引 (总大小 / 单条大小)
+					// 比如第 0 条在 0，第 1 条在 32，第 2 条在 64...
+					// Shader 里会用 spectralIndex * 32 来定位
+					gpuMat.SpectralIndex = (int)(s_Data.HostSpectralCurves.size() / 32);
+
+					// 确保数据对齐到 32 个 float
+					std::vector<float> alignedData = specComp.SpectrumValues;
+					if (alignedData.size() < 32) alignedData.resize(32, 0.0f); // 补零
+					if (alignedData.size() > 32) alignedData.resize(32);       // 截断
+
+					// 将数据追加到 Host 数组
+					s_Data.HostSpectralCurves.insert(s_Data.HostSpectralCurves.end(), alignedData.begin(), alignedData.end());
+				}
+			}
+
+			// B. 检查普通 [材质组件] (用于获取 Roughness/Metallic 等物理属性，或者作为 RGB 回退)
 			if (entity.HasComponent<MaterialComponent>())
 			{
 				auto& mat = entity.GetComponent<MaterialComponent>();
+				// 如果没有光谱数据 (Index == -1)，Albedo 会被用于 Uplifting
+				// 如果有光谱数据，Albedo 可能被忽略，但 Roughness/Metallic 依然需要
 				gpuMat.Albedo = mat.Albedo;
 				gpuMat.Roughness = mat.Roughness;
 				gpuMat.Metallic = mat.Metallic;
@@ -558,99 +601,73 @@ namespace Rongine {
 			for (const auto& v : mesh.LocalVertices)
 			{
 				GPUVertex gpuV;
-
-				// 位置变换： Model * vec4(pos, 1.0)
 				gpuV.Position = glm::vec3(transform * glm::vec4(v.Position, 1.0f));
-
-				// 法线变换： NormalMatrix * normal (归一化)
 				gpuV.Normal = glm::normalize(normalMatrix * v.Normal);
-
 				gpuV.TexCoord = v.TexCoord;
-
-				// 填充 Padding 保持 0，防止脏数据
-				gpuV._pad1 = 0.0f;
-				gpuV._pad2 = 0.0f;
-				gpuV._pad3 = { 0.0f, 0.0f };
+				gpuV._pad1 = 0.0f; gpuV._pad2 = 0.0f; gpuV._pad3 = { 0.0f, 0.0f };
 
 				s_Data.HostVertices.push_back(gpuV);
 			}
 
-			// --- 合并索引  ---
+			// --- 合并索引 ---
 			for (size_t i = 0; i < mesh.LocalIndices.size(); i += 3)
 			{
-				// 边界检查：防止索引越界
 				if (i + 2 >= mesh.LocalIndices.size()) break;
 
 				TriangleData tri;
-
 				tri.v0 = mesh.LocalIndices[i + 0] + vertexOffset;
 				tri.v1 = mesh.LocalIndices[i + 1] + vertexOffset;
 				tri.v2 = mesh.LocalIndices[i + 2] + vertexOffset;
-
 				tri.MaterialID = currentMatIndex;
 
 				s_Data.HostTriangles.push_back(tri);
 			}
 		}
 
-		// 上传到 GPU (SSBO)
+		// ==================== 上传 SSBO 数据 ====================
+
 		if (s_Data.HostVertices.empty()) return;
 
 		size_t vertSize = s_Data.HostVertices.size() * sizeof(GPUVertex);
 		size_t triSize = s_Data.HostTriangles.size() * sizeof(TriangleData);
+		size_t matSize = s_Data.HostMaterials.size() * sizeof(GPUMaterial);
 
-		// --- 处理 Vertices SSBO ---
-		if (!s_Data.VerticesSSBO)
-		{
-			// 分配刚好够用的大小 
-			s_Data.VerticesSSBO = ShaderStorageBuffer::create((uint32_t)vertSize, ShaderStorageBufferUsage::DynamicDraw);
-		}
-		else
-		{
-			// 容量不够，扩容 (简单直接 Resize，可以做成指数扩容策略)
-			s_Data.VerticesSSBO->resize((uint32_t)vertSize);
-		}
-
-		// 上传数据
-		s_Data.VerticesSSBO->bind(1); // Binding Point 1
+		// 1. Vertices SSBO
+		if (!s_Data.VerticesSSBO) s_Data.VerticesSSBO = ShaderStorageBuffer::create((uint32_t)vertSize, ShaderStorageBufferUsage::DynamicDraw);
+		else s_Data.VerticesSSBO->resize((uint32_t)vertSize);
+		s_Data.VerticesSSBO->bind(1);
 		s_Data.VerticesSSBO->setData(s_Data.HostVertices.data(), (uint32_t)vertSize);
 
-
-		// --- 处理 Triangles SSBO ---
-		if (!s_Data.TrianglesSSBO)
-		{
-			s_Data.TrianglesSSBO = ShaderStorageBuffer::create((uint32_t)triSize, ShaderStorageBufferUsage::DynamicDraw);
-		}
-		else
-		{
-			s_Data.TrianglesSSBO->resize((uint32_t)triSize);
-		}
-
-		// 上传数据
-		s_Data.TrianglesSSBO->bind(2); // Binding Point 2
+		// 2. Triangles SSBO
+		if (!s_Data.TrianglesSSBO) s_Data.TrianglesSSBO = ShaderStorageBuffer::create((uint32_t)triSize, ShaderStorageBufferUsage::DynamicDraw);
+		else s_Data.TrianglesSSBO->resize((uint32_t)triSize);
+		s_Data.TrianglesSSBO->bind(2);
 		s_Data.TrianglesSSBO->setData(s_Data.HostTriangles.data(), (uint32_t)triSize);
 
-		// --- 处理 Materials SSBO ---
-		if (!s_Data.HostMaterials.empty())
+		// 3. Materials SSBO
+		if (!s_Data.MaterialsSSBO) s_Data.MaterialsSSBO = ShaderStorageBuffer::create((uint32_t)matSize, ShaderStorageBufferUsage::DynamicDraw);
+		else s_Data.MaterialsSSBO->resize((uint32_t)matSize);
+		s_Data.MaterialsSSBO->bind(3);
+		s_Data.MaterialsSSBO->setData(s_Data.HostMaterials.data(), (uint32_t)matSize);
+
+		// 4.  Spectral Curves SSBO (Binding = 5)
+		if (!s_Data.HostSpectralCurves.empty())
 		{
-			size_t matSize = s_Data.HostMaterials.size() * sizeof(GPUMaterial);
+			size_t curveSize = s_Data.HostSpectralCurves.size() * sizeof(float);
 
-			if (!s_Data.MaterialsSSBO) 
-			{
-				s_Data.MaterialsSSBO = ShaderStorageBuffer::create((uint32_t)matSize, ShaderStorageBufferUsage::DynamicDraw);
-			}
-			else 
-			{
-				s_Data.MaterialsSSBO->resize((uint32_t)matSize);
-			}
+			if (!s_Data.SpectralCurvesSSBO)
+				s_Data.SpectralCurvesSSBO = ShaderStorageBuffer::create((uint32_t)curveSize, ShaderStorageBufferUsage::DynamicDraw);
+			else
+				s_Data.SpectralCurvesSSBO->resize((uint32_t)curveSize);
 
-			s_Data.MaterialsSSBO->bind(3); // Binding Point = 3
-			s_Data.MaterialsSSBO->setData(s_Data.HostMaterials.data(), (uint32_t)matSize);
+			s_Data.SpectralCurvesSSBO->bind(5); //避免冲突
+			s_Data.SpectralCurvesSSBO->setData(s_Data.HostSpectralCurves.data(), (uint32_t)curveSize);
 		}
 	}
 
-	void Renderer3D::RenderComputeFrame(const PerspectiveCamera& camera,float time, bool resetAccumulation)
+	void Renderer3D::RenderComputeFrame(const PerspectiveCamera& camera, float time, bool resetAccumulation)
 	{
+		// 1. 帧数管理
 		if (resetAccumulation)
 			s_Data.FrameIndex = 1;
 		else
@@ -669,39 +686,38 @@ namespace Rongine {
 
 		shader->bind();
 
-		// 1. 绑定图像单元 (Image Unit)
-		// 第一个参数 0 对应 shader 里的 binding = 0
-		// 使用 GL_WRITE_ONLY 模式写入
+		// 2. 绑定图像单元
+		// Binding 0: 输出显示
 		glBindImageTexture(0, outputTexture->getRendererID(), 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+		// Binding 4: 累积缓冲区
 		glBindImageTexture(4, accumulationTexture->getRendererID(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
 		glm::mat4 invProj = glm::inverse(camera.getProjectionMatrix());
 		glm::mat4 invView = glm::inverse(camera.getViewMatrix());
 
-		// 2. 设置 Uniforms
+		// 3. 设置 Uniforms
 		shader->setFloat("u_Time", time);
 		shader->setMat4("u_InverseProjection", invProj);
 		shader->setMat4("u_InverseView", invView);
 		shader->setFloat3("u_CameraPos", camera.getPosition());
 		shader->setInt("u_FrameIndex", s_Data.FrameIndex);
 
-		// 3. 绑定 SSBO 数据 (场景几何体)
-		// 只有当 SSBO 存在且有数据时才绑定
+		shader->setFloat("u_LambdaMin", s_Data.SpectralStart);
+		shader->setFloat("u_LambdaMax", s_Data.SpectralEnd);
+
+		// 4. 绑定 SSBO
 		if (s_Data.VerticesSSBO) s_Data.VerticesSSBO->bind(1);
 		if (s_Data.TrianglesSSBO) s_Data.TrianglesSSBO->bind(2);
 		if (s_Data.MaterialsSSBO) s_Data.MaterialsSSBO->bind(3);
+		if (s_Data.SpectralCurvesSSBO) s_Data.SpectralCurvesSSBO->bind(5);
 
-		// 4. 计算工作组数量
-		// 本地工作组大小设为 8x8 (和 Shader 里的 local_size 对应)
+		// 5. 发射计算
 		uint32_t width = outputTexture->getWidth();
 		uint32_t height = outputTexture->getHeight();
-
 		uint32_t groupX = (width + 8 - 1) / 8;
 		uint32_t groupY = (height + 8 - 1) / 8;
 
-		// 5. 发射计算！
 		shader->dispatch(groupX, groupY, 1);
-
 		shader->unbind();
 	}
 

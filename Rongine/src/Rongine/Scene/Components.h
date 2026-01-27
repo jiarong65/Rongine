@@ -116,8 +116,16 @@ namespace Rongine {
     // 为未来预留的光谱组件
     struct SpectralMaterialComponent
     {
-        int MaterialID = -1;
-        // std::string H5FilePath; // 以后可能是这个
+        std::string Name;
+
+        // 光谱曲线
+        std::vector<float> SpectrumValues;
+
+        // 对应的 GPU 缓冲区索引
+        int GpuBufferIndex = -1;
+
+        SpectralMaterialComponent() = default;
+        SpectralMaterialComponent(const std::string& name) : Name(name) {}
     };
 
     struct CADGeometryComponent
