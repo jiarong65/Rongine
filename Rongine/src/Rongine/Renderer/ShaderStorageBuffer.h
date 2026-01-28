@@ -20,7 +20,8 @@ namespace Rongine {
 
 		virtual void setData(const void* data, uint32_t size, uint32_t offset = 0) = 0;
 
-		// 重新调整大小并清空数据 
+		virtual uint32_t getSize() const = 0;
+
 		virtual void resize(uint32_t size) = 0;
 
 		static Ref<ShaderStorageBuffer> create(uint32_t size, ShaderStorageBufferUsage usage = ShaderStorageBufferUsage::DynamicDraw);

@@ -410,6 +410,7 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		if (m_SceneChanged)
 		{
 			Rongine::Renderer3D::UploadSceneDataToGPU(m_activeScene.get());
+			Rongine::Renderer3D::BuildAccelerationStructures(m_activeScene.get());
 			m_SceneChanged = false; // 重置标志位
 		}
 
@@ -910,6 +911,34 @@ void EditorLayer::onImGuiRender()
 
 		float bandwidth = lambdaRange[1] - lambdaRange[0];
 		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Bandwidth: %.0f nm", bandwidth);
+	}
+
+	ImGui::Separator();
+	// 加速结构选择器
+	const char* accelItems[] = { "None (Brute Force)", "BVH (Bounding Volume)", "Octree (Spatial)" };
+	static int currentItem = 0; // 默认 None
+
+	// 同步初始状态
+	if (Rongine::Renderer3D::getAccelType() == Rongine::AccelType::BVH) currentItem = 1;
+	if (Rongine::Renderer3D::getAccelType() == Rongine::AccelType::Octree) currentItem = 2;
+
+	if (ImGui::Combo("Acceleration Structure", &currentItem, accelItems, IM_ARRAYSIZE(accelItems)))
+	{
+		Rongine::AccelType type = Rongine::AccelType::None;
+		if (currentItem == 1) type = Rongine::AccelType::BVH;
+		if (currentItem == 2) type = Rongine::AccelType::Octree;
+
+		Rongine::Renderer3D::setAccelType(type);
+
+		// 切换后可能需要重新构建或上传数据
+		Rongine::Renderer3D::BuildAccelerationStructures(m_activeScene.get()); 
+		m_SceneChanged = true;
+	}
+
+	if (currentItem != 0)
+	{
+		ImGui::TextColored(ImVec4(0.5, 1, 0.5, 1), "Active Nodes: %d",
+			(currentItem == 1) ? Rongine::Renderer3D::getBVHNodeCount() : Rongine::Renderer3D::getOctreeNodeCount());
 	}
 
 	ImGui::Separator();

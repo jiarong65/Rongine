@@ -12,7 +12,7 @@ layout(rgba32f, binding = 4) uniform image2D img_accum;
 // ==================== 常量配置 ====================
 const float PI = 3.14159265359;
 const float INFINITY = 10000.0;
-const float EPSILON = 0.001;
+const float EPSILON = 1e-6;
 const int   MAX_BOUNCES = 8; // 最大弹射次数
 
 const float LAMBDA_MIN_CONST = 380.0;
@@ -23,6 +23,22 @@ struct GPUVertex {
     vec3 Position; float _pad1;
     vec3 Normal;   float _pad2;
     vec2 TexCoord; vec2 _pad3;
+};
+
+//struct BVHNode {
+//    vec3 AABBMin; float LeftChild;
+//    vec3 AABBMax; float RightChild; // Leaf: RightChild = Count
+//};
+
+struct BVHNode {
+    vec4 Data1; // x,y,z = Min, w = LeftChild
+    vec4 Data2; // x,y,z = Max, w = RightChild
+};
+
+struct OctreeNode {
+    vec3 Center;  float Size;
+    float Children[8];
+    float TriStart; float TriCount; float _pad1; float _pad2;
 };
 
 struct TriangleData {
@@ -43,6 +59,9 @@ layout(std430, binding = 1) readonly buffer VerticesBuffer { GPUVertex Vertices[
 layout(std430, binding = 2) readonly buffer TrianglesBuffer { TriangleData Triangles[]; };
 layout(std430, binding = 3) readonly buffer MaterialsBuffer { GPUMaterial Materials[]; };
 layout(std430, binding = 5) readonly buffer SpectralCurvesBuffer { float Curves[]; };
+layout(std430, binding = 6) readonly buffer BVHBuffer { BVHNode BVHNodes[]; };
+layout(std430, binding = 7) readonly buffer OctreeBuffer { OctreeNode OctreeNodes[]; };
+layout(std430, binding = 8) readonly buffer IndexMapBuffer { uint GlobalIndices[]; }; // 间接索引
 
 // ==================== Uniforms (保持不变) ====================
 uniform float u_Time;
@@ -52,6 +71,7 @@ uniform vec3 u_CameraPos;
 uniform int u_FrameIndex; 
 uniform float u_LambdaMin; 
 uniform float u_LambdaMax;
+uniform int u_AccelType; // 0=None, 1=BVH, 2=Octree
 
 // ==================== 辅助函数 (RNG & Color) ====================
 uint seed = 0;
@@ -168,6 +188,119 @@ float HitTriangle(vec3 rayOrigin, vec3 rayDir, vec3 v0, vec3 v1, vec3 v2) {
     return (t > EPSILON) ? t : -1.0;
 }
 
+
+// =========================================================
+// 1. BVH 遍历逻辑
+// =========================================================
+bool IntersectAABB(vec3 rayOrig, vec3 invDir, vec3 boxMin, vec3 boxMax, float currentClosestT) {
+    vec3 t0s = (boxMin - rayOrig) * invDir;
+    vec3 t1s = (boxMax - rayOrig) * invDir;
+    
+    vec3 tsmaller = min(t0s, t1s);
+    vec3 tbigger  = max(t0s, t1s);
+    
+    float tmin = max(tsmaller.x, max(tsmaller.y, tsmaller.z));
+    float tmax = min(tbigger.x, min(tbigger.y, tbigger.z));
+    
+    // [优化] 剪枝逻辑:
+    // 1. tmin <= tmax: 射线穿过盒子
+    // 2. tmax > 0.0: 盒子在射线前方
+    // 3. tmin < currentClosestT: [关键] 只有当盒子比当前最近交点还近时，才进入！
+    return (tmin <= tmax) && (tmax > 0.0) && (tmin < currentClosestT);
+}
+
+void TraverseBVH(vec3 rayOrigin, vec3 rayDir, inout float closestT, inout int hitIndex) {
+    // [关键优化] 预计算方向倒数，避免在循环中做昂贵的除法
+    vec3 invDir = 1.0 / rayDir;
+
+    int stack[32]; 
+    int stackPtr = 0;
+    stack[stackPtr++] = 0; // 压入根节点 (索引0)
+
+    while (stackPtr > 0) {
+        int nodeIdx = stack[--stackPtr];
+        
+        // 读取节点
+        BVHNode node = BVHNodes[nodeIdx];
+
+        // [关键修复] 数据解包 (解决球体空洞问题)
+        // 显式从 vec4 中提取数据，确保与 C++ 的内存布局严格对齐
+        vec3 aabbMin = node.Data1.xyz;
+        float leftChild = node.Data1.w;
+        vec3 aabbMax = node.Data2.xyz;
+        float rightChild = node.Data2.w;
+
+        // [修改] 调用优化后的 IntersectAABB
+        if (!IntersectAABB(rayOrigin, invDir, aabbMin, aabbMax, closestT))
+            continue;
+
+        if (leftChild < 0.0) { 
+            // === 叶子节点 ===
+            // 解码索引：我们在 C++ 存的是 -(start + 1)
+            int startIdx = int(-leftChild - 1.0);
+            int count = int(rightChild);
+
+            for (int i = 0; i < count; i++) {
+                // 通过间接索引表获取真实的三角形 ID
+                int triIdx = int(GlobalIndices[startIdx + i]);
+                TriangleData tri = Triangles[triIdx];
+                
+                // 只有当 AABB 测试通过且三角形可能更近时，才进行求交
+                float t = HitTriangle(rayOrigin, rayDir, Vertices[tri.v0].Position, Vertices[tri.v1].Position, Vertices[tri.v2].Position);
+                
+                if (t > 0.0 && t < closestT) { 
+                    closestT = t; 
+                    hitIndex = triIdx; 
+                }
+            }
+        } else {
+            // === 内部节点 ===
+            // 简单的压栈顺序
+            stack[stackPtr++] = int(leftChild);
+            stack[stackPtr++] = int(rightChild);
+        }
+    }
+}
+
+// =========================================================
+// 2. 八叉树 遍历逻辑 (占位示意)
+// =========================================================
+void TraverseOctree(vec3 rayOrigin, vec3 rayDir, inout float closestT, inout int hitIndex) {
+    // 八叉树遍历比较复杂，通常涉及点定位或者光线步进
+    // 这里写个简单的递归转循环结构
+    int stack[32];
+    int stackPtr = 0;
+    stack[stackPtr++] = 0;
+
+    while (stackPtr > 0) {
+        int nodeIdx = stack[--stackPtr];
+        OctreeNode node = OctreeNodes[nodeIdx];
+        
+        // 检查八叉树节点包围盒 (Box = Center +/- Size)
+        vec3 bMin = node.Center - vec3(node.Size);
+        vec3 bMax = node.Center + vec3(node.Size);
+        float tBox;
+        if (!IntersectAABB(rayOrigin, rayDir, bMin, bMax, tBox) || tBox > closestT) continue;
+
+        // 如果是叶子 (TriCount > 0)
+        if (node.TriCount > 0.0) {
+            int start = int(node.TriStart);
+            int count = int(node.TriCount);
+            for(int i=0; i<count; i++) {
+                int triIdx = int(GlobalIndices[start + i]);
+                TriangleData tri = Triangles[triIdx];
+                float t = HitTriangle(rayOrigin, rayDir, Vertices[tri.v0].Position, Vertices[tri.v1].Position, Vertices[tri.v2].Position);
+                if (t > 0.0 && t < closestT) { closestT = t; hitIndex = triIdx; }
+            }
+        } else {
+            // 压入存在的子节点
+            for(int i=0; i<8; i++) {
+                if (node.Children[i] >= 0.0) stack[stackPtr++] = int(node.Children[i]);
+            }
+        }
+    }
+}
+
 // ===============================================================================================
 // 主函数 (路径追踪循环)
 // ===============================================================================================
@@ -202,11 +335,20 @@ void main()
         // A. 场景求交
         float closestT = INFINITY;
         int hitIndex = -1;
-        uint numTriangles = Triangles.length();
-        for (uint i = 0; i < numTriangles; i++) {
-            TriangleData tri = Triangles[i];
-            float t = HitTriangle(rayOrigin, rayDir, Vertices[tri.v0].Position, Vertices[tri.v1].Position, Vertices[tri.v2].Position);
-            if (t > 0.0 && t < closestT) { closestT = t; hitIndex = int(i); }
+
+        if (u_AccelType == 1) {
+            TraverseBVH(rayOrigin, rayDir, closestT, hitIndex);
+        } 
+        else if (u_AccelType == 2) {
+            TraverseOctree(rayOrigin, rayDir, closestT, hitIndex);
+        }
+        else{
+            uint numTriangles = Triangles.length();
+            for (uint i = 0; i < numTriangles; i++) {
+                TriangleData tri = Triangles[i];
+                float t = HitTriangle(rayOrigin, rayDir, Vertices[tri.v0].Position, Vertices[tri.v1].Position, Vertices[tri.v2].Position);
+                if (t > 0.0 && t < closestT) { closestT = t; hitIndex = int(i); }
+            }
         }
 
         // B. 未击中 -> 采样天空光并结束

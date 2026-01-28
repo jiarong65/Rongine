@@ -3,6 +3,7 @@
 #include "RenderCommand.h" // 确保包含 RenderCommand
 #include "Rongine/Scene/Entity.h" 
 #include "Rongine/Scene/Components.h"
+#include "Rongine/Renderer/BVH.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <array>
@@ -757,6 +758,125 @@ namespace Rongine {
 		s_Data.AccumulationTexture = Texture2D::create(spec);
 
 		s_Data.FrameIndex = 1;
+	}
+
+	void Renderer3D::BuildAccelerationStructures(Scene* scene)
+	{
+		// 1. 如果当前没有启用 BVH，直接返回，节省性能
+		if (s_Data.CurrentAccelType != AccelType::BVH)
+			return;
+
+		// 计时开始 (用于性能分析)
+		auto start = std::chrono::high_resolution_clock::now();
+
+		// 2. 收集场景中所有的三角形
+		// 注意：这里的遍历顺序必须与 UploadSceneDataToGPU 中上传 Triangles 的顺序严格一致！
+		// 否则索引就会错乱，BVH 会指向错误的三角形。
+
+		std::vector<BVHTriangle> worldTriangles;
+		uint32_t globalTriIndex = 0; // 这是三角形在 GPU Triangles Buffer (Binding 2) 中的原始索引
+
+		// 获取所有带 Mesh 和 Transform 的实体
+		auto view = scene->getAllEntitiesWith<TransformComponent, MeshComponent>();
+
+		for (auto entity : view)
+		{
+			auto [tc, mesh] = view.get<TransformComponent, MeshComponent>(entity);
+
+			// 跳过空 Mesh
+			if (mesh.LocalVertices.empty() || mesh.LocalIndices.empty())
+				continue;
+
+			glm::mat4 transform = tc.GetTransform();
+
+			// 遍历当前 Mesh 的所有三角形
+			// 假设是 Indexed Draw，步长为 3
+			for (size_t i = 0; i < mesh.LocalIndices.size(); i += 3)
+			{
+				// 获取顶点索引
+				uint32_t idx0 = mesh.LocalIndices[i];
+				uint32_t idx1 = mesh.LocalIndices[i + 1];
+				uint32_t idx2 = mesh.LocalIndices[i + 2];
+
+				// 变换到世界坐标 (World Space)
+				// BVH 必须基于世界坐标构建，因为光线是在世界空间漫游的
+				glm::vec4 v0 = transform * glm::vec4(mesh.LocalVertices[idx0].Position, 1.0f);
+				glm::vec4 v1 = transform * glm::vec4(mesh.LocalVertices[idx1].Position, 1.0f);
+				glm::vec4 v2 = transform * glm::vec4(mesh.LocalVertices[idx2].Position, 1.0f);
+
+				BVHTriangle tri;
+				tri.V0 = glm::vec3(v0);
+				tri.V1 = glm::vec3(v1);
+				tri.V2 = glm::vec3(v2);
+
+				// 计算质心 (用于构建时的空间划分)
+				tri.Centroid = (tri.V0 + tri.V1 + tri.V2) / 3.0f;
+
+				// 记录它在 GPU 三角形大数组里的原始 ID
+				tri.Index = globalTriIndex++;
+
+				worldTriangles.push_back(tri);
+			}
+		}
+
+		// 如果没有三角形，就不构建了
+		if (worldTriangles.empty()) return;
+
+		// 3. 执行 BVH 构建 (CPU高计算量操作)
+		BVHBuilder builder(worldTriangles);
+
+		// 4. 获取构建结果
+		const auto& nodes = builder.GetNodes();
+		const auto& sortedIndices = builder.GetSortedIndices();
+
+		s_Data.BVHNodeCount = (uint32_t)nodes.size();
+
+		// 5. 上传节点数据 (Binding 6)
+		uint32_t nodeBufferSize = (uint32_t)nodes.size() * sizeof(GPUBVHNode);
+
+		if (!s_Data.BVHStorageBuffer || s_Data.BVHStorageBuffer->getSize() < nodeBufferSize)
+		{
+			s_Data.BVHStorageBuffer = ShaderStorageBuffer::create(nodeBufferSize, ShaderStorageBufferUsage::StaticDraw);
+			s_Data.BVHStorageBuffer->bind(6);
+		}
+		s_Data.BVHStorageBuffer->setData(nodes.data(), nodeBufferSize);
+
+		// 6. 上传索引映射表 (Binding 8)
+		// Shader 遍历到叶子节点时，拿到的是 sortedIndices 里的索引，
+		// 需要通过 sortedIndices[i] 查找到原始的 TriangleID
+		uint32_t indexBufferSize = (uint32_t)sortedIndices.size() * sizeof(uint32_t);
+
+		if (!s_Data.IndexMapBuffer || s_Data.IndexMapBuffer->getSize() < indexBufferSize)
+		{
+			s_Data.IndexMapBuffer = ShaderStorageBuffer::create(indexBufferSize, ShaderStorageBufferUsage::StaticDraw);
+			s_Data.IndexMapBuffer->bind(8);
+		}
+		s_Data.IndexMapBuffer->setData(sortedIndices.data(), indexBufferSize);
+
+		// 性能统计日志
+		auto end = std::chrono::high_resolution_clock::now();
+		float duration = std::chrono::duration<float, std::milli>(end - start).count();
+		RONG_CORE_INFO("BVH Rebuilt: {0} Triangles, {1} Nodes in {2}ms", worldTriangles.size(), nodes.size(), duration);
+	}
+
+	void Renderer3D::setAccelType(const AccelType& acceltype)
+	{
+		s_Data.CurrentAccelType = acceltype;
+	}
+
+	AccelType Renderer3D::getAccelType()
+	{
+		return s_Data.CurrentAccelType;
+	}
+
+	int Renderer3D::getBVHNodeCount()
+	{
+		return s_Data.BVHNodeCount;
+	}
+
+	int Renderer3D::getOctreeNodeCount()
+	{
+		return s_Data.OctreeNodes.size();
 	}
 
 	Renderer3D::Statistics Renderer3D::getStatistics() { return s_Data.Stats; }

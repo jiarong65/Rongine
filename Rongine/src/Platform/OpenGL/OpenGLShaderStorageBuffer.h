@@ -13,6 +13,9 @@ namespace Rongine {
 		virtual void unbind() const override;
 
 		virtual void setData(const void* data, uint32_t size, uint32_t offset = 0) override;
+
+		virtual uint32_t getSize() const override { return m_size; }
+
 		virtual void resize(uint32_t size) override;
 
 	private:

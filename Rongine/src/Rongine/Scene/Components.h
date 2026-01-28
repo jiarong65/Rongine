@@ -80,15 +80,6 @@ namespace Rongine {
         }
     };
 
-    // AABB 结构体
-    struct AABB {
-        glm::vec3 Min = { 0.0f, 0.0f, 0.0f };
-        glm::vec3 Max = { 0.0f, 0.0f, 0.0f };
-
-        glm::vec3 GetCenter() const { return (Min + Max) * 0.5f; }
-        glm::vec3 GetSize() const { return Max - Min; }
-    };
-
     struct MeshComponent
     {
         Ref<VertexArray> VA;

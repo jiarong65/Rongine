@@ -146,6 +146,8 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Rongine\Renderer\BVH.h" />
+    <ClInclude Include="src\Rongine\Renderer\AccelerationStructures.h" />
     <ClInclude Include="src\Rongine\ImGui\ContentBrowserPanel.h" />
     <ClInclude Include="src\Rongine\Scene\SpectralAssetManager.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLShaderStorageBuffer.h" />
@@ -635,6 +637,7 @@
     <ClInclude Include="vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Rongine\Renderer\BVH.cpp" />
     <ClCompile Include="src\Rongine\ImGui\ContentBrowserPanel.cpp" />
     <ClCompile Include="src\Rongine\Scene\SpectralAssetManager.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLShaderStorageBuffer.cpp" />

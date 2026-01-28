@@ -11,6 +11,7 @@
 #include "Rongine/Renderer/ShaderStorageBuffer.h"
 #include "Rongine/Renderer/ComputeShader.h"
 #include "Rongine/Renderer/Framebuffer.h"
+#include "Rongine/Renderer/AccelerationStructures.h"
 
 #include <glm/glm.hpp>
 
@@ -73,6 +74,14 @@ namespace Rongine {
 		static void RenderComputeFrame(const PerspectiveCamera& camera,float time,bool resetAccumulation=false);
 		static Ref<Texture2D> GetComputeOutputTexture();
 		static void ResizeComputeOutput(uint32_t width, uint32_t height);
+
+		static void BuildAccelerationStructures(Scene* scene);
+
+		static void setAccelType(const AccelType& acceltype);
+		static AccelType getAccelType();
+
+		static int getBVHNodeCount();
+		static int getOctreeNodeCount();
 
 		static Statistics getStatistics();
 		static void resetStatistics();
@@ -151,5 +160,20 @@ namespace Rongine {
 
 		float SpectralStart = 380.0f;
 		float SpectralEnd = 780.0f;
+
+		//加速结构
+		AccelType CurrentAccelType = AccelType::None;
+
+		// CPU 端缓存
+		std::vector<GPUBVHNode> BVHNodes;
+		std::vector<GPUOctreeNode> OctreeNodes;
+		std::vector<uint32_t> SortedTriangleIndices;
+
+		// GPU 端 SSBO
+		Ref<ShaderStorageBuffer> BVHStorageBuffer;    // Binding 6
+		Ref<ShaderStorageBuffer> OctreeStorageBuffer; // Binding 7
+		Ref<ShaderStorageBuffer> IndexMapBuffer;      // Binding 8 (用于间接寻址)
+
+		uint32_t BVHNodeCount = 0;
 	};
 }
