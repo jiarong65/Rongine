@@ -32,6 +32,14 @@ namespace Rongine {
             return m_scene->m_registry.get<T>(m_EntityHandle);
         }
 
+        template<typename T, typename... Args>
+        T& GetOrAddComponent(Args&&... args)
+        {
+            if (HasComponent<T>())
+                return GetComponent<T>();
+            return m_scene->m_registry.emplace<T>(m_EntityHandle, std::forward<Args>(args)...);
+        }
+
         template<typename T>
         bool HasComponent()
         {

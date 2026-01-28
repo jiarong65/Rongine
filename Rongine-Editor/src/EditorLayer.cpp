@@ -600,7 +600,7 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		// Phase 1: 实时悬停探测 (Every Frame)
 		// 只要鼠标在视口内，且没有在使用 Gizmo，就开始探测
 		// ==============================================================================
-		if (m_viewportHovered && !ImGuizmo::IsUsing() &&
+		if ( !ImGuizmo::IsUsing() &&
 			mouseX >= 0 && mouseY >= 0 && mouseX < (int)viewportSize.x && mouseY < (int)viewportSize.y)
 		{
 			m_framebuffer->bind();
@@ -660,6 +660,9 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 				m_HoveredEntityID = bestEntityID;
 				m_HoveredFaceID = bestFaceID;
 				m_HoveredEdgeID = bestEdgeID;
+
+				if(ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+					RONG_CLIENT_INFO("eid {0},fid {1},edid{2}", bestEntityID, bestFaceID, bestEdgeID);
 			}
 		}
 
@@ -1022,44 +1025,55 @@ void EditorLayer::onImGuiRender()
 	// ==========================================================================================
 	if (ImGui::BeginDragDropTarget())
 	{
-		// 尝试接受 "SPECTRAL_MAT_ITEM" 类型的数据
 		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPECTRAL_MAT_ITEM"))
 		{
 			const char* matName = (const char*)payload->Data;
 			RONG_CLIENT_INFO("Dropped Material: {0}", matName);
 
-			int hoveredID = Rongine::Renderer3D::getHoveredEntityID(); // 确保 Renderer3D.h 中有这个静态函数
+			int pixelID = m_HoveredEntityID;
 
-			if (hoveredID != -1)
+			// 5. 验证 ID 是否有效
+			bool isValidEntity = (pixelID != -1);
+			RONG_CLIENT_WARN("Invalid Entity ID read: {0} (Filtered out)", pixelID);
+
+			if (isValidEntity)
 			{
-				Rongine::Entity targetEntity = { (entt::entity)hoveredID, m_sceneHierarchyPanel.getContext().get() };
+				// 安全创建实体对象
+				Rongine::Entity targetEntity = { (entt::entity)pixelID, m_activeScene.get() };
 
-				// 从库中查找数据
+				// 查找预设并赋值
 				Rongine::SpectralPreset preset;
 				if (Rongine::SpectralAssetManager::GetPreset(matName, preset))
 				{
-					auto& specComp = targetEntity.GetComponent<Rongine::SpectralMaterialComponent>();
+					auto& specComp = targetEntity.GetOrAddComponent<Rongine::SpectralMaterialComponent>();
 					specComp.Name = preset.Name;
 					specComp.SpectrumValues = preset.Data;
 
+					// 同步物理材质属性
 					if (targetEntity.HasComponent<Rongine::MaterialComponent>())
 					{
 						auto& mat = targetEntity.GetComponent<Rongine::MaterialComponent>();
-						if (preset.Name == "Gold" || preset.Name == "Copper" || preset.Name == "Silver")
-						{
-							mat.Metallic = 1.0f;
-							mat.Roughness = 0.2f;
+						if (preset.Name == "Gold" || preset.Name == "Copper") {
+							mat.Metallic = 1.0f; mat.Roughness = 0.25f;
 						}
-						else if (preset.Name == "Emerald" || preset.Name == "Water")
-						{
-							mat.Metallic = 0.0f;
-							mat.Roughness = 0.1f;
+						else if (preset.Name == "Silver") {
+							mat.Metallic = 1.0f; mat.Roughness = 0.1f;
+						}
+						else if (preset.Name == "Emerald" || preset.Name == "Water" || preset.Name == "Glass") {
+							mat.Metallic = 0.0f; mat.Roughness = 0.05f;
 						}
 					}
 
 					m_SceneChanged = true;
-					float currentStart = Rongine::Renderer3D::getStatistics().DrawCalls; // 这里只是占位，你需要一个 Getter
+					// 强制刷新渲染累积
+					Rongine::Renderer3D::SetSpectralRange(380.0f, 780.0f);
+					RONG_CLIENT_INFO("Successfully assigned {0} to Entity {1}", matName, pixelID);
 				}
+			}
+			else
+			{
+				if (pixelID == -1) RONG_CLIENT_WARN("Drop on Background (ID = -1)");
+				else RONG_CLIENT_ERROR("Drop Failed: Invalid ID {0}", pixelID);
 			}
 		}
 		ImGui::EndDragDropTarget();
