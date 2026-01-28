@@ -474,7 +474,14 @@ namespace Rongine {
 
 						// 初始化一个默认的平坦光谱 (防止空数据崩溃或不显示)
 						// 32 个采样点，反射率 0.8 (浅灰色)
-						newSpec.SpectrumValues.resize(32, 0.8f);
+						/*newSpec.SpectrumValues.resize(32, 0.8f);*/
+
+						newSpec.SpectrumValues = {
+							0.1f, 0.1f, 0.1f, 0.1f, 0.15f, 0.25f, 0.35f, 0.50f, // 400-470nm (蓝紫-吸光)
+							0.65f, 0.75f, 0.80f, 0.85f, 0.90f, 0.92f, 0.93f, 0.94f, // 480-550nm (绿)
+							0.95f, 0.96f, 0.96f, 0.96f, 0.97f, 0.97f, 0.97f, 0.97f, // 560-630nm (黄橙)
+							0.97f, 0.97f, 0.98f, 0.98f, 0.98f, 0.98f, 0.98f, 0.98f  // 640-710nm (红)
+						};
 
 						if (m_SceneChangedCallback) m_SceneChangedCallback();
 					}

@@ -158,6 +158,11 @@ namespace Rongine {
 		s_Data.HoveredEdgeID = edgeID;
 	}
 
+	int Renderer3D::getHoveredEntityID()
+	{
+		return s_Data.HoveredEntityID;
+	}
+
 	void Renderer3D::setSpectralRendering(bool enable) { s_Data.UseSpectralRendering = enable; }
 
 	bool Renderer3D::isSpectralRendering() { return s_Data.UseSpectralRendering; }

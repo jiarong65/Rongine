@@ -130,5 +130,8 @@ private:
 
 	//光追 computer shader
 	bool m_SceneChanged = true;
+
+	//材质面板
+	Rongine::ContentBrowserPanel m_contentBrowserPanel;
 };
 

@@ -13,6 +13,7 @@ namespace Rongine {
 		SceneHierarchyPanel(const Ref<Scene>& context);
 
 		void setContext(const Ref<Scene>& context);
+		Ref<Scene> getContext() const { return m_context; }
 
 		void onImGuiRender();
 

@@ -5,6 +5,7 @@
 #include "Platform/Windows/WindowsWindow.h"
 #include "Input.h"
 #include "Rongine/Renderer/Renderer.h"
+#include "Rongine/Scene/SpectralAssetManager.h"
 
 namespace Rongine {
 	Application* Application::s_instance = nullptr;
@@ -18,6 +19,7 @@ namespace Rongine {
 		m_window->setVSync(true);
 
 		Renderer::init();
+		SpectralAssetManager::init();
 
 		m_imguiLayer = new ImGuiLayer();
 	}

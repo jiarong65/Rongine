@@ -902,6 +902,7 @@ void EditorLayer::onImGuiRender()
 			"Min: %.0f nm", "Max: %.0f nm"))  // 显示格式
 		{
 			Rongine::Renderer3D::SetSpectralRange(lambdaRange[0], lambdaRange[1]);
+			m_SceneChanged = true;
 		}
 
 		float bandwidth = lambdaRange[1] - lambdaRange[0];
@@ -1017,6 +1018,53 @@ void EditorLayer::onImGuiRender()
 	}
 	// 使用计算后的大小
 	ImGui::Image((void*)(uintptr_t)textureID, ImVec2{ m_viewportSize.x, m_viewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+
+	// ==========================================================================================
+	if (ImGui::BeginDragDropTarget())
+	{
+		// 尝试接受 "SPECTRAL_MAT_ITEM" 类型的数据
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPECTRAL_MAT_ITEM"))
+		{
+			const char* matName = (const char*)payload->Data;
+			RONG_CLIENT_INFO("Dropped Material: {0}", matName);
+
+			int hoveredID = Rongine::Renderer3D::getHoveredEntityID(); // 确保 Renderer3D.h 中有这个静态函数
+
+			if (hoveredID != -1)
+			{
+				Rongine::Entity targetEntity = { (entt::entity)hoveredID, m_sceneHierarchyPanel.getContext().get() };
+
+				// 从库中查找数据
+				Rongine::SpectralPreset preset;
+				if (Rongine::SpectralAssetManager::GetPreset(matName, preset))
+				{
+					auto& specComp = targetEntity.GetComponent<Rongine::SpectralMaterialComponent>();
+					specComp.Name = preset.Name;
+					specComp.SpectrumValues = preset.Data;
+
+					if (targetEntity.HasComponent<Rongine::MaterialComponent>())
+					{
+						auto& mat = targetEntity.GetComponent<Rongine::MaterialComponent>();
+						if (preset.Name == "Gold" || preset.Name == "Copper" || preset.Name == "Silver")
+						{
+							mat.Metallic = 1.0f;
+							mat.Roughness = 0.2f;
+						}
+						else if (preset.Name == "Emerald" || preset.Name == "Water")
+						{
+							mat.Metallic = 0.0f;
+							mat.Roughness = 0.1f;
+						}
+					}
+
+					m_SceneChanged = true;
+					float currentStart = Rongine::Renderer3D::getStatistics().DrawCalls; // 这里只是占位，你需要一个 Getter
+				}
+			}
+		}
+		ImGui::EndDragDropTarget();
+	}
+	// ==========================================================================================
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// ImGuizmo
@@ -1376,6 +1424,8 @@ SkipGizmo:;
 
 	ImGui::End(); // End Viewport (Viewport 结束)
 	ImGui::PopStyleVar();
+
+	m_contentBrowserPanel.onImGuiRender();
 
 	ImGui::End(); // End Dockspace (Dockspace 结束)
 }

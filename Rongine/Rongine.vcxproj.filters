@@ -1510,6 +1510,8 @@
     <ClInclude Include="src\Platform\OpenGL\OpenGLComputeShader.h" />
     <ClInclude Include="src\Rongine\Renderer\ShaderStorageBuffer.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLShaderStorageBuffer.h" />
+    <ClInclude Include="src\Rongine\Scene\SpectralAssetManager.h" />
+    <ClInclude Include="src\Rongine\ImGui\ContentBrowserPanel.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp">
@@ -1659,5 +1661,7 @@
     <ClCompile Include="src\Platform\OpenGL\OpenGLComputeShader.cpp" />
     <ClCompile Include="src\Rongine\Renderer\ShaderStorageBuffer.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLShaderStorageBuffer.cpp" />
+    <ClCompile Include="src\Rongine\Scene\SpectralAssetManager.cpp" />
+    <ClCompile Include="src\Rongine\ImGui\ContentBrowserPanel.cpp" />
   </ItemGroup>
 </Project>

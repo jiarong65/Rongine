@@ -1,7 +1,7 @@
 #version 450 core
 
 // ===============================================================================================
-// SpectralRaytrace.glsl - 光谱路径追踪器 (修复版)
+// SpectralRaytrace.glsl - 光谱路径追踪器 (完整物理版)
 // ===============================================================================================
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -9,18 +9,16 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(rgba32f, binding = 0) uniform image2D img_output;
 layout(rgba32f, binding = 4) uniform image2D img_accum; 
 
+// ==================== 常量配置 ====================
 const float PI = 3.14159265359;
 const float INFINITY = 10000.0;
 const float EPSILON = 0.001;
+const int   MAX_BOUNCES = 8; // 最大弹射次数
 
-// 默认兜底范围
 const float LAMBDA_MIN_CONST = 380.0;
 const float LAMBDA_MAX_CONST = 780.0;
 
-// ===============================================================================================
-// 数据结构 
-// ===============================================================================================
-
+// ==================== 数据结构 (保持不变) ====================
 struct GPUVertex {
     vec3 Position; float _pad1;
     vec3 Normal;   float _pad2;
@@ -36,37 +34,26 @@ struct GPUMaterial {
     vec4 AlbedoRoughness; 
     float Metallic;       
     float Emission;       
-    int   SpectralIndex;  // 关键：用于判断是否使用真实光谱
+    int   SpectralIndex;  
     float _pad;           
 };
 
-// ===============================================================================================
-// SSBO 绑定
-// ===============================================================================================
-
+// ==================== SSBO (保持不变) ====================
 layout(std430, binding = 1) readonly buffer VerticesBuffer { GPUVertex Vertices[]; };
 layout(std430, binding = 2) readonly buffer TrianglesBuffer { TriangleData Triangles[]; };
 layout(std430, binding = 3) readonly buffer MaterialsBuffer { GPUMaterial Materials[]; };
-// [关键] 光谱数据仓库
 layout(std430, binding = 5) readonly buffer SpectralCurvesBuffer { float Curves[]; };
 
-// ===============================================================================================
-// Uniforms
-// ===============================================================================================
-
+// ==================== Uniforms (保持不变) ====================
 uniform float u_Time;
 uniform mat4 u_InverseProjection;
 uniform mat4 u_InverseView;
 uniform vec3 u_CameraPos;
 uniform int u_FrameIndex; 
-
 uniform float u_LambdaMin; 
 uniform float u_LambdaMax;
 
-// ===============================================================================================
-// 辅助函数
-// ===============================================================================================
-
+// ==================== 辅助函数 (RNG & Color) ====================
 uint seed = 0;
 void InitRNG(uvec2 pixel_coords, uint frame) {
     seed = pixel_coords.y * 1920 + pixel_coords.x + frame * 719393;
@@ -105,43 +92,63 @@ vec3 WavelengthToXYZ(float lambda) {
     return vec3(x, y, z);
 }
 
-float GetReflectanceFromRGB(vec3 albedo, float lambda)
-{
+// ==================== 材质采样 ====================
+float GetReflectanceFromRGB(vec3 albedo, float lambda) {
     float meanB = 460.0; float sigB = 30.0;
     float meanG = 535.0; float sigG = 35.0;
     float meanR = 610.0; float sigR = 40.0;
     float wB = exp(-0.5 * pow((lambda - meanB) / sigB, 2.0));
     float wG = exp(-0.5 * pow((lambda - meanG) / sigG, 2.0));
     float wR = exp(-0.5 * pow((lambda - meanR) / sigR, 2.0));
-    float reflectance = albedo.b * wB + albedo.g * wG + albedo.r * wR;
-    return clamp(reflectance, 0.0, 1.0);
+    return clamp(albedo.b * wB + albedo.g * wG + albedo.r * wR, 0.0, 1.0);
 }
 
-// [新增] 从 SSBO 中采样真实光谱数据
-float SampleMeasuredSpectrum(int curveIndex, float lambda)
-{
-    // 数据规范定义 (需与 C++ 上传逻辑一致)
-    float startLambda = 400.0; // 假设数据从 400nm 开始
-    float step        = 10.0;  // 步长 10nm
-    int   sampleCount = 32;    // 总点数 (C++ resize 为 32)
-
-    // 计算索引
+float SampleMeasuredSpectrum(int curveIndex, float lambda) {
+    float startLambda = 400.0; float step = 10.0; int sampleCount = 32;
     float t = (lambda - startLambda) / step;
-    
-    // 边界处理
     if (t < 0.0) return Curves[curveIndex * sampleCount];
     if (t >= float(sampleCount - 1)) return Curves[curveIndex * sampleCount + sampleCount - 1];
-
-    // 线性插值
     int idx0 = int(floor(t));
-    int idx1 = idx0 + 1;
     float fractPart = t - float(idx0);
+    return mix(Curves[curveIndex * sampleCount + idx0], Curves[curveIndex * sampleCount + idx0 + 1], fractPart);
+}
 
-    int globalIdx0 = curveIndex * sampleCount + idx0;
-    int globalIdx1 = curveIndex * sampleCount + idx1;
+// ==================== 物理光学函数 (新增) ====================
 
-    // 从 SSBO 读取并插值
-    return mix(Curves[globalIdx0], Curves[globalIdx1], fractPart);
+// 1. 柯西方程: 计算波长对应的折射率 (产生色散的关键!)
+float GetCauchyIOR(float lambda) {
+    // 将 nm 转为 um
+    float lam = lambda / 1000.0;
+    // BK7 玻璃近似参数
+    float B = 1.5046;
+    float C = 0.00420;
+    return B + (C / (lam * lam));
+}
+
+// 2. 菲涅尔方程 (电介质) - 决定反射与折射的比例
+float FresnelDielectric(float cosThetaI, float etaI, float etaT) {
+    cosThetaI = clamp(cosThetaI, -1.0, 1.0);
+    float sinThetaT2 = (etaI / etaT) * (etaI / etaT) * (1.0 - cosThetaI * cosThetaI);
+    if (sinThetaT2 > 1.0) return 1.0; // 全内反射
+    float cosThetaT = sqrt(1.0 - sinThetaT2);
+    float Rs = (etaI * cosThetaI - etaT * cosThetaT) / (etaI * cosThetaI + etaT * cosThetaT);
+    float Rp = (etaI * cosThetaT - etaT * cosThetaI) / (etaI * cosThetaT + etaT * cosThetaI);
+    return 0.5 * (Rs * Rs + Rp * Rp);
+}
+
+// 3. 漫反射采样 (余弦加权半球)
+vec3 SampleCosineHemisphere(vec3 N) {
+    float r1 = RandomFloat();
+    float r2 = RandomFloat();
+    float r = sqrt(r1);
+    float theta = 2.0 * PI * r2;
+    float x = r * cos(theta);
+    float y = r * sin(theta);
+    float z = sqrt(max(0.0, 1.0 - r1));
+    vec3 up = abs(N.z) < 0.999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
+    vec3 tangent = normalize(cross(up, N));
+    vec3 bitangent = cross(N, tangent);
+    return normalize(tangent * x + bitangent * y + N * z);
 }
 
 float HitTriangle(vec3 rayOrigin, vec3 rayDir, vec3 v0, vec3 v1, vec3 v2) {
@@ -162,7 +169,7 @@ float HitTriangle(vec3 rayOrigin, vec3 rayDir, vec3 v0, vec3 v1, vec3 v2) {
 }
 
 // ===============================================================================================
-// 主函数
+// 主函数 (路径追踪循环)
 // ===============================================================================================
 
 void main() 
@@ -173,87 +180,146 @@ void main()
 
     InitRNG(pixel_coords, u_FrameIndex);
 
-    // --- 波长采样逻辑 (UI 控制范围) ---
+    // --- 1. 波长采样 ---
     float safeMin = max(u_LambdaMin, LAMBDA_MIN_CONST);
     float safeMax = min(u_LambdaMax, LAMBDA_MAX_CONST);
-    
-    // 如果 Uniform 未初始化(为0)，强行回退到全光谱
-    if (safeMin >= safeMax || safeMin < 1.0) {
-        safeMin = LAMBDA_MIN_CONST;
-        safeMax = LAMBDA_MAX_CONST;
-    }
-
+    if (safeMin >= safeMax || safeMin < 1.0) { safeMin = LAMBDA_MIN_CONST; safeMax = LAMBDA_MAX_CONST; }
     float lambda = safeMin + RandomFloat() * (safeMax - safeMin);
 
-    // 摄像机射线生成
+    // --- 2. 射线生成 ---
     vec2 jitter = vec2(RandomFloat(), RandomFloat()) - 0.5;
     vec2 uv = (vec2(pixel_coords) + 0.5 + jitter) / vec2(img_size) * 2.0 - 1.0;
     vec4 target = u_InverseProjection * vec4(uv, 1.0, 1.0);
-    vec3 rayDirView = normalize(target.xyz / target.w);
-    vec3 rayDir = normalize(mat3(u_InverseView) * rayDirView);
+    vec3 rayDir = normalize(mat3(u_InverseView) * normalize(target.xyz / target.w));
     vec3 rayOrigin = u_CameraPos;
 
-    // 场景求交
-    float closestT = INFINITY;
-    int hitIndex = -1;
-    uint numTriangles = Triangles.length();
+    // --- 3. 路径追踪循环 (核心) ---
+    float throughput = 1.0; // 能量传输系数
+    float radiance = 0.0;   // 累积光强
 
-    for (uint i = 0; i < numTriangles; i++) {
-        TriangleData tri = Triangles[i];
-        float t = HitTriangle(rayOrigin, rayDir, Vertices[tri.v0].Position, Vertices[tri.v1].Position, Vertices[tri.v2].Position);
-        if (t > 0.0 && t < closestT) { closestT = t; hitIndex = int(i); }
-    }
+    for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
+    {
+        // A. 场景求交
+        float closestT = INFINITY;
+        int hitIndex = -1;
+        uint numTriangles = Triangles.length();
+        for (uint i = 0; i < numTriangles; i++) {
+            TriangleData tri = Triangles[i];
+            float t = HitTriangle(rayOrigin, rayDir, Vertices[tri.v0].Position, Vertices[tri.v1].Position, Vertices[tri.v2].Position);
+            if (t > 0.0 && t < closestT) { closestT = t; hitIndex = int(i); }
+        }
 
-    // --- 核心光照计算 ---
-    float energy = 0.0; 
+        // B. 未击中 -> 采样天空光并结束
+        if (hitIndex == -1) {
+            float t = 0.5 * (rayDir.y + 1.0);
+            float skyIntensity = mix(0.5, 1.5, t); // 简单梯度天空
+            radiance += skyIntensity * throughput;
+            break; 
+        }
 
-    if (hitIndex != -1) {
+        // C. 击中物体 -> 材质计算
         TriangleData tri = Triangles[hitIndex];
         GPUMaterial mat = Materials[tri.MaterialID];
         
-        float reflectance = 0.0;
-
-        // [核心修复] 分支逻辑：如果有真实光谱索引，使用查表；否则使用 RGB 升维
-        if (mat.SpectralIndex >= 0)
-        {
-            // 使用测量数据 (Binding 5)
-            reflectance = SampleMeasuredSpectrum(mat.SpectralIndex, lambda);
-            // 真实数据通常不需要亮度补偿，直接 clamp
-            reflectance = clamp(reflectance, 0.0, 1.0);
-        }
-        else
-        {
-            // 使用 RGB 升维算法 (旧逻辑)
-            vec3 albedoRGB = mat.AlbedoRoughness.rgb;
-            reflectance = GetReflectanceFromRGB(albedoRGB, lambda);
-            reflectance *= 2.5; // 升维补偿
-            reflectance = min(reflectance, 1.0);
-        }
-
-        // 简单的 Lambert 光照
+        vec3 hitPos = rayOrigin + rayDir * closestT;
         vec3 v0 = Vertices[tri.v0].Position;
         vec3 v1 = Vertices[tri.v1].Position;
         vec3 v2 = Vertices[tri.v2].Position;
-        vec3 N = normalize(cross(v1 - v0, v2 - v0)); 
-        vec3 L = normalize(vec3(0.5, 1.0, 0.5));
-        float NdotL = max(dot(N, L), 0.0);
+        vec3 N = normalize(cross(v1 - v0, v2 - v0));
         
-        energy = reflectance * NdotL * 10.0; 
-    } else {
-        energy = 1.0; 
+        // 法线朝向修正
+        bool frontFace = dot(rayDir, N) < 0.0;
+        vec3 normal = frontFace ? N : -N;
+
+        // 获取当前波长的反射率
+        float reflectance = 0.0;
+        if (mat.SpectralIndex >= 0) reflectance = SampleMeasuredSpectrum(mat.SpectralIndex, lambda);
+        else {
+            reflectance = GetReflectanceFromRGB(mat.AlbedoRoughness.rgb, lambda);
+            reflectance *= 2.5; reflectance = min(reflectance, 1.0);
+        }
+
+        // 自发光
+        if (mat.Emission > 0.0) {
+            radiance += mat.Emission * throughput;
+            break; // 遇到强光源通常停止
+        }
+
+        // 俄罗斯轮盘赌 (终止弱光线)
+        if (bounce > 3) {
+            float p = max(reflectance, 0.1);
+            if (RandomFloat() > p) break;
+            throughput /= p;
+        }
+
+        // --- 材质散射逻辑 ---
+        // 简单判断材质类型: 
+        // 玻璃 = 低金属度 + 极低粗糙度
+        // 金属 = 高金属度
+        // 漫反射 = 其他
+        
+        bool isGlass = (mat.Metallic < 0.1 && mat.AlbedoRoughness.a < 0.1);
+        bool isMetal = (mat.Metallic > 0.9);
+
+        if (isGlass)
+        {
+            // === 玻璃/电介质 (色散发生地) ===
+            float ior = GetCauchyIOR(lambda); // 获取当前波长的 IOR
+            float eta = frontFace ? (1.0 / ior) : ior;
+
+            float cosTheta = dot(-rayDir, normal);
+            float F = FresnelDielectric(cosTheta, 1.0, ior); // 计算反射概率
+
+            // 随机决定 反射 还是 折射
+            if (RandomFloat() < F) {
+                // 反射
+                rayOrigin = hitPos + normal * EPSILON;
+                rayDir = reflect(rayDir, normal);
+            } else {
+                // 折射
+                vec3 refractDir = refract(rayDir, normal, eta);
+                // 处理全内反射 (TIR) 的情况
+                if (length(refractDir) == 0.0) {
+                    rayOrigin = hitPos + normal * EPSILON;
+                    rayDir = reflect(rayDir, normal);
+                } else {
+                    rayOrigin = hitPos - normal * EPSILON; // 穿过表面
+                    rayDir = normalize(refractDir);
+                }
+            }
+            // 玻璃通常吸收很少，throughput 保持近似不变 (或者乘以纯白)
+        }
+        else if (isMetal)
+        {
+            // === 金属 ===
+            vec3 reflected = reflect(rayDir, normal);
+            // 粗糙度扰动
+            if (mat.AlbedoRoughness.a > 0.0) {
+                reflected = normalize(reflected + SampleCosineHemisphere(normal) * mat.AlbedoRoughness.a);
+            }
+            rayOrigin = hitPos + normal * EPSILON;
+            rayDir = reflected;
+            throughput *= reflectance; // 金属反射有颜色
+        }
+        else
+        {
+            // === 漫反射 ===
+            rayOrigin = hitPos + normal * EPSILON;
+            rayDir = SampleCosineHemisphere(normal); // 随机半球采样
+            throughput *= reflectance;
+        }
     }
 
-    // 光谱转色与累积
-    vec3 xyzColor = WavelengthToXYZ(lambda) * energy;
+    // --- 4. 累积与输出 ---
+    vec3 xyzColor = WavelengthToXYZ(lambda) * radiance;
 
-    vec3 accumulatedXYZ = xyzColor;
-    if (u_FrameIndex > 1) {
-        accumulatedXYZ += imageLoad(img_accum, pixel_coords).rgb;
-    }
-    imageStore(img_accum, pixel_coords, vec4(accumulatedXYZ, 1.0));
-
-    vec3 averagedXYZ = accumulatedXYZ / float(u_FrameIndex);
-    vec3 finalRGB = XYZToDisplayRGB(averagedXYZ);
+    vec3 oldXYZ = vec3(0.0);
+    if (u_FrameIndex > 1) oldXYZ = imageLoad(img_accum, pixel_coords).rgb;
     
-    imageStore(img_output, pixel_coords, vec4(finalRGB, 1.0));
+    vec3 newXYZ = oldXYZ + xyzColor;
+    imageStore(img_accum, pixel_coords, vec4(newXYZ, 1.0));
+
+    vec3 avgXYZ = newXYZ / float(u_FrameIndex);
+    avgXYZ *= vec3(0.97, 1.0, 1.2);
+    imageStore(img_output, pixel_coords, vec4(XYZToDisplayRGB(avgXYZ), 1.0));
 }

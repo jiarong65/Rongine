@@ -31,6 +31,7 @@
 
 #include "Rongine/ImGui/ImGuiLayer.h"
 #include "Rongine/ImGui/SceneHierarchyPanel.h"
+#include "Rongine/ImGui/ContentBrowserPanel.h"
 
 #include "Rongine/CAD/CADImporter.h" 
 #include "Rongine/CAD/CADMesher.h"
@@ -50,5 +51,6 @@
 #include "Rongine/Scene/Entity.h"
 #include "Rongine/Scene/Scene.h"
 #include "Rongine/Scene/SceneSerializer.h"
+#include "Rongine/Scene/SpectralAssetManager.h"
 
 #include "Rongine/Math/Math.h"

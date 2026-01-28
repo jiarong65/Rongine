@@ -26,7 +26,9 @@ namespace Rongine {
 		static void shutdown();
 
 		static void setSelection(int entityID, int faceID);
+
 		static void setHover(int entityID, int faceID, int edgeID);
+		static int getHoveredEntityID();
 
 		static void setSpectralRendering(bool enable);
 		static bool isSpectralRendering();
