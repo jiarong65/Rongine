@@ -31,16 +31,30 @@ namespace Rongine {
 		glm::vec2 _pad3;   // 填充到 16 字节
 	};
 
-	struct GPUMaterial
-	{
-		glm::vec3 Albedo;  
-		float Roughness;   
+	//struct GPUMaterial
+	//{
+	//	glm::vec3 Albedo;  
+	//	float Roughness;   
 
-		float Metallic;    
-		float Emission;    
+	//	float Metallic;    
+	//	float Emission;    
 
-		int SpectralIndex = -1; //默认为 -1 表示使用 RGB
-		float _padding = 0.0f;  
+	//	int SpectralIndex = -1; //默认为 -1 表示使用 RGB
+	//	float _padding = 0.0f;  
+	//};
+
+	struct GPUMaterial {
+		glm::vec4 AlbedoRoughness; // rgb=BaseColor, a=Roughness
+		float Metallic;
+		float Emission;
+
+		int SpectralIndex0; // 对应 Slot0 (n / Reflectance)
+		int SpectralIndex1; // 对应 Slot1 (k / IOR)
+
+		int Type;           // 0=Diffuse, 1=Conductor, 2=Dielectric
+		float _pad1;        // 填充位 1
+		float _pad2;        // 填充位 2
+		float _pad3;        // 填充位 3 (凑齐 48 bytes 或 64 bytes)
 	};
 
 	struct TriangleData

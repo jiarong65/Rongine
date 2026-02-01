@@ -546,56 +546,62 @@ namespace Rongine {
 				continue;
 
 			// ==================== 材质处理逻辑 ====================
-			GPUMaterial gpuMat;
-
 			// 默认值初始化
-			gpuMat.Albedo = { 0.8f, 0.8f, 0.8f };
-			gpuMat.Roughness = 0.5f;
+			GPUMaterial gpuMat;
+			// 初始化默认值
+			gpuMat.AlbedoRoughness = { 0.8f, 0.8f, 0.8f, 0.5f }; // RGB, Roughness
 			gpuMat.Metallic = 0.0f;
 			gpuMat.Emission = 0.0f;
-			gpuMat.SpectralIndex = -1; // 默认 -1：表示使用 RGB Uplifting
-			gpuMat._padding = 0.0f;
+			gpuMat.SpectralIndex0 = -1; // -1 表示无效
+			gpuMat.SpectralIndex1 = -1;
+			gpuMat.Type = 0; // 默认 Diffuse
+			gpuMat._pad1 = 0; gpuMat._pad2 = 0; gpuMat._pad3 = 0;
 
 			Entity entity = { entityHandle, scene };
 
-			// A. 优先检查是否有 [光谱材质组件]
+			// --- 1. 读取基础物理属性 (作为 Fallback 或混合参数) ---
+			if (entity.HasComponent<MaterialComponent>())
+			{
+				auto& mat = entity.GetComponent<MaterialComponent>();
+				gpuMat.AlbedoRoughness = { mat.Albedo.r, mat.Albedo.g, mat.Albedo.b, mat.Roughness };
+				gpuMat.Metallic = mat.Metallic;
+			}
+
+			// --- 2. 读取光谱数据 ---
 			if (entity.HasComponent<SpectralMaterialComponent>())
 			{
 				auto& specComp = entity.GetComponent<SpectralMaterialComponent>();
 
-				// 只有当有有效数据时才处理
-				// 假设我们约定每条曲线固定 32 个采样点 (方便 Shader 索引计算)
-				if (!specComp.SpectrumValues.empty())
-				{
-					// 计算当前曲线在 Buffer 中的索引 (总大小 / 单条大小)
-					// 比如第 0 条在 0，第 1 条在 32，第 2 条在 64...
-					// Shader 里会用 spectralIndex * 32 来定位
-					gpuMat.SpectralIndex = (int)(s_Data.HostSpectralCurves.size() / 32);
+				// 设置材质类型 (0=Diffuse, 1=Conductor, 2=Dielectric)
+				gpuMat.Type = (int)specComp.Type;
 
-					// 确保数据对齐到 32 个 float
-					std::vector<float> alignedData = specComp.SpectrumValues;
-					if (alignedData.size() < 32) alignedData.resize(32, 0.0f); // 补零
-					if (alignedData.size() > 32) alignedData.resize(32);       // 截断
+				// 辅助 Lambda: 上传一条曲线并返回索引
+				auto UploadCurve = [&](const std::vector<float>& curveData) -> int {
+					if (curveData.empty()) return -1;
 
-					// 将数据追加到 Host 数组
-					s_Data.HostSpectralCurves.insert(s_Data.HostSpectralCurves.end(), alignedData.begin(), alignedData.end());
+					// 32点对齐
+					int startIndex = (int)(s_Data.HostSpectralCurves.size() / 32);
+					std::vector<float> aligned = curveData;
+					if (aligned.size() < 32) aligned.resize(32, 0.0f);
+					if (aligned.size() > 32) aligned.resize(32);
+
+					s_Data.HostSpectralCurves.insert(s_Data.HostSpectralCurves.end(), aligned.begin(), aligned.end());
+					return startIndex;
+					};
+
+				// 根据类型上传 Slot0 和 Slot1
+				// Slot0: Reflectance / n / Transmission
+				gpuMat.SpectralIndex0 = UploadCurve(specComp.SpectrumSlot0);
+
+				// Slot1: k / IOR (只有金属和玻璃需要)
+				if (specComp.Type != SpectralMaterialComponent::MaterialType::Diffuse) {
+					gpuMat.SpectralIndex1 = UploadCurve(specComp.SpectrumSlot1);
 				}
 			}
 
-			// B. 检查普通 [材质组件] (用于获取 Roughness/Metallic 等物理属性，或者作为 RGB 回退)
-			if (entity.HasComponent<MaterialComponent>())
-			{
-				auto& mat = entity.GetComponent<MaterialComponent>();
-				// 如果没有光谱数据 (Index == -1)，Albedo 会被用于 Uplifting
-				// 如果有光谱数据，Albedo 可能被忽略，但 Roughness/Metallic 依然需要
-				gpuMat.Albedo = mat.Albedo;
-				gpuMat.Roughness = mat.Roughness;
-				gpuMat.Metallic = mat.Metallic;
-			}
-
-			// 3. 将材质存入 HostMaterials，并记录当前的索引 ID
+			// 存入 HostMaterials
 			uint32_t currentMatIndex = (uint32_t)s_Data.HostMaterials.size();
-			s_Data.HostMaterials.push_back(gpuMat);
+			s_Data.HostMaterials.push_back(gpuMat);			
 			// ============================================================
 
 			glm::mat4 transform = tc.GetTransform();

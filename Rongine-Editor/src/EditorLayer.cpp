@@ -872,13 +872,10 @@ void EditorLayer::onImGuiRender()
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// --- Settings 面板 ---
 	ImGui::Begin("Settings");
-	ImGui::ColorEdit4("Square Color", glm::value_ptr(m_squareColor));
 
 	auto stats = Rongine::Renderer3D::getStatistics();
 	ImGui::Text("Renderer3D Stats:");
 	ImGui::Text("Draw Calls: %d", stats.DrawCalls);
-	ImGui::Text("Cubes: %d", stats.CubeCount);
-	ImGui::Text("Vertices: %d", stats.GetTotalVertexCount());
 
 	ImGui::Separator();
 	for (auto& result : m_profileResult)
@@ -1061,9 +1058,8 @@ void EditorLayer::onImGuiRender()
 
 			int pixelID = m_HoveredEntityID;
 
-			// 5. 验证 ID 是否有效
+			//  验证 ID 是否有效
 			bool isValidEntity = (pixelID != -1);
-			RONG_CLIENT_WARN("Invalid Entity ID read: {0} (Filtered out)", pixelID);
 
 			if (isValidEntity)
 			{
@@ -1076,33 +1072,48 @@ void EditorLayer::onImGuiRender()
 				{
 					auto& specComp = targetEntity.GetOrAddComponent<Rongine::SpectralMaterialComponent>();
 					specComp.Name = preset.Name;
-					specComp.SpectrumValues = preset.Data;
 
-					// 同步物理材质属性
+					// 填充新的双槽位数据结构
+					specComp.Type = preset.Type;
+					specComp.SpectrumSlot0 = preset.Slot0;
+					specComp.SpectrumSlot1 = preset.Slot1;
+
+					//  根据 Type 自动配置物理属性 (Metallic/Roughness)
 					if (targetEntity.HasComponent<Rongine::MaterialComponent>())
 					{
 						auto& mat = targetEntity.GetComponent<Rongine::MaterialComponent>();
-						if (preset.Name == "Gold" || preset.Name == "Copper") {
-							mat.Metallic = 1.0f; mat.Roughness = 0.25f;
+
+						if (specComp.Type == Rongine::SpectralMaterialComponent::MaterialType::Conductor)
+						{
+							// 金属：拉满金属度，默认给点光泽
+							mat.Metallic = 1.0f;
+							mat.Roughness = 0.2f;
 						}
-						else if (preset.Name == "Silver") {
-							mat.Metallic = 1.0f; mat.Roughness = 0.1f;
+						else if (specComp.Type == Rongine::SpectralMaterialComponent::MaterialType::Dielectric)
+						{
+							// 玻璃/水：无金属度，极其光滑，Albedo 设为黑(因为颜色主要靠 Transmission)
+							mat.Metallic = 0.0f;
+							mat.Roughness = 0.0f;
+							mat.Albedo = glm::vec3(0.0f);
 						}
-						else if (preset.Name == "Emerald" || preset.Name == "Water" || preset.Name == "Glass") {
-							mat.Metallic = 0.0f; mat.Roughness = 0.05f;
+						else
+						{
+							// 漫反射/绝缘体：默认参数
+							mat.Metallic = 0.0f;
+							mat.Roughness = 0.5f;
 						}
 					}
 
 					m_SceneChanged = true;
-					// 强制刷新渲染累积
+					// 强制刷新渲染累积 (触发重绘)
 					Rongine::Renderer3D::SetSpectralRange(380.0f, 780.0f);
-					RONG_CLIENT_INFO("Successfully assigned {0} to Entity {1}", matName, pixelID);
+					RONG_CLIENT_INFO("Successfully assigned {0} (Type: {1}) to Entity {2}", matName, (int)specComp.Type, pixelID);
 				}
 			}
 			else
 			{
 				if (pixelID == -1) RONG_CLIENT_WARN("Drop on Background (ID = -1)");
-				else RONG_CLIENT_ERROR("Drop Failed: Invalid ID {0}", pixelID);
+				else RONG_CLIENT_WARN("Drop Filtered: Invalid ID {0}", pixelID);
 			}
 		}
 		ImGui::EndDragDropTarget();

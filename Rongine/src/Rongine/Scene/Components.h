@@ -105,15 +105,46 @@ namespace Rongine {
     };
 
     // 为未来预留的光谱组件
+    //struct SpectralMaterialComponent
+    //{
+    //    std::string Name;
+
+    //    // 光谱曲线
+    //    std::vector<float> SpectrumValues;
+
+    //    // 对应的 GPU 缓冲区索引
+    //    int GpuBufferIndex = -1;
+
+    //    SpectralMaterialComponent() = default;
+    //    SpectralMaterialComponent(const std::string& name) : Name(name) {}
+    //};
+
     struct SpectralMaterialComponent
     {
+        enum class MaterialType {
+            Diffuse = 0,    // 绝缘体/非金属: Slot0=Reflectance (颜色), Slot1=未使用(或存常数IOR)
+            Conductor = 1,  // 导体/金属:   Slot0=n (折射率实部), Slot1=k (消光系数)
+            Dielectric = 2  // 透明/玻璃:   Slot0=Transmission (透射色), Slot1=IOR (折射率曲线)
+        };
+
         std::string Name;
+        MaterialType Type = MaterialType::Diffuse;
 
-        // 光谱曲线
-        std::vector<float> SpectrumValues;
+        // --- 数据存储区 (复用内存) ---
+        // Slot 0: 
+        //    - Diffuse: Reflectance
+        //    - Conductor: n
+        //    - Dielectric: Transmission
+        std::vector<float> SpectrumSlot0;
 
-        // 对应的 GPU 缓冲区索引
-        int GpuBufferIndex = -1;
+        // Slot 1:
+        //    - Conductor: k
+        //    - Dielectric: IOR (用于色散)
+        std::vector<float> SpectrumSlot1;
+
+        // 对应的 GPU 缓冲区索引 (由 Renderer3D 填充)
+        int GpuBufferIndex0 = -1;
+        int GpuBufferIndex1 = -1;
 
         SpectralMaterialComponent() = default;
         SpectralMaterialComponent(const std::string& name) : Name(name) {}

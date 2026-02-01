@@ -459,11 +459,10 @@ namespace Rongine {
 
 				if (hasSpectral) EndDisabled(); // 恢复可用
 
-				// 粗糙度和金属度通常是通用的，即使在光谱模式下也有效
+				// 粗糙度和金属度
 				if (ImGui::SliderFloat("Roughness", &mat.Roughness, 0.0f, 1.0f)) changed = true;
 				if (ImGui::SliderFloat("Metallic", &mat.Metallic, 0.0f, 1.0f)) changed = true;
 
-				//  添加升级按钮
 				if (!hasSpectral)
 				{
 					ImGui::Spacing();
@@ -472,16 +471,18 @@ namespace Rongine {
 					{
 						auto& newSpec = entity.AddComponent<SpectralMaterialComponent>("New Spectral");
 
-						// 初始化一个默认的平坦光谱 (防止空数据崩溃或不显示)
-						// 32 个采样点，反射率 0.8 (浅灰色)
-						/*newSpec.SpectrumValues.resize(32, 0.8f);*/
+						// 初始化为漫反射类型
+						newSpec.Type = SpectralMaterialComponent::MaterialType::Diffuse;
 
-						newSpec.SpectrumValues = {
-							0.1f, 0.1f, 0.1f, 0.1f, 0.15f, 0.25f, 0.35f, 0.50f, // 400-470nm (蓝紫-吸光)
-							0.65f, 0.75f, 0.80f, 0.85f, 0.90f, 0.92f, 0.93f, 0.94f, // 480-550nm (绿)
-							0.95f, 0.96f, 0.96f, 0.96f, 0.97f, 0.97f, 0.97f, 0.97f, // 560-630nm (黄橙)
-							0.97f, 0.97f, 0.98f, 0.98f, 0.98f, 0.98f, 0.98f, 0.98f  // 640-710nm (红)
+						// 初始化 Slot0 (反射率)
+						newSpec.SpectrumSlot0 = {
+							0.1f, 0.1f, 0.1f, 0.1f, 0.15f, 0.25f, 0.35f, 0.50f, // 400-470nm
+							0.65f, 0.75f, 0.80f, 0.85f, 0.90f, 0.92f, 0.93f, 0.94f, // 480-550nm
+							0.95f, 0.96f, 0.96f, 0.96f, 0.97f, 0.97f, 0.97f, 0.97f, // 560-630nm
+							0.97f, 0.97f, 0.98f, 0.98f, 0.98f, 0.98f, 0.98f, 0.98f  // 640-710nm
 						};
+
+						// Slot1 留空
 
 						if (m_SceneChangedCallback) m_SceneChangedCallback();
 					}
@@ -494,6 +495,7 @@ namespace Rongine {
 			}
 		}
 
+		//  光谱材质面板完全重写，支持 Type 和 双槽位显示
 		if (entity.HasComponent<SpectralMaterialComponent>())
 		{
 			if (ImGui::CollapsingHeader("Spectral Material", ImGuiTreeNodeFlags_DefaultOpen))
@@ -509,26 +511,53 @@ namespace Rongine {
 					specComp.Name = std::string(buffer);
 				}
 
-				// 2. 曲线可视化 (X轴: 380-780nm, Y轴: 反射率)
-				if (!specComp.SpectrumValues.empty())
+				ImGui::Spacing();
+
+				// 2. 材质类型选择器 (新增)
+				const char* typeStrings[] = { "Diffuse (Non-Metal)", "Conductor (Metal)", "Dielectric (Glass/Water)" };
+				int currentType = (int)specComp.Type;
+				if (ImGui::Combo("Physics Type", &currentType, typeStrings, IM_ARRAYSIZE(typeStrings)))
 				{
-					ImGui::Text("Reflectance Curve (380nm - 780nm)");
-					ImGui::PlotLines("##Spectrum",
-						specComp.SpectrumValues.data(),
-						(int)specComp.SpectrumValues.size(),
-						0,
-						NULL,
-						0.0f, 1.0f, // Y轴范围 0~1
-						ImVec2(0, 80)); // 高度 80px
+					specComp.Type = (SpectralMaterialComponent::MaterialType)currentType;
+					if (m_SceneChangedCallback) m_SceneChangedCallback();
 				}
-				else
+
+				ImGui::Separator();
+
+				// 3. 辅助函数：绘制曲线
+				auto DrawCurve = [&](const char* label, std::vector<float>& data, float scale) {
+					if (data.empty()) {
+						ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1), "%s: [Empty]", label);
+						if (ImGui::Button((std::string("Init ") + label).c_str())) {
+							data.resize(32, 0.5f);
+							if (m_SceneChangedCallback) m_SceneChangedCallback();
+						}
+					}
+					else {
+						ImGui::Text("%s", label);
+						ImGui::PlotLines(label, data.data(), (int)data.size(), 0, nullptr, 0.0f, scale, ImVec2(0, 60));
+					}
+					};
+
+				// 4. 根据类型显示不同的槽位
+				if (specComp.Type == SpectralMaterialComponent::MaterialType::Diffuse)
 				{
-					ImGui::TextColored(ImVec4(1, 0, 0, 1), "No spectral data available.");
+					DrawCurve("Reflectance (Slot 0)", specComp.SpectrumSlot0, 1.0f);
+				}
+				else if (specComp.Type == SpectralMaterialComponent::MaterialType::Conductor)
+				{
+					DrawCurve("Refractive Index n (Slot 0)", specComp.SpectrumSlot0, 3.0f);
+					DrawCurve("Extinction Coeff k (Slot 1)", specComp.SpectrumSlot1, 5.0f);
+				}
+				else if (specComp.Type == SpectralMaterialComponent::MaterialType::Dielectric)
+				{
+					DrawCurve("Transmission Color (Slot 0)", specComp.SpectrumSlot0, 1.0f);
+					DrawCurve("IOR Dispersion (Slot 1)", specComp.SpectrumSlot1, 2.0f);
 				}
 
 				ImGui::Spacing();
 
-				// 3. 移除按钮 (回退到 RGB)
+				// 5. 移除按钮
 				if (ImGui::Button("Remove Spectral Data", ImVec2(-1, 0)))
 				{
 					entity.RemoveComponent<SpectralMaterialComponent>();

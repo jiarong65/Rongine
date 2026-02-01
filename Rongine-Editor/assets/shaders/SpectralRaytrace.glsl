@@ -15,6 +15,9 @@ const float INFINITY = 10000.0;
 const float EPSILON = 1e-6;
 const int   MAX_BOUNCES = 8; // 最大弹射次数
 
+const float RAY_OFFSET = 0.001;   // 防止自相交
+const float MATH_EPSILON = 1e-6;  // 数学计算微小量
+
 const float LAMBDA_MIN_CONST = 380.0;
 const float LAMBDA_MAX_CONST = 780.0;
 
@@ -47,11 +50,15 @@ struct TriangleData {
 };
 
 struct GPUMaterial {
-    vec4 AlbedoRoughness; 
-    float Metallic;       
-    float Emission;       
-    int   SpectralIndex;  
-    float _pad;           
+    vec4 AlbedoRoughness; // rgb, a=Roughness
+    float Metallic;
+    float Emission;
+    int SpectralIndex0;   // n / Reflectance
+    int SpectralIndex1;   // k / IOR
+    int Type;             // 0=Diffuse, 1=Conductor, 2=Dielectric
+    float _pad1;
+    float _pad2;
+    float _pad3;
 };
 
 // ==================== SSBO (保持不变) ====================
@@ -146,15 +153,52 @@ float GetCauchyIOR(float lambda) {
 }
 
 // 2. 菲涅尔方程 (电介质) - 决定反射与折射的比例
-float FresnelDielectric(float cosThetaI, float etaI, float etaT) {
-    cosThetaI = clamp(cosThetaI, -1.0, 1.0);
-    float sinThetaT2 = (etaI / etaT) * (etaI / etaT) * (1.0 - cosThetaI * cosThetaI);
-    if (sinThetaT2 > 1.0) return 1.0; // 全内反射
-    float cosThetaT = sqrt(1.0 - sinThetaT2);
-    float Rs = (etaI * cosThetaI - etaT * cosThetaT) / (etaI * cosThetaI + etaT * cosThetaT);
-    float Rp = (etaI * cosThetaT - etaT * cosThetaI) / (etaI * cosThetaT + etaT * cosThetaI);
-    return 0.5 * (Rs * Rs + Rp * Rp);
+// 计算复数折射率 (n + ik) 下的反射率
+float FresnelConductor(float cosThetaI, float n, float k) {
+    float cosThetaI2 = cosThetaI * cosThetaI;
+    float sinThetaI2 = 1.0 - cosThetaI2;
+    float n2 = n * n;
+    float k2 = k * k;
+
+    float t0 = n2 - k2 - sinThetaI2;
+    float a2plusb2 = sqrt(t0 * t0 + 4.0 * n2 * k2);
+    float t1 = a2plusb2 + cosThetaI2;
+    float a = sqrt(0.5 * (a2plusb2 + t0));
+    float t2 = 2.0 * cosThetaI * a;
+    float Rs = (t1 - t2) / (t1 + t2);
+
+    float t3 = cosThetaI2 * a2plusb2 + sinThetaI2 * sinThetaI2;
+    float t4 = t2 * sinThetaI2;
+    float Rp = Rs * (t3 - t4) / (t3 + t4);
+
+    return 0.5 * (Rp + Rs);
 }
+
+//  电介质菲涅尔 (Dielectric)
+float FresnelDielectricExact(float cosThetaI, float etaI, float etaT) {
+    cosThetaI = clamp(cosThetaI, -1.0, 1.0);
+    bool entering = cosThetaI > 0.0;
+    
+    // 如果是从介质内部射出，交换 etaI 和 etaT
+    if (!entering) {
+        float temp = etaI; etaI = etaT; etaT = temp;
+        cosThetaI = abs(cosThetaI);
+    }
+
+    float sinThetaI = sqrt(max(0.0, 1.0 - cosThetaI * cosThetaI));
+    float sinThetaT = (etaI / etaT) * sinThetaI;
+
+    // 全内反射 (TIR)
+    if (sinThetaT >= 1.0) return 1.0;
+
+    float cosThetaT = sqrt(max(0.0, 1.0 - sinThetaT * sinThetaT));
+
+    float rParl = ((etaT * cosThetaI) - (etaI * cosThetaT)) / ((etaT * cosThetaI) + (etaI * cosThetaT));
+    float rPerp = ((etaI * cosThetaI) - (etaT * cosThetaT)) / ((etaI * cosThetaI) + (etaT * cosThetaT));
+
+    return 0.5 * (rParl * rParl + rPerp * rPerp);
+}
+
 
 // 3. 漫反射采样 (余弦加权半球)
 vec3 SampleCosineHemisphere(vec3 N) {
@@ -326,9 +370,9 @@ void main()
     vec3 rayDir = normalize(mat3(u_InverseView) * normalize(target.xyz / target.w));
     vec3 rayOrigin = u_CameraPos;
 
-    // --- 3. 路径追踪循环 (核心) ---
-    float throughput = 1.0; // 能量传输系数
-    float radiance = 0.0;   // 累积光强
+    // --- 3. 路径追踪循环 ---
+    float throughput = 1.0; 
+    float radiance = 0.0;   
 
     for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
     {
@@ -354,101 +398,118 @@ void main()
         // B. 未击中 -> 采样天空光并结束
         if (hitIndex == -1) {
             float t = 0.5 * (rayDir.y + 1.0);
-            float skyIntensity = mix(0.5, 1.5, t); // 简单梯度天空
+            float skyIntensity = mix(0.5, 1.5, t); 
             radiance += skyIntensity * throughput;
             break; 
         }
 
-        // C. 击中物体 -> 材质计算
-        TriangleData tri = Triangles[hitIndex];
-        GPUMaterial mat = Materials[tri.MaterialID];
+        // =========================================================
+        // [修复] C. 击中物体 -> 必须先获取数据，定义变量！
+        // =========================================================
         
+        // 1. 获取数据 (这里定义了 mat)
+        TriangleData tri = Triangles[hitIndex];
+        GPUMaterial mat = Materials[tri.MaterialID]; 
+        
+        // 2. 计算位置和法线 (这里定义了 hitPos, normal, frontFace)
         vec3 hitPos = rayOrigin + rayDir * closestT;
         vec3 v0 = Vertices[tri.v0].Position;
         vec3 v1 = Vertices[tri.v1].Position;
         vec3 v2 = Vertices[tri.v2].Position;
         vec3 N = normalize(cross(v1 - v0, v2 - v0));
         
-        // 法线朝向修正
         bool frontFace = dot(rayDir, N) < 0.0;
         vec3 normal = frontFace ? N : -N;
-
-        // 获取当前波长的反射率
-        float reflectance = 0.0;
-        if (mat.SpectralIndex >= 0) reflectance = SampleMeasuredSpectrum(mat.SpectralIndex, lambda);
-        else {
-            reflectance = GetReflectanceFromRGB(mat.AlbedoRoughness.rgb, lambda);
-            reflectance *= 2.5; reflectance = min(reflectance, 1.0);
-        }
 
         // 自发光
         if (mat.Emission > 0.0) {
             radiance += mat.Emission * throughput;
-            break; // 遇到强光源通常停止
+            break; 
         }
 
-        // 俄罗斯轮盘赌 (终止弱光线)
+        // 俄罗斯轮盘赌
+        float p = max(mat.AlbedoRoughness.r, max(mat.AlbedoRoughness.g, mat.AlbedoRoughness.b));
+        p = clamp(p, 0.1, 0.95);
         if (bounce > 3) {
-            float p = max(reflectance, 0.1);
             if (RandomFloat() > p) break;
             throughput /= p;
         }
 
-        // --- 材质散射逻辑 ---
-        // 简单判断材质类型: 
-        // 玻璃 = 低金属度 + 极低粗糙度
-        // 金属 = 高金属度
-        // 漫反射 = 其他
-        
-        bool isGlass = (mat.Metallic < 0.1 && mat.AlbedoRoughness.a < 0.1);
-        bool isMetal = (mat.Metallic > 0.9);
+        // ==================== 物理材质计算 (使用上面定义的变量) ====================
 
-        if (isGlass)
+        // --- 准备材质参数 ---
+        float roughness = mat.AlbedoRoughness.a;
+        
+        // 采样 Slot0 和 Slot1 的值 (根据波长 lambda)
+        float val0 = 0.0; 
+        if (mat.SpectralIndex0 >= 0) val0 = SampleMeasuredSpectrum(mat.SpectralIndex0, lambda);
+        else val0 = GetReflectanceFromRGB(mat.AlbedoRoughness.rgb, lambda); // Fallback
+
+        float val1 = 0.0;
+        if (mat.SpectralIndex1 >= 0) val1 = SampleMeasuredSpectrum(mat.SpectralIndex1, lambda);
+        
+        // 分支：材质类型
+        
+        // TYPE 1: Conductor (金属)
+        if (mat.Type == 1) 
         {
-            // === 玻璃/电介质 (色散发生地) ===
-            float ior = GetCauchyIOR(lambda); // 获取当前波长的 IOR
-            float eta = frontFace ? (1.0 / ior) : ior;
+            float n = val0; // Slot0 = n
+            float k = val1; // Slot1 = k
+            
+            // 1. 计算菲涅尔反射率 (物理核心)
+            float cosTheta = dot(-rayDir, normal);
+            float F = FresnelConductor(cosTheta, n, k);
+            
+            // 2. 镜面反射采样
+            vec3 reflected = reflect(rayDir, normal);
+            
+            if (roughness > 0.0) {
+                reflected = normalize(reflected + SampleCosineHemisphere(normal) * roughness);
+            }
+            
+            rayOrigin = hitPos + normal * RAY_OFFSET;
+            rayDir = reflected;
+            
+            throughput *= F; 
+        }
+        // TYPE 2: Dielectric (玻璃/水)
+        else if (mat.Type == 2)
+        {
+            float transColor = val0; // Slot0 = 透射颜色
+            float ior = val1;        // Slot1 = IOR (带色散!)
+            if (mat.SpectralIndex1 < 0) ior = 1.5; 
 
             float cosTheta = dot(-rayDir, normal);
-            float F = FresnelDielectric(cosTheta, 1.0, ior); // 计算反射概率
+            float F = FresnelDielectricExact(cosTheta, 1.0, ior); 
 
-            // 随机决定 反射 还是 折射
             if (RandomFloat() < F) {
                 // 反射
-                rayOrigin = hitPos + normal * EPSILON;
+                rayOrigin = hitPos + normal * RAY_OFFSET;
                 rayDir = reflect(rayDir, normal);
             } else {
                 // 折射
+                float eta = frontFace ? (1.0 / ior) : ior;
                 vec3 refractDir = refract(rayDir, normal, eta);
-                // 处理全内反射 (TIR) 的情况
-                if (length(refractDir) == 0.0) {
-                    rayOrigin = hitPos + normal * EPSILON;
+                
+                if (length(refractDir) == 0.0) { // TIR
+                    rayOrigin = hitPos + normal * RAY_OFFSET;
                     rayDir = reflect(rayDir, normal);
                 } else {
-                    rayOrigin = hitPos - normal * EPSILON; // 穿过表面
+                    rayOrigin = hitPos - normal * RAY_OFFSET;
                     rayDir = normalize(refractDir);
+                    throughput *= transColor; 
                 }
             }
-            // 玻璃通常吸收很少，throughput 保持近似不变 (或者乘以纯白)
         }
-        else if (isMetal)
+        // TYPE 0: Diffuse (非金属/默认)
+        else 
         {
-            // === 金属 ===
-            vec3 reflected = reflect(rayDir, normal);
-            // 粗糙度扰动
-            if (mat.AlbedoRoughness.a > 0.0) {
-                reflected = normalize(reflected + SampleCosineHemisphere(normal) * mat.AlbedoRoughness.a);
-            }
-            rayOrigin = hitPos + normal * EPSILON;
-            rayDir = reflected;
-            throughput *= reflectance; // 金属反射有颜色
-        }
-        else
-        {
-            // === 漫反射 ===
-            rayOrigin = hitPos + normal * EPSILON;
-            rayDir = SampleCosineHemisphere(normal); // 随机半球采样
-            throughput *= reflectance;
+            float reflectance = val0; // Slot0 = 反射率
+            
+            rayOrigin = hitPos + normal * RAY_OFFSET;
+            rayDir = SampleCosineHemisphere(normal);
+            
+            throughput *= reflectance; 
         }
     }
 
@@ -462,6 +523,6 @@ void main()
     imageStore(img_accum, pixel_coords, vec4(newXYZ, 1.0));
 
     vec3 avgXYZ = newXYZ / float(u_FrameIndex);
-    avgXYZ *= vec3(0.97, 1.0, 1.2);
+    avgXYZ *= vec3(0.97, 1.0, 1.2); 
     imageStore(img_output, pixel_coords, vec4(XYZToDisplayRGB(avgXYZ), 1.0));
 }
