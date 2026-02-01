@@ -1,31 +1,39 @@
 ﻿#version 450 core
 
 // ===============================================================================================
-// 1. 配置与定义
+// Raytrace.glsl - 标准 RGB 路径追踪器 (用于对比或回退)
 // ===============================================================================================
 
-// 定义工作组大小 (8x8 = 64 线程)
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-// 输出图像 (Binding 0): 用于显示给 ImGui，经过了平均和色彩校正
 layout(rgba32f, binding = 0) uniform image2D img_output;
-
-// 累积图像 (Binding 4): 用于存储历史累加值 (线性空间 HDR)
 layout(rgba32f, binding = 4) uniform image2D img_accum;
 
-// 常量定义
+// ==================== 常量配置 ====================
 const float PI = 3.14159265359;
-const float EPSILON = 0.0001;
 const float INFINITY = 10000.0;
+const float EPSILON = 1e-6; // 保持与光谱版一致的精度
+const int MAX_BOUNCES = 8;
 
-// ===============================================================================================
-// 2. 数据结构 (必须与 C++ RenderTypes.h 对齐)
-// ===============================================================================================
+const float RAY_OFFSET = 0.001; 
+const float MATH_EPSILON = 1e-6;
 
+// ==================== 数据结构 (必须与 C++ 完全一致!) ====================
 struct GPUVertex {
     vec3 Position; float _pad1;
     vec3 Normal;   float _pad2;
     vec2 TexCoord; vec2 _pad3;
+};
+
+struct BVHNode {
+    vec4 Data1; // Min, Left
+    vec4 Data2; // Max, Right
+};
+
+struct OctreeNode {
+    vec3 Center;  float Size;
+    float Children[8];
+    float TriStart; float TriCount; float _pad1; float _pad2;
 };
 
 struct TriangleData {
@@ -33,53 +41,41 @@ struct TriangleData {
     uint MaterialID;
 };
 
-// 使用 vec4 强制对齐，防止 std430 布局问题
+// [重要修改] 同步最新的材质结构体
 struct GPUMaterial {
-    vec4 AlbedoRoughness; // rgb = Albedo (Color), a = Roughness
-    float Metallic;       // Offset: 16
-    float Emission;       // Offset: 20
-    int   SpectralIndex;  // Offset: 24 (对应 C++ 的 int)
-    float _pad;           // Offset: 28
+    vec4 AlbedoRoughness; // rgb, a=Roughness
+    float Metallic;
+    float Emission;
+    int SpectralIndex0;   // 在 RGB 模式下忽略
+    int SpectralIndex1;   // 在 RGB 模式下忽略
+    int Type;             // 0=Diffuse, 1=Conductor, 2=Dielectric
+    float _pad1;
+    float _pad2;
+    float _pad3;
 };
 
-// ===============================================================================================
-// 3. SSBO 缓冲区绑定
-// ===============================================================================================
+// ==================== SSBO ====================
+layout(std430, binding = 1) readonly buffer VerticesBuffer { GPUVertex Vertices[]; };
+layout(std430, binding = 2) readonly buffer TrianglesBuffer { TriangleData Triangles[]; };
+layout(std430, binding = 3) readonly buffer MaterialsBuffer { GPUMaterial Materials[]; };
+// Binding 5 (SpectralCurves) 在 RGB 模式下不使用
+layout(std430, binding = 6) readonly buffer BVHBuffer { BVHNode BVHNodes[]; };
+layout(std430, binding = 7) readonly buffer OctreeBuffer { OctreeNode OctreeNodes[]; };
+layout(std430, binding = 8) readonly buffer IndexMapBuffer { uint GlobalIndices[]; };
 
-layout(std430, binding = 1) readonly buffer VerticesBuffer { 
-    GPUVertex Vertices[]; 
-};
-
-layout(std430, binding = 2) readonly buffer TrianglesBuffer { 
-    TriangleData Triangles[]; 
-};
-
-layout(std430, binding = 3) readonly buffer MaterialsBuffer { 
-    GPUMaterial Materials[]; 
-};
-
-// ===============================================================================================
-// 4. Uniforms
-// ===============================================================================================
-
+// ==================== Uniforms ====================
 uniform float u_Time;
 uniform mat4 u_InverseProjection;
 uniform mat4 u_InverseView;
 uniform vec3 u_CameraPos;
-uniform int u_FrameIndex; // 当前帧索引，用于累积平均
+uniform int u_FrameIndex;
+uniform int u_AccelType; 
 
-// ===============================================================================================
-// 5. 随机数生成器 (PCG Hash)
-// ===============================================================================================
-
+// ==================== 辅助函数 ====================
 uint seed = 0;
-
-// 初始化随机数种子 (基于像素坐标和帧数，确保时空随机性)
 void InitRNG(uvec2 pixel_coords, uint frame) {
     seed = pixel_coords.y * 1920 + pixel_coords.x + frame * 719393;
 }
-
-// 生成 [0, 1] 范围的随机浮点数
 float RandomFloat() {
     seed = seed * 747796405 + 2891336453;
     uint result = ((seed >> ((seed >> 28) + 4)) ^ seed) * 277803737;
@@ -87,251 +83,238 @@ float RandomFloat() {
     return float(result) / 4294967295.0;
 }
 
-// ===============================================================================================
-// 6. 几何求交函数 (Ray-Triangle Intersection)
-// ===============================================================================================
+vec3 SampleCosineHemisphere(vec3 N) {
+    float r1 = RandomFloat();
+    float r2 = RandomFloat();
+    float r = sqrt(r1);
+    float theta = 2.0 * PI * r2;
+    float x = r * cos(theta);
+    float y = r * sin(theta);
+    float z = sqrt(max(0.0, 1.0 - r1));
+    vec3 up = abs(N.z) < 0.999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
+    vec3 tangent = normalize(cross(up, N));
+    vec3 bitangent = cross(N, tangent);
+    return normalize(tangent * x + bitangent * y + N * z);
+}
 
-// Möller–Trumbore 算法
-// 返回: t (距离)。如果没击中返回 -1.0
-float HitTriangle(vec3 rayOrigin, vec3 rayDir, vec3 v0, vec3 v1, vec3 v2)
-{
+// 简单的 Schlick 菲涅尔近似 (RGB 模式够用了)
+float FresnelSchlick(float cosTheta, float F0) {
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+float HitTriangle(vec3 rayOrigin, vec3 rayDir, vec3 v0, vec3 v1, vec3 v2) {
     vec3 edge1 = v1 - v0;
     vec3 edge2 = v2 - v0;
     vec3 h = cross(rayDir, edge2);
     float a = dot(edge1, h);
-
-    // 射线与三角形平行
-    if (a > -EPSILON && a < EPSILON) return -1.0;
-
+    if (a > -MATH_EPSILON && a < MATH_EPSILON) return -1.0;
     float f = 1.0 / a;
     vec3 s = rayOrigin - v0;
     float u = f * dot(s, h);
-
     if (u < 0.0 || u > 1.0) return -1.0;
-
     vec3 q = cross(s, edge1);
     float v = f * dot(rayDir, q);
-
     if (v < 0.0 || u + v > 1.0) return -1.0;
-
     float t = f * dot(edge2, q);
-
-    if (t > EPSILON) return t;
-    else return -1.0;
+    return (t > MATH_EPSILON) ? t : -1.0;
 }
 
-// ===============================================================================================
-// 7. PBR 核心函数 (Cook-Torrance BRDF)
-// ===============================================================================================
-
-// 法线分布函数 (Normal Distribution Function) - Trowbridge-Reitz GGX
-float DistributionGGX(vec3 N, vec3 H, float roughness)
-{
-    float a = roughness * roughness;
-    float a2 = a * a;
-    float NdotH = max(dot(N, H), 0.0);
-    float NdotH2 = NdotH * NdotH;
-
-    float num = a2;
-    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = PI * denom * denom;
-
-    return num / max(denom, 0.0000001);
-}
-
-// 几何遮蔽函数 (Geometry Function) - Schlick-GGX
-float GeometrySchlickGGX(float NdotV, float roughness)
-{
-    float r = (roughness + 1.0);
-    float k = (r * r) / 8.0;
-
-    float num = NdotV;
-    float denom = NdotV * (1.0 - k) + k;
-
-    return num / max(denom, 0.0000001);
-}
-
-// 史密斯几何函数 (Smith's method)
-float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
-{
-    float NdotV = max(dot(N, V), 0.0);
-    float NdotL = max(dot(N, L), 0.0);
-    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
-    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
-
-    return ggx1 * ggx2;
-}
-
-// 菲涅尔方程 (Fresnel Equation) - Schlick Approximation
-vec3 FresnelSchlick(float cosTheta, vec3 F0)
-{
-    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}
-
-// ===============================================================================================
-// 8. 主函数 (Main)
-// ===============================================================================================
-
-void main() 
-{
-    // 获取当前像素坐标
-    ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 img_size = imageSize(img_output);
-
-    // 边界检查
-    if (pixel_coords.x >= img_size.x || pixel_coords.y >= img_size.y) return;
-
-    // -------------------------------------------------------------------------
-    // A. 射线生成 (Ray Generation) & 抗锯齿 (Anti-Aliasing)
-    // -------------------------------------------------------------------------
+// ... (BVH / Octree 遍历逻辑，请复制 SpectralRaytrace.glsl 中的 TraverseBVH 和 IntersectAABB 优化版本) ...
+// 为了节省篇幅，这里假设你已经把优化过的 TraverseBVH 复制过来了。
+// 如果没复制，RGB模式依然会卡顿。务必同步这两个函数的优化！
+// =========================================================
+// 1. BVH 遍历逻辑
+// =========================================================
+bool IntersectAABB(vec3 rayOrig, vec3 invDir, vec3 boxMin, vec3 boxMax, float currentClosestT) {
+    vec3 t0s = (boxMin - rayOrig) * invDir;
+    vec3 t1s = (boxMax - rayOrig) * invDir;
     
-    // 初始化随机数状态
-    InitRNG(pixel_coords, u_FrameIndex);
+    vec3 tsmaller = min(t0s, t1s);
+    vec3 tbigger  = max(t0s, t1s);
+    
+    float tmin = max(tsmaller.x, max(tsmaller.y, tsmaller.z));
+    float tmax = min(tbigger.x, min(tbigger.y, tbigger.z));
+    
+    return (tmin <= tmax) && (tmax > 0.0) && (tmin < currentClosestT);
+}
 
-    // 计算子像素抖动 (Jitter)
-    // 在 [-0.5, 0.5] 范围内随机偏移，使每一帧采样像素的不同位置
-    vec2 jitter = vec2(RandomFloat(), RandomFloat()) - 0.5;
+void TraverseBVH(vec3 rayOrigin, vec3 rayDir, inout float closestT, inout int hitIndex) {
+    vec3 invDir = 1.0 / rayDir;
+    int stack[32]; 
+    int stackPtr = 0;
+    stack[stackPtr++] = 0; 
 
-    // 将像素坐标转为 NDC [-1, 1]
-    vec2 uv = (vec2(pixel_coords) + 0.5 + jitter) / vec2(img_size) * 2.0 - 1.0;
+    while (stackPtr > 0) {
+        int nodeIdx = stack[--stackPtr];
+        BVHNode node = BVHNodes[nodeIdx];
+        vec3 aabbMin = node.Data1.xyz;
+        float leftChild = node.Data1.w;
+        vec3 aabbMax = node.Data2.xyz;
+        float rightChild = node.Data2.w;
 
-    // 逆投影变换：屏幕空间 -> 观察空间 (View Space)
-    vec4 target = u_InverseProjection * vec4(uv, 1.0, 1.0);
-    vec3 rayDirView = normalize(target.xyz / target.w);
+        if (!IntersectAABB(rayOrigin, invDir, aabbMin, aabbMax, closestT)) continue;
 
-    // 逆视图变换：观察空间 -> 世界空间 (World Space)
-    vec3 rayDir = normalize(mat3(u_InverseView) * rayDirView);
-    vec3 rayOrigin = u_CameraPos;
-
-    // -------------------------------------------------------------------------
-    // B. 场景遍历 (Scene Traversal) - 寻找最近的交点
-    // -------------------------------------------------------------------------
-
-    float closestT = INFINITY;
-    int hitTriangleIndex = -1;
-    uint numTriangles = Triangles.length();
-
-    // 暴力循环遍历所有三角形 (后续需优化为 BVH)
-    for (uint i = 0; i < numTriangles; i++)
-    {
-        TriangleData tri = Triangles[i];
-        
-        vec3 v0 = Vertices[tri.v0].Position;
-        vec3 v1 = Vertices[tri.v1].Position;
-        vec3 v2 = Vertices[tri.v2].Position;
-
-        float t = HitTriangle(rayOrigin, rayDir, v0, v1, v2);
-
-        if (t > 0.0 && t < closestT)
-        {
-            closestT = t;
-            hitTriangleIndex = int(i);
+        if (leftChild < 0.0) { 
+            int startIdx = int(-leftChild - 1.0);
+            int count = int(rightChild);
+            for (int i = 0; i < count; i++) {
+                int triIdx = int(GlobalIndices[startIdx + i]);
+                TriangleData tri = Triangles[triIdx];
+                float t = HitTriangle(rayOrigin, rayDir, Vertices[tri.v0].Position, Vertices[tri.v1].Position, Vertices[tri.v2].Position);
+                if (t > 0.0 && t < closestT) { closestT = t; hitIndex = triIdx; }
+            }
+        } else {
+            stack[stackPtr++] = int(leftChild);
+            stack[stackPtr++] = int(rightChild);
         }
     }
+}
 
-    // -------------------------------------------------------------------------
-    // C. 着色计算 (Shading)
-    // -------------------------------------------------------------------------
+void TraverseOctree(vec3 rayOrigin, vec3 rayDir, inout float closestT, inout int hitIndex) {
+    // 简化的占位，实际应与 Spectral 版本一致
+    uint numTriangles = Triangles.length();
+    for (uint i = 0; i < numTriangles; i++) {
+        TriangleData tri = Triangles[i];
+        float t = HitTriangle(rayOrigin, rayDir, Vertices[tri.v0].Position, Vertices[tri.v1].Position, Vertices[tri.v2].Position);
+        if (t > 0.0 && t < closestT) { closestT = t; hitIndex = int(i); }
+    }
+}
 
-    vec3 currentFrameColor = vec3(0.0); // 线性 HDR 颜色
+// ==================== 主函数 ====================
+void main() 
+{
+    ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 img_size = imageSize(img_output);
+    if (pixel_coords.x >= img_size.x || pixel_coords.y >= img_size.y) return;
 
-    if (hitTriangleIndex != -1)
+    InitRNG(pixel_coords, u_FrameIndex);
+
+    vec2 jitter = vec2(RandomFloat(), RandomFloat()) - 0.5;
+    vec2 uv = (vec2(pixel_coords) + 0.5 + jitter) / vec2(img_size) * 2.0 - 1.0;
+    vec4 target = u_InverseProjection * vec4(uv, 1.0, 1.0);
+    vec3 rayDir = normalize(mat3(u_InverseView) * normalize(target.xyz / target.w));
+    vec3 rayOrigin = u_CameraPos;
+
+    vec3 throughput = vec3(1.0); 
+    vec3 radiance = vec3(0.0);   
+
+    for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
     {
-        // 1. 准备材质与几何数据
-        TriangleData tri = Triangles[hitTriangleIndex];
-        GPUMaterial rawMat = Materials[tri.MaterialID];
+        float closestT = INFINITY;
+        int hitIndex = -1;
 
-        // 解包材质属性
-        vec3 albedo     = pow(rawMat.AlbedoRoughness.rgb, vec3(2.2)); // sRGB -> Linear
-        float roughness = rawMat.AlbedoRoughness.w;
-        float metallic  = rawMat.Metallic;
-        float emission  = rawMat.Emission;
+        if (u_AccelType == 1) TraverseBVH(rayOrigin, rayDir, closestT, hitIndex);
+        else if (u_AccelType == 2) TraverseOctree(rayOrigin, rayDir, closestT, hitIndex);
+        else {
+            uint numTriangles = Triangles.length();
+            for (uint i = 0; i < numTriangles; i++) {
+                TriangleData tri = Triangles[i];
+                float t = HitTriangle(rayOrigin, rayDir, Vertices[tri.v0].Position, Vertices[tri.v1].Position, Vertices[tri.v2].Position);
+                if (t > 0.0 && t < closestT) { closestT = t; hitIndex = int(i); }
+            }
+        }
 
-        // 计算交点位置与法线
+        if (hitIndex == -1) {
+            // 简单的天空光 (RGB)
+            float t = 0.5 * (rayDir.y + 1.0);
+            vec3 skyColor = mix(vec3(0.5, 0.7, 1.0), vec3(1.0), t) * 1.0;
+            radiance += skyColor * throughput;
+            break; 
+        }
+
+        // 获取数据 (使用新结构体读取，保证对齐正确)
+        TriangleData tri = Triangles[hitIndex];
+        GPUMaterial mat = Materials[tri.MaterialID]; 
+        
         vec3 hitPos = rayOrigin + rayDir * closestT;
         vec3 v0 = Vertices[tri.v0].Position;
         vec3 v1 = Vertices[tri.v1].Position;
         vec3 v2 = Vertices[tri.v2].Position;
+        vec3 N = normalize(cross(v1 - v0, v2 - v0));
+        bool frontFace = dot(rayDir, N) < 0.0;
+        vec3 normal = frontFace ? N : -N;
+
+        if (mat.Emission > 0.0) {
+            radiance += vec3(mat.Emission) * throughput;
+            break; 
+        }
+
+        // --- RGB 材质逻辑 (简化的 Disney/PBR) ---
+        vec3 albedo = mat.AlbedoRoughness.rgb;
+        float roughness = mat.AlbedoRoughness.a;
+        float metallic = mat.Metallic;
+
+        // 根据 Type 强制覆盖属性 (兼容光谱流程的设置)
+        if (mat.Type == 1) { // Conductor
+            metallic = 1.0; 
+        } else if (mat.Type == 2) { // Dielectric
+            metallic = 0.0;
+            // RGB模式下没法做真色散，简单模拟玻璃
+        }
+
+        vec3 F0 = mix(vec3(0.04), albedo, metallic);
+        vec3 F = vec3(FresnelSchlick(max(dot(-rayDir, normal), 0.0), F0.r)); 
+        // 简化：取红色通道做平均，或者完整算RGB Fresnel
+
+        // 简单分支：镜面 vs 漫反射
+        float specularProb = (metallic > 0.9) ? 1.0 : 0.04; // 简化概率
+        if (mat.Type == 2) specularProb = 0.1; // 玻璃反射率低
+
+        // 玻璃特殊处理
+        if (mat.Type == 2) {
+            float ior = 1.5;
+            float cosTheta = dot(-rayDir, normal);
+            float F_glass = FresnelSchlick(abs(cosTheta), 0.04);
+            
+            if (RandomFloat() < F_glass) {
+                rayOrigin = hitPos + normal * RAY_OFFSET;
+                rayDir = reflect(rayDir, normal);
+            } else {
+                float eta = frontFace ? (1.0 / ior) : ior;
+                vec3 refractDir = refract(rayDir, normal, eta);
+                if (length(refractDir) == 0.0) {
+                    rayOrigin = hitPos + normal * RAY_OFFSET;
+                    rayDir = reflect(rayDir, normal);
+                } else {
+                    rayOrigin = hitPos - normal * RAY_OFFSET;
+                    rayDir = normalize(refractDir);
+                    throughput *= albedo; // 玻璃体色
+                }
+            }
+        }
+        else if (RandomFloat() < metallic) {
+            // 金属反射
+            rayOrigin = hitPos + normal * RAY_OFFSET;
+            vec3 reflected = reflect(rayDir, normal);
+            if (roughness > 0.0) reflected = normalize(reflected + SampleCosineHemisphere(normal) * roughness);
+            rayDir = reflected;
+            throughput *= albedo; // 金属带颜色
+        } 
+        else {
+            // 漫反射
+            rayOrigin = hitPos + normal * RAY_OFFSET;
+            rayDir = SampleCosineHemisphere(normal);
+            throughput *= albedo;
+        }
         
-        // 计算面法线 (Flat Shading)
-        vec3 N = normalize(cross(v1 - v0, v2 - v0)); 
-        vec3 V = normalize(u_CameraPos - hitPos); // 观察方向
-
-        // 2. 光源定义 (硬编码的点光源，跟随相机移动)
-        vec3 lightPos = u_CameraPos + vec3(2.0, 4.0, 2.0); 
-        vec3 lightColor = vec3(300.0, 300.0, 300.0); 
-
-        vec3 L = normalize(lightPos - hitPos); // 光线方向
-        vec3 H = normalize(V + L);             // 半程向量
-        float dist = length(lightPos - hitPos);
-        float attenuation = 1.0 / (dist * dist);
-        vec3 radiance = lightColor * attenuation;
-
-        // 3. PBR 计算 (Cook-Torrance)
-        
-        // F0: 基础反射率
-        vec3 F0 = vec3(0.04); 
-        F0 = mix(F0, albedo, metallic);
-
-        // Specular BRDF 项
-        float NDF = DistributionGGX(N, H, roughness);   
-        float G   = GeometrySmith(N, V, L, roughness);      
-        vec3 F    = FresnelSchlick(max(dot(H, V), 0.0), F0);
-           
-        vec3 numerator    = NDF * G * F; 
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001; 
-        vec3 specular = numerator / denominator;
-        
-        // 能量守恒 (kS + kD = 1.0)
-        vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
-        kD *= (1.0 - metallic); // 金属没有漫反射
-
-        // 最终光照合成
-        float NdotL = max(dot(N, L), 0.0);                
-        vec3 Lo = (kD * albedo / PI + specular) * radiance * NdotL;
-        
-        // 环境光 (简单常数)
-        vec3 ambient = vec3(0.03) * albedo;
-        
-        // 自发光
-        vec3 emissive = albedo * emission * 10.0;
-
-        currentFrameColor = ambient + Lo + emissive;
+        // 俄罗斯轮盘赌
+        float p = max(throughput.r, max(throughput.g, throughput.b));
+        if (bounce > 3) {
+            if (RandomFloat() > p) break;
+            throughput /= p;
+        }
     }
-    else 
-    {
-        // 背景 (简单天空)
-        float t = 0.5 * (rayDir.y + 1.0);
-        currentFrameColor = mix(vec3(1.0), vec3(0.5, 0.7, 1.0), t);
-    }
 
-    // -------------------------------------------------------------------------
-    // D. 累积与后处理 (Accumulation & Post-Processing)
-    // -------------------------------------------------------------------------
+    vec3 oldColor = vec3(0.0);
+    if (u_FrameIndex > 1) oldColor = imageLoad(img_accum, pixel_coords).rgb;
+    
+    vec3 newColor = oldColor + radiance;
+    imageStore(img_accum, pixel_coords, vec4(newColor, 1.0));
 
-    vec3 accumulatedColor = currentFrameColor;
+    vec3 avgColor = newColor / float(u_FrameIndex);
+    // 简单的 Tone Mapping
+    avgColor = avgColor / (avgColor + vec3(1.0)); 
+    avgColor = pow(avgColor, vec3(1.0/2.2)); 
 
-    // 如果不是第一帧，从 img_accum 读取历史数据并相加
-    if (u_FrameIndex > 1)
-    {
-        vec3 history = imageLoad(img_accum, pixel_coords).rgb;
-        accumulatedColor = history + currentFrameColor;
-    }
-
-    // 1. 将新的累积值写入历史缓冲区 (保存的是 sum)
-    imageStore(img_accum, pixel_coords, vec4(accumulatedColor, 1.0));
-
-    // 2. 计算平均值 (Sum / Count) -> 得到当前的画面
-    vec3 averagedColor = accumulatedColor / float(u_FrameIndex);
-
-    // 3. 色调映射 (Tone Mapping) - Reinhard
-    // 将 HDR 映射回 LDR [0, 1]
-    averagedColor = averagedColor / (averagedColor + vec3(1.0));
-
-    // 4. Gamma 校正 (Linear -> sRGB)
-    averagedColor = pow(averagedColor, vec3(1.0/2.2));
-
-    // 5. 写入最终显示缓冲区
-    imageStore(img_output, pixel_coords, vec4(averagedColor, 1.0));
+    imageStore(img_output, pixel_coords, vec4(avgColor, 1.0));
 }
