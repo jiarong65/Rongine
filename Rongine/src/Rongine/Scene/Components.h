@@ -104,21 +104,6 @@ namespace Rongine {
         }
     };
 
-    // 为未来预留的光谱组件
-    //struct SpectralMaterialComponent
-    //{
-    //    std::string Name;
-
-    //    // 光谱曲线
-    //    std::vector<float> SpectrumValues;
-
-    //    // 对应的 GPU 缓冲区索引
-    //    int GpuBufferIndex = -1;
-
-    //    SpectralMaterialComponent() = default;
-    //    SpectralMaterialComponent(const std::string& name) : Name(name) {}
-    //};
-
     struct SpectralMaterialComponent
     {
         enum class MaterialType {
@@ -152,7 +137,7 @@ namespace Rongine {
 
     struct CADGeometryComponent
     {
-        enum class GeometryType { None = 0, Cube, Sphere, Cylinder, Imported };
+        enum class GeometryType { None = 0, Cube, Sphere, Cylinder, Imported, Spline };
 
         GeometryType Type = GeometryType::None;
 
@@ -169,6 +154,11 @@ namespace Rongine {
 
         float LinearDeflection = 0.1f;//精度
         float FilletRadius = 0.1f; // 倒角的半径
+
+        //NURBS
+        std::vector<CADControlPoint> SplinePoints;
+        int SplineDegree = 3;       // 阶数
+        bool SplineClosed = false;  // 是否闭合
 
         //父亲
         entt::entity SourceEntity = entt::null;

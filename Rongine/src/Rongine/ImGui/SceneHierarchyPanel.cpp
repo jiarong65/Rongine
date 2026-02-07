@@ -157,6 +157,32 @@ namespace Rongine {
 		}
 	}
 
+	static void RebuildSpline(Entity entity)
+	{
+		auto& cad = entity.GetComponent<CADGeometryComponent>();
+		auto& mesh = entity.GetComponent<MeshComponent>();
+
+		if (cad.ShapeHandle) CADModeler::FreeShape(cad.ShapeHandle);
+
+		// 使用保存的参数重建
+		cad.ShapeHandle = CADModeler::MakeNURBSCurve(cad.SplinePoints, cad.SplineDegree, cad.SplineClosed);
+
+		// 重建显示网格 (线框)
+		if (cad.ShapeHandle)
+		{
+			TopoDS_Shape* shape = (TopoDS_Shape*)cad.ShapeHandle;
+			BRepTools::Clean(*shape);
+
+			std::vector<LineVertex> lines;
+			mesh.m_IDToEdgeMap.clear();
+			mesh.EdgeVA = CADMesher::CreateEdgeMeshFromShape(*shape, lines, mesh.m_IDToEdgeMap, cad.LinearDeflection);
+			mesh.LocalLines = lines;
+			// 注意：Spline 没有面，所以 mesh.VA 设为 nullptr
+			mesh.VA = nullptr;
+			mesh.LocalVertices.clear();
+		}
+	}
+
 	SceneHierarchyPanel::SceneHierarchyPanel(const Ref<Scene>& context)
 	{
 		setContext(context);
@@ -375,6 +401,115 @@ namespace Rongine {
 				{
 					DrawParamSlider("Radius", &cadComp.Params.Radius);
 					DrawParamSlider("Height", &cadComp.Params.Height);
+				}
+				else if (cadComp.Type == CADGeometryComponent::GeometryType::Spline)
+				{
+					ImGui::Separator();
+					ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "NURBS Editor");
+
+					bool changed = false;
+
+					// 1. 全局设置
+					if (ImGui::SliderInt("Degree", &cadComp.SplineDegree, 1, 9)) changed = true;
+					if (ImGui::Checkbox("Closed Loop", &cadComp.SplineClosed)) changed = true;
+
+					ImGui::Separator();
+					ImGui::Text("Control Points (%d)", cadComp.SplinePoints.size());
+
+					// 去掉 Child Window 内部的留白，让列表贴边显示
+					ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+
+					// 开启子窗口，限制高度
+					if (ImGui::BeginChild("CP_List", ImVec2(0, 200), true))
+					{
+						// [兼容修复] 使用旧版 Columns API (兼容所有 ImGui 版本)
+						// 5列: 序号 | 坐标 | 权重 | 尖点 | 删除
+						ImGui::Columns(5, "CP_Columns", true); // true = 显示竖线
+
+						// --- 初始化列宽 (只在第一次运行时设置) ---
+						static bool initWidths = false;
+						if (!initWidths)
+						{
+							// 手动设置每一列的偏移量 (根据你的窗口宽度微调)
+							ImGui::SetColumnOffset(1, 30.0f);  // 序号列宽 30
+							ImGui::SetColumnOffset(2, 220.0f); // 坐标列宽 ~190 (最宽)
+							ImGui::SetColumnOffset(3, 270.0f); // 权重列宽 50
+							ImGui::SetColumnOffset(4, 300.0f); // 尖点列宽 30
+							initWidths = true;
+						}
+
+						// --- 表头 ---
+						ImGui::Text("#"); ImGui::NextColumn();
+						ImGui::Text("Position"); ImGui::NextColumn();
+						ImGui::Text("W"); ImGui::NextColumn();
+						ImGui::Text("S"); ImGui::NextColumn();
+						ImGui::Text("X"); ImGui::NextColumn();
+						ImGui::Separator();
+
+						// --- 数据行 ---
+						for (int i = 0; i < cadComp.SplinePoints.size(); ++i)
+						{
+							ImGui::PushID(i);
+
+							// 第1列: 序号
+							ImGui::AlignTextToFramePadding();
+							ImGui::Text("%d", i);
+							ImGui::NextColumn();
+
+							// 第2列: 坐标 (使用 PushItemWidth(-1) 填满列宽)
+							ImGui::PushItemWidth(-1);
+							// "##Pos" 隐藏标签，只显示数字框
+							if (ImGui::DragFloat3("##Pos", glm::value_ptr(cadComp.SplinePoints[i].Position), 0.1f)) {
+								changed = true;
+							}
+							ImGui::PopItemWidth();
+							ImGui::NextColumn();
+
+							// 第3列: 权重
+							ImGui::PushItemWidth(-1);
+							if (ImGui::DragFloat("##W", &cadComp.SplinePoints[i].Weight, 0.05f, 0.001f, 100.0f, "%.1f")) {
+								changed = true;
+							}
+							ImGui::PopItemWidth();
+							if (ImGui::IsItemHovered()) ImGui::SetTooltip("Weight");
+							ImGui::NextColumn();
+
+							// 第4列: 尖点
+							if (ImGui::Checkbox("##Sharp", &cadComp.SplinePoints[i].IsSharp)) {
+								changed = true;
+							}
+							if (ImGui::IsItemHovered()) ImGui::SetTooltip("Sharp Corner");
+							ImGui::NextColumn();
+
+							// 第5列: 删除按钮
+							if (ImGui::Button("X", ImVec2(-1, 0))) {
+								cadComp.SplinePoints.erase(cadComp.SplinePoints.begin() + i);
+								changed = true;
+								ImGui::PopID(); // 这里必须要 PopID
+								break; // 数据结构变了，必须跳出循环
+							}
+							ImGui::NextColumn();
+
+							ImGui::PopID();
+						}
+
+						//  结束分列模式，恢复正常布局
+						ImGui::Columns(1);
+					}
+					ImGui::EndChild();
+					ImGui::PopStyleVar(); // 恢复之前的 WindowPadding
+
+					// 添加点按钮
+					if (ImGui::Button("Add Point", ImVec2(-1, 0))) {
+						glm::vec3 pos = glm::vec3(0);
+						if (!cadComp.SplinePoints.empty()) {
+							pos = cadComp.SplinePoints.back().Position + glm::vec3(0.5f, 0, 0);
+						}
+						cadComp.SplinePoints.emplace_back(pos);
+						changed = true;
+					}
+
+					if (changed) RebuildSpline(entity);
 				}
 
 				ImGui::Separator();

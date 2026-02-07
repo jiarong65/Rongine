@@ -17,7 +17,8 @@ enum class SketchToolType
 	None = 0,
 	Line,
 	Rectangle,
-	Circle
+	Circle,
+	Spline
 };
 
 class EditorLayer :public Rongine::Layer
@@ -91,6 +92,11 @@ private:
 	Rongine::SceneHierarchyPanel m_sceneHierarchyPanel;
 
 	Rongine::Entity m_ToolEntity;                //工具实体
+
+	//NURBS
+	std::vector<Rongine::CADControlPoint> m_SplinePoints;//nurbs曲线控制点
+	int m_HoveredControlPoint = -1; // 当前鼠标悬停的控制点索引
+	int m_SelectedControlPointIndex = -1;
 
 	// --- Gizmo 撤销状态 ---
 	bool m_GizmoEditing = false; // 是否正在拖拽中

@@ -95,4 +95,15 @@ namespace Rongine {
 			return 2.0f * (d.x * d.y + d.y * d.z + d.z * d.x);
 		}
 	};
+
+	// NURBS 控制点结构体
+	struct CADControlPoint {
+		glm::vec3 Position;
+		float Weight;
+		bool IsSharp;
+
+		CADControlPoint() : Position(0.0f), Weight(1.0f), IsSharp(false) {}
+		CADControlPoint(glm::vec3 pos, float weight = 1.0f, bool sharp = false)
+			: Position(pos), Weight(weight), IsSharp(sharp) {}
+	};
 }

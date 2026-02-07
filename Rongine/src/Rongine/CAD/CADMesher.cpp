@@ -438,6 +438,7 @@ namespace Rongine {
     // 重建
     void CADMesher::RebuildMesh(Entity entity)
     {
+        // 1. 基础检查
         if (!entity.HasComponent<CADGeometryComponent>() || !entity.HasComponent<MeshComponent>())
             return;
 
@@ -449,27 +450,34 @@ namespace Rongine {
         if (!shapePtr || shapePtr->IsNull()) return;
         const TopoDS_Shape& shape = *shapePtr;
 
-        // 1. [关键] 清理 OCCT 内部的网格缓存
-        // 如果不清理，BRepMesh 会以为形状没变，直接复用旧的网格，导致画面不更新
         BRepTools::Clean(shape);
 
-        // 2. 清理我们自己的 ID 映射表，准备重新填入
+        // 3. 清理 Mesh 组件的旧数据
         mesh.m_IDToEdgeMap.clear();
         mesh.LocalLines.clear();
+        mesh.LocalVertices.clear();
+        mesh.LocalIndices.clear();
 
-        // 3. 重新生成面片网格 (Face Mesh)
+        // 4. 尝试生成面片网格 (Face Mesh)
         std::vector<CubeVertex> newVertices;
         std::vector<uint32_t> newIndices;
+
         // 使用组件里存的精度参数
-        mesh.VA = CreateMeshFromShape(shape, newVertices, newIndices, cad.LinearDeflection);
-        mesh.LocalVertices = newVertices; // 更新 CPU 端数据供拾取/Gizmo使用
+        Ref<VertexArray> faceVA = CreateMeshFromShape(shape, newVertices, newIndices, cad.LinearDeflection);
+
+        // 更新 VA 和 CPU 数据
+        // 如果 faceVA 是空的 (nullptr)，说明这个物体没有面 (是纯线框)，mesh.VA 也会变成 nullptr
+        // 如果 faceVA 有数据 (实体)，mesh.VA 就会被赋值
+        mesh.VA = faceVA;
+        mesh.LocalVertices = newVertices;
         mesh.LocalIndices = newIndices;
 
-        // 4. 重新生成边框网格 (Edge Mesh) 并重建 m_IDToEdgeMap
-        // 注意：CreateEdgeMeshFromShape 内部会填充 m_IDToEdgeMap
+        // 5. 重新生成边框网格 (Edge Mesh) 并重建 m_IDToEdgeMap
+        // 无论是实体还是曲线，这一步都会生成线条
         mesh.EdgeVA = CreateEdgeMeshFromShape(entity, shape, mesh.LocalLines, cad.LinearDeflection);
 
-        RONG_CORE_INFO("Rebuild Complete. Mapped {0} Edges.", mesh.m_IDToEdgeMap.size());
+        RONG_CORE_INFO("Rebuild Complete. Faces: {0}, Edges: {1}",
+            (mesh.VA ? "Yes" : "No"), mesh.m_IDToEdgeMap.size());
     }
 
 

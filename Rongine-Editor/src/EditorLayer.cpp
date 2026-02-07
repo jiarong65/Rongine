@@ -392,6 +392,49 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 			}
 			break;
 		}
+		case SketchToolType::Spline: {
+			// 左键
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsOver() && m_viewportHovered)
+			{
+				if (!m_IsDrawing) {
+					m_SplinePoints.clear(); // 强制清空
+					m_IsDrawing = true;
+				}
+				// 添加点
+				m_SplinePoints.emplace_back(m_SketchCursorPos, 1.0f, false);
+			}
+
+			// 右键结束
+			if (m_IsDrawing && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+			{
+				if (m_SplinePoints.size() >= 2)
+				{
+					// 使用新的带参数接口 (默认 3阶, 不闭合)
+					void* edgeShape = Rongine::CADModeler::MakeNURBSCurve(m_SplinePoints, 3, false);
+					if (edgeShape)
+					{
+						auto newEntity = m_activeScene->createEntity("NURBS Curve");
+						auto& cad = newEntity.AddComponent<Rongine::CADGeometryComponent>();
+
+						cad.ShapeHandle = edgeShape;
+						cad.Type = Rongine::CADGeometryComponent::GeometryType::Spline;
+						cad.SplinePoints = m_SplinePoints; // [关键] 保存点数据
+						cad.SplineDegree = 3;
+						cad.SplineClosed = false;
+						cad.SourceEntity = (entt::entity)m_SketchPlaneEntity;
+
+						newEntity.AddComponent<Rongine::MeshComponent>();
+						Rongine::CADMesher::RebuildMesh(newEntity);
+
+						m_selectedEntity = newEntity;
+						m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
+					}
+				}
+				m_SplinePoints.clear();
+				m_IsDrawing = false;
+			}
+			break;
+		}
 		default:break;
 		}
 
@@ -455,21 +498,32 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		{
 			auto [transform, mesh] = view.get<Rongine::TransformComponent, Rongine::MeshComponent>(entityHandle);
 			const Rongine::MaterialComponent* mat = m_activeScene->getRegistry().try_get<Rongine::MaterialComponent>(entityHandle);
-			if (m_selectedEntity == entityHandle && mesh.EdgeVA)
+			if (mesh.VA)
 			{
-				glEnable(GL_POLYGON_OFFSET_FILL);
+				if (m_selectedEntity == entityHandle && mesh.EdgeVA)
+				{
+					glEnable(GL_POLYGON_OFFSET_FILL);
+					// 设置偏移量：防止Z-fighting
+					glPolygonOffset(0.5f, 0.5f);
+					Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle, mat);
+					glDisable(GL_POLYGON_OFFSET_FILL);
 
-				// 设置偏移量：factor=1.0, units=1.0 是经验值
-				// 这会让面的深度值增加，相当于往屏幕里推远了一点点
-				glPolygonOffset(0.5f, 0.5f);
-				Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle,mat);
-				glDisable(GL_POLYGON_OFFSET_FILL);
+					// 绘制选中物体的边缘
+					Rongine::Renderer3D::drawEdges(mesh.EdgeVA, transform.GetTransform(), { 0.0f, 0.0f, 0.0f, 1.0f }, (int)entityHandle, m_selectedEdge);
+					continue;
+				}
 
-				Rongine::Renderer3D::drawEdges(mesh.EdgeVA, transform.GetTransform(), { 0.0f, 0.0f, 0.0f, 1.0f }, (int)entityHandle, m_selectedEdge);
-				continue;
+				// 普通绘制 (未选中)
+				Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle, mat);
 			}
+			else if (mesh.EdgeVA)
+			{
+				glm::vec4 edgeColor = (m_selectedEntity == entityHandle) ?
+					glm::vec4(1.0f, 0.5f, 0.0f, 1.0f) :  // 选中：橙色
+					glm::vec4(0.2f, 0.8f, 1.0f, 1.0f);   // 默认：青蓝色 (图1风格)
 
-			Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle,mat);
+				Rongine::Renderer3D::drawEdges(mesh.EdgeVA, transform.GetTransform(), edgeColor, (int)entityHandle, m_selectedEdge);
+			}
 		}
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//线框渲染
@@ -551,6 +605,36 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 					Rongine::Renderer3D::drawLine(m_DrawStartPoint, m_SketchCursorPos, { 1,1,1,0.5f });
 					break;
 				}
+				case SketchToolType::Spline: {
+					if (m_SplinePoints.empty()) break;
+
+					// --- 颜色定义 ---
+					glm::vec4 curveColor = { 0.2f, 0.8f, 1.0f, 1.0f };      // 曲线：青蓝色
+					glm::vec4 polygonColor = { 0.5f, 0.5f, 0.5f, 0.6f };    // 控制多边形：半透明灰色
+					glm::vec4 pointColor = { 0.2f, 0.8f, 1.0f, 1.0f };      // 控制点：青蓝色
+					glm::vec4 activePointColor = { 1.0f, 0.8f, 0.0f, 1.0f };// 选中/悬停点：黄色
+
+					// --- 1. 绘制控制多边形 (Control Polygon) ---
+					// 连接所有控制点的折线，这对于理解曲线走势非常重要
+					for (size_t i = 0; i < m_SplinePoints.size() - 1; ++i)
+					{
+						Rongine::Renderer3D::drawLine(m_SplinePoints[i].Position, m_SplinePoints[i + 1].Position, polygonColor);
+					}
+
+					// 如果正在绘制中，画一条从最后一个点到鼠标的虚线
+					if (m_IsDrawing && m_IsCursorOnPlane)
+					{
+						Rongine::Renderer3D::drawLine(m_SplinePoints.back().Position, m_SketchCursorPos, polygonColor);
+					}
+					// 如果是闭合曲线，连接首尾
+					else if (!m_IsDrawing && m_SplinePoints.size() > 2) // 假设你有闭合标志位，这里简单判断
+					{
+						// 如果组件里有 Closed 属性，用那个判断更好
+						// Rongine::Renderer3D::drawLine(m_SplinePoints.back().Position, m_SplinePoints.front().Position, polygonColor);
+					}
+
+					break;
+				}
 				default:break;
 				}
 				
@@ -596,6 +680,7 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		m_HoveredEntityID = -1;
 		m_HoveredFaceID = -1;
 		m_HoveredEdgeID = -1;
+		m_HoveredControlPoint = -1;
 
 		// ==============================================================================
 		// Phase 1: 实时悬停探测 (Every Frame)
@@ -615,55 +700,99 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 			int bestEdgeID = -1;
 			float minDistanceSq = 10000.0f;
 
-			// 遍历周围像素 (寻找最佳候选项)
-			for (int dy = -radius; dy <= radius; dy++)
+			// -------------------------------------------------------------------------
+			//  A. 优先检测：NURBS 控制点 (数学投影检测)
+			// -------------------------------------------------------------------------
+			if (m_selectedEntity && m_selectedEntity.HasComponent<Rongine::CADGeometryComponent>())
 			{
-				for (int dx = -radius; dx <= radius; dx++)
+				auto& cad = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
+				if (cad.Type == Rongine::CADGeometryComponent::GeometryType::Spline && !cad.SplinePoints.empty())
 				{
-					int x = mouseX + dx;
-					int y = mouseY + dy;
+					float bestDist = 15.0f; // 拾取阈值 (像素单位，调大更容易点中)
+					auto viewProj = m_cameraContorller.getCamera().getViewProjectionMatrix();
 
-					if (x < 0 || y < 0 || x >= (int)viewportSize.x || y >= (int)viewportSize.y)
-						continue;
-
-					// 读取像素 ID
-					glm::ivec4 ids = m_framebuffer->readPixelID(1, x, y);
-					int eID = ids.r;
-					int fID = ids.g;
-					int lID = ids.b; // EdgeID
-
-					if (eID > -1)
+					for (int i = 0; i < cad.SplinePoints.size(); ++i)
 					{
-						float distSq = (float)(dx * dx + dy * dy);
+						// 将 3D 控制点投影到 2D 屏幕坐标
+						glm::vec4 clipPos = viewProj * glm::vec4(cad.SplinePoints[i].Position, 1.0f);
 
-						// --- 优先级策略 (边 > 面) ---
-						bool isEdge = (lID > -1);
-						float effectiveDist = distSq;
-
-						// 如果是线，即使离得远一点，也视为距离为0 (强行优先)
-						if (isEdge) effectiveDist -= 1000.0f;
-
-						if (effectiveDist < minDistanceSq)
+						// 只检测相机前方的点
+						if (clipPos.w > 0.0f)
 						{
-							minDistanceSq = effectiveDist;
-							bestEntityID = eID;
-							bestFaceID = fID;
-							bestEdgeID = lID;
+							glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w; // NDC 空间 [-1, 1]
+
+							// 转换到视口像素坐标 (注意 ImGui Y轴向下，NDC Y轴向上)
+							float screenX = (ndc.x + 1.0f) * 0.5f * viewportSize.x;
+							float screenY = (1.0f - ndc.y) * 0.5f * viewportSize.y;
+
+							// 计算鼠标距离
+							float dist = std::sqrt(std::pow(screenX - mx, 2) + std::pow(screenY - my, 2));
+
+							if (dist < bestDist)
+							{
+								bestDist = dist;
+								m_HoveredControlPoint = i; // [记录] 悬停了哪个点
+							}
 						}
 					}
 				}
 			}
-			m_framebuffer->unbind();
 
-			// 更新悬停状态变量
-			if (bestEntityID > -1)
+			// -------------------------------------------------------------------------
+			//  B. 次级检测：FBO 像素拾取 (实体/面/线)
+			// 只有当没有悬停在控制点上时，才去读像素，防止点和线打架
+			// -------------------------------------------------------------------------
+			if (m_HoveredControlPoint == -1)
 			{
-				m_HoveredEntityID = bestEntityID;
-				m_HoveredFaceID = bestFaceID;
-				m_HoveredEdgeID = bestEdgeID;
+				m_framebuffer->bind();
 
-				if(ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-					RONG_CLIENT_INFO("eid {0},fid {1},edid{2}", bestEntityID, bestFaceID, bestEdgeID);
+				int radius = 2;
+				float minDistanceSq = 10000.0f;
+
+				for (int dy = -radius; dy <= radius; dy++)
+				{
+					for (int dx = -radius; dx <= radius; dx++)
+					{
+						int x = mouseX + dx;
+						int y = mouseY + dy;
+
+						if (x < 0 || y < 0 || x >= (int)viewportSize.x || y >= (int)viewportSize.y)
+							continue;
+
+						glm::ivec4 ids = m_framebuffer->readPixelID(1, x, y);
+						int eID = ids.r;
+						int fID = ids.g;
+						int lID = ids.b; // EdgeID
+
+						if (eID > -1)
+						{
+							float distSq = (float)(dx * dx + dy * dy);
+							bool isEdge = (lID > -1);
+							float effectiveDist = distSq;
+							if (isEdge) effectiveDist -= 1000.0f;
+
+							if (effectiveDist < minDistanceSq)
+							{
+								minDistanceSq = effectiveDist;
+								bestEntityID = eID;
+								bestFaceID = fID;
+								bestEdgeID = lID;
+							}
+						}
+					}
+				}
+				m_framebuffer->unbind();
+
+				// 更新 FBO 悬停结果
+				if (bestEntityID > -1)
+				{
+					m_HoveredEntityID = bestEntityID;
+					m_HoveredFaceID = bestFaceID;
+					m_HoveredEdgeID = bestEdgeID;
+
+					if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+						RONG_CLIENT_INFO("eid {0},fid {1},edid{2}", bestEntityID, bestFaceID, bestEdgeID);
+				}
 			}
 		}
 
@@ -674,42 +803,44 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 		if (!m_IsExtrudeMode && m_viewportHovered && !ImGuizmo::IsUsing() && !ImGuizmo::IsOver() &&
 			ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 		{
-			if (m_HoveredEntityID > -1)
+			// 优先级 1: 选中了控制点 (最优先)
+			if (m_HoveredControlPoint != -1)
 			{
-				// 选中了物体
+				m_SelectedControlPointIndex = m_HoveredControlPoint;
+				RONG_CLIENT_INFO("Picked Control Point: {0}", m_SelectedControlPointIndex);
+				// 保持 m_selectedEntity 不变
+			}
+			// 优先级 2: 选中了物体 (但没中点)
+			else if (m_HoveredEntityID > -1)
+			{
 				m_selectedEntity = Rongine::Entity((entt::entity)m_HoveredEntityID, m_activeScene.get());
 				m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
 
-				// 优先选中边
-				if (m_HoveredEdgeID > -1)
-				{
-					m_selectedEdge = m_HoveredEdgeID;
-					m_selectedFace = -1;
-					RONG_CLIENT_INFO("Picked Edge: {0}", m_selectedEdge);
+				// 既然点的是物体本身，说明用户想操作物体，取消点的选中
+				m_SelectedControlPointIndex = -1;
+
+				// 边面选择逻辑
+				if (m_HoveredEdgeID > -1) {
+					m_selectedEdge = m_HoveredEdgeID; m_selectedFace = -1;
 				}
-				// 其次选中面
-				else if (m_HoveredFaceID > -1)
-				{
-					m_selectedFace = m_HoveredFaceID;
-					m_selectedEdge = -1;
-					RONG_CLIENT_INFO("Picked Face: {0}", m_selectedFace);
+				else if (m_HoveredFaceID > -1) {
+					m_selectedFace = m_HoveredFaceID; m_selectedEdge = -1;
 				}
-				else
-				{
-					// 仅选中物体整体
-					m_selectedFace = -1;
-					m_selectedEdge = -1;
+				else {
+					m_selectedFace = -1; m_selectedEdge = -1;
 				}
 			}
+			// 优先级 3: 点了虚空 -> 全部取消
 			else
 			{
-				// 点击了空白处：取消选择
 				m_selectedEntity = {};
+				m_SelectedControlPointIndex = -1; // [关键] 必须重置
 				m_selectedFace = -1;
 				m_selectedEdge = -1;
+				m_sceneHierarchyPanel.setSelectedEntity({});
 			}
 
-			// 同步 UI 状态
+			// 同步 UI
 			m_sceneHierarchyPanel.setSelectedEdge(m_selectedEdge);
 		}
 	}
@@ -1005,8 +1136,18 @@ void EditorLayer::onImGuiRender()
 				m_CurrentTool = SketchToolType::Circle;
 				m_IsDrawing = false;
 				RONG_CLIENT_INFO("Selected Tool: CIRCLE");
-			}
+			} ImGui::SameLine();
 			if (isActive)ImGui::PopStyleColor();
+
+
+			isActive = (m_CurrentTool == SketchToolType::Spline);
+			if (isActive) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0.6f, 0.8f, 1));
+			if (ImGui::Button("S")) {
+				m_CurrentTool = SketchToolType::Spline;
+				m_IsDrawing = false;
+				RONG_CLIENT_INFO("Selected Tool: NURBS SPLINE");
+			} ImGui::SameLine();
+			if (isActive) ImGui::PopStyleColor();
 
 			// 退出按钮
 			ImGui::SameLine();
@@ -1048,8 +1189,76 @@ void EditorLayer::onImGuiRender()
 	// 使用计算后的大小
 	ImGui::Image((void*)(uintptr_t)textureID, ImVec2{ m_viewportSize.x, m_viewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 
+	// ================= [新增] 使用 ImGui 绘制高质量控制点 =================
+	if (m_selectedEntity && m_selectedEntity.HasComponent<Rongine::CADGeometryComponent>())
+	{
+		auto& cad = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
+		// 仅在 Spline 模式下绘制
+		if (cad.Type == Rongine::CADGeometryComponent::GeometryType::Spline && !cad.SplinePoints.empty())
+		{
+			ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+			// 1. 准备 VP 矩阵
+			glm::mat4 view = m_cameraContorller.getCamera().getViewMatrix();
+			glm::mat4 proj = m_cameraContorller.getCamera().getProjectionMatrix();
+			glm::mat4 viewProj = proj * view;
+
+			// 2. 获取物体变换矩阵 (Model Matrix)
+			glm::mat4 model = glm::mat4(1.0f);
+			if (m_selectedEntity.HasComponent<Rongine::TransformComponent>()) {
+				model = m_selectedEntity.GetComponent<Rongine::TransformComponent>().GetTransform();
+			}
+
+			// 3. 组合 MVP 矩阵
+			glm::mat4 mvp = viewProj * model;
+
+			// 视口参数
+			glm::vec2 viewportMin = m_viewportBounds[0];
+			glm::vec2 viewportSize = { m_viewportBounds[1].x - m_viewportBounds[0].x, m_viewportBounds[1].y - m_viewportBounds[0].y };
+
+			for (int i = 0; i < cad.SplinePoints.size(); ++i)
+			{
+				glm::vec3 localPos = cad.SplinePoints[i].Position;
+
+				// 4.  变换坐标: Local -> Clip Space
+				glm::vec4 clipPos = mvp * glm::vec4(localPos, 1.0f);
+
+				// 5. 剔除相机背后的点
+				if (clipPos.w > 0.0f)
+				{
+					// NDC -> Screen
+					glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w;
+					float screenX = viewportMin.x + (ndc.x + 1.0f) * 0.5f * viewportSize.x;
+					float screenY = viewportMin.y + (1.0f - ndc.y) * 0.5f * viewportSize.y;
+
+					// 样式设置
+					bool isSelected = (i == m_SelectedControlPointIndex);
+					bool isHovered = (i == m_HoveredControlPoint);
+
+					ImU32 color = isSelected ? IM_COL32(255, 200, 0, 255) :
+						(isHovered ? IM_COL32(255, 100, 100, 255) : IM_COL32(0, 150, 255, 255));
+					float radius = isSelected ? 6.0f : 4.5f;
+
+					drawList->AddCircleFilled(ImVec2(screenX, screenY), radius, color);
+					drawList->AddCircle(ImVec2(screenX, screenY), radius, IM_COL32(255, 255, 255, 200));
+
+					// 绘制连线 (辅助线)
+					if (i < cad.SplinePoints.size() - 1) {
+						glm::vec4 nextClip = mvp * glm::vec4(cad.SplinePoints[i + 1].Position, 1.0f);
+						if (nextClip.w > 0.0f) {
+							glm::vec3 nextNdc = glm::vec3(nextClip) / nextClip.w;
+							float nextX = viewportMin.x + (nextNdc.x + 1.0f) * 0.5f * viewportSize.x;
+							float nextY = viewportMin.y + (1.0f - nextNdc.y) * 0.5f * viewportSize.y;
+							drawList->AddLine(ImVec2(screenX, screenY), ImVec2(nextX, nextY), IM_COL32(200, 200, 200, 100));
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// ==========================================================================================
-	if (ImGui::BeginDragDropTarget())
+	else if (ImGui::BeginDragDropTarget())
 	{
 		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPECTRAL_MAT_ITEM"))
 		{
@@ -1325,8 +1534,87 @@ void EditorLayer::onImGuiRender()
 	}
 
 	// 2. 绘制逻辑
+	// 检查选中的是不是曲线
+	// 获取相机数据
+	const auto& camera = m_cameraContorller.getCamera();
+	const glm::mat4& cameraProjection = camera.getProjectionMatrix();
+	glm::mat4 cameraView = camera.getViewMatrix();
+
+	// 检查 NURBS 曲线选中状态
+	bool isSplineSelected = m_selectedEntity && m_selectedEntity.HasComponent<Rongine::CADGeometryComponent>()
+		&& m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>().Type == Rongine::CADGeometryComponent::GeometryType::Spline;
+
+	
+	// 【点编辑模式】 (选中了曲线 且 选中了某个点) -> 只显示点的 Gizmo
+	if (isSplineSelected && m_SelectedControlPointIndex != -1 && m_gizmoType != -1)
+	{
+		auto& cadComp = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
+		auto& tc = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
+
+		// 安全检查
+		if (m_SelectedControlPointIndex < cadComp.SplinePoints.size())
+		{
+			// 1. 构造 Gizmo 矩阵 (Local -> World)
+			// 我们的点是相对于物体的，所以 点的世界坐标 = 物体变换 * 点的局部位移
+			glm::mat4 objectTransform = tc.GetTransform();
+			glm::vec3 localPoint = cadComp.SplinePoints[m_SelectedControlPointIndex].Position;
+
+			glm::mat4 pointWorldMatrix = objectTransform * glm::translate(glm::mat4(1.0f), localPoint);
+
+			// 设置 ID 防止冲突
+			ImGuizmo::SetID(1000 + m_SelectedControlPointIndex);
+
+			// 绘制 Gizmo (强制使用 TRANSLATE，因为控制点只能移动)
+			ImGuizmo::Manipulate(glm::value_ptr(cameraView), glm::value_ptr(cameraProjection),
+				ImGuizmo::TRANSLATE, ImGuizmo::LOCAL, glm::value_ptr(pointWorldMatrix));
+
+			// 2. 处理拖拽变化 (World -> Local)
+			if (ImGuizmo::IsUsing())
+			{
+				// A. 获取新的世界坐标
+				glm::vec3 newWorldPos = glm::vec3(pointWorldMatrix[3]);
+
+				// B. 转回局部坐标：Local = Inverse(Object) * World
+				// 这一步是让点跟随物体旋转/缩放的关键
+				glm::vec3 newLocalPos = glm::vec3(glm::inverse(objectTransform) * glm::vec4(newWorldPos, 1.0f));
+
+				// C. 更新数据
+				cadComp.SplinePoints[m_SelectedControlPointIndex].Position = newLocalPos;
+
+				// D. 实时重建曲线 (必须调用！)
+				if (cadComp.ShapeHandle) Rongine::CADModeler::FreeShape(cadComp.ShapeHandle);
+
+				cadComp.ShapeHandle = Rongine::CADModeler::MakeNURBSCurve(
+					cadComp.SplinePoints,
+					cadComp.SplineDegree,
+					cadComp.SplineClosed
+				);
+
+				// E. 更新显示网格
+				if (cadComp.ShapeHandle) {
+					auto& mesh = m_selectedEntity.GetComponent<Rongine::MeshComponent>();
+					TopoDS_Shape* shape = (TopoDS_Shape*)cadComp.ShapeHandle;
+					BRepTools::Clean(*shape);
+
+					std::vector<Rongine::LineVertex> lines;
+					mesh.m_IDToEdgeMap.clear();
+					mesh.EdgeVA = Rongine::CADMesher::CreateEdgeMeshFromShape(*shape, lines, mesh.m_IDToEdgeMap, cadComp.LinearDeflection);
+					mesh.LocalLines = lines;
+					mesh.VA = nullptr; // 曲线没有面
+					mesh.LocalVertices.clear();
+				}
+
+				m_SceneChanged = true;
+			}
+
+			goto SkipGizmo;
+		}
+	}
+	///////////////////////////////////////////////////////////////////////////////////////
+
 	if (m_selectedEntity && m_gizmoType != -1)
 	{
+		ImGuizmo::SetID(-1); // 恢复默认 ID
 
 		// 获取相机的 View 和 Projection 矩阵
 		const auto& camera = m_cameraContorller.getCamera();
@@ -1879,7 +2167,7 @@ void EditorLayer::ExitExtrudeMode(bool apply)
 {
 	if (!m_IsExtrudeMode) return;
 
-	// 清理预览
+	// 1. 清理预览实体 (Ghost)
 	if (m_PreviewEntity)
 	{
 		m_activeScene->destroyEntity(m_PreviewEntity);
@@ -1890,17 +2178,18 @@ void EditorLayer::ExitExtrudeMode(bool apply)
 	{
 		auto& currentCad = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
 
-		// 1. 生成拉伸体 (Tool Shape)
+		// 2. 生成拉伸体 (Tool Shape)
 		void* toolShapePtr = Rongine::CADFeature::ExtrudeFace(currentCad.ShapeHandle, m_selectedFace, m_ExtrudeHeight);
 
 		if (toolShapePtr)
 		{
 			TopoDS_Shape* toolShape = (TopoDS_Shape*)toolShapePtr;
 
+			// --- 确定目标物体 (Base) ---
 			TopoDS_Shape* baseShape = nullptr;
 			Rongine::Entity targetEntity;
 
-			// 情况 A: 有父物体 (比如在草图面上拉伸) -> Base 是父物体
+			// 逻辑 A: 尝试寻找父物体 (例如：如果是在一个立方体的面上画的草图，sourceEntity 就是那个立方体)
 			if (currentCad.SourceEntity != entt::null)
 			{
 				targetEntity = { currentCad.SourceEntity, m_activeScene.get() };
@@ -1910,104 +2199,100 @@ void EditorLayer::ExitExtrudeMode(bool apply)
 				}
 			}
 
-			// 情况 B: 没有父物体 (比如直接选了立方体的一个面) -> Base 是当前物体自己
-			if (baseShape == nullptr)
-			{
-				targetEntity = m_selectedEntity;
-				baseShape = (TopoDS_Shape*)currentCad.ShapeHandle;
-			}
+			// --- 决策：执行布尔修改 还是 创建新物体 ---
+			bool performedBoolean = false;
 
-			// 只有当 Base 是实体(Solid)时，才能进行布尔融合
-			if (baseShape && (baseShape->ShapeType() == TopAbs_SOLID || baseShape->ShapeType() == TopAbs_COMPSOLID))
+			// 只有满足以下条件才执行布尔运算：
+			// 1. 找到了有效的基底实体 (targetEntity)
+			// 2. 基底形状确实是一个实体 (SOLID/COMPSOLID)，而不是面
+			// 3. 我们不是在拉伸一个独立的草图面 (除非你想把它消耗掉)
+			if (baseShape && !baseShape->IsNull() &&
+				(baseShape->ShapeType() == TopAbs_SOLID || baseShape->ShapeType() == TopAbs_COMPSOLID))
 			{
 				try
 				{
 					TopoDS_Shape resultShape;
 					bool opSuccess = false;
 
-					// 1. 坐标对齐 (如果是在子坐标系下拉伸，需要转到 Base 的空间)
-					// 如果 targetEntity == m_selectedEntity，则不需要变换
-					TopoDS_Shape localToolShape = *toolShape;
+					// 注意：OpenCASCADE 的布尔运算要求形状在同一个坐标系下。
+					// 这里假设 ExtrudeFace 已经在世界空间或与 Base 对齐的空间生成了形状。
 
-					if (targetEntity != m_selectedEntity)
-					{
-						// 计算相对变换 (World -> Local of Base)
-						auto& baseTC = targetEntity.GetComponent<Rongine::TransformComponent>();
-						glm::mat4 baseInv = glm::inverse(baseTC.GetTransform());
-
-						// 这里假设 toolShape 也是在 World 空间生成的（如果是局部生成的，这里逻辑要微调）
-						// 根据 CADFeature::ExtrudeFace 的实现，通常生成的是局部坐标系下的形状
-						// 如果 ExtrudeFace 考虑了 m_selectedEntity 的变换，那它就是 World 的。
-						// 这里最稳妥的是：统一转到 World 做布尔，再转回 Local。
-
-						// 简化方案：假设 ExtrudeFace 出来的是基于 m_selectedEntity 局部坐标的。
-						// 如果 m_selectedEntity 是 targetEntity 的子物体... 这有点复杂。
-
-						// 强制执行布尔运算
-					}
-
-					// 2. 执行运算
-					if (m_ExtrudeHeight < 0.0f) // 挖孔
+					if (m_ExtrudeHeight < 0.0f) // 挖孔 (Cut)
 					{
 						BRepAlgoAPI_Cut cut(*baseShape, *toolShape);
 						if (cut.IsDone()) { resultShape = cut.Shape(); opSuccess = true; }
 					}
-					else // 凸起 (Fuse)
+					else // 凸起/融合 (Fuse)
 					{
 						BRepAlgoAPI_Fuse fuse(*baseShape, *toolShape);
 						if (fuse.IsDone()) { resultShape = fuse.Shape(); opSuccess = true; }
 					}
 
-					// 3. 应用结果
 					if (opSuccess)
 					{
+						// 将结果应用到【目标物体】(即原来的立方体)，而不是草图
 						auto& targetCad = targetEntity.GetComponent<Rongine::CADGeometryComponent>();
-						// 替换形状
+
+						// 释放旧形状内存
 						if (targetCad.ShapeHandle) delete (TopoDS_Shape*)targetCad.ShapeHandle;
+
+						// 赋值新形状
 						targetCad.ShapeHandle = new TopoDS_Shape(resultShape);
 						targetCad.Type = Rongine::CADGeometryComponent::GeometryType::Imported;
 
 						// 重建网格
 						Rongine::CADMesher::RebuildMesh(targetEntity);
 
-						// 记录 Undo
-						auto* cmd = new Rongine::CADModifyCommand(targetEntity);
-						cmd->CaptureNewState();
-						Rongine::CommandHistory::Push(cmd);
-
-						// 标记场景更新 (重要！让光追也能看到变化)
-						m_SceneChanged = true;
-
-						RONG_CLIENT_INFO("Extrude Fuse/Cut Successful!");
+						performedBoolean = true;
+						RONG_CLIENT_INFO("Extrude Boolean Successful on Entity {0}", (uint32_t)targetEntity);
 					}
 					else
 					{
-						RONG_CLIENT_WARN("Boolean operation failed during extrude.");
+						RONG_CLIENT_WARN("Boolean operation failed. Creating separate solid instead.");
 					}
 				}
 				catch (...)
 				{
-					RONG_CLIENT_ERROR("Crash during Extrude Boolean.");
+					RONG_CLIENT_ERROR("Crash during Extrude Boolean!");
 				}
 			}
-			else
+
+			// --- 备用方案 / 标准草图拉伸 ---
+			// 如果没有进行布尔运算 (例如：把一个二维草图拉伸成三维实体)，创建一个【新物体】。
+			// [重要] 不要覆盖 m_selectedEntity (草图)，保留它以便未来修改。
+			if (!performedBoolean)
 			{
-				// 如果 Base 不是实体 (比如只是一个面)，那就只能变成独立拉伸体了 (你的旧逻辑)
-				// 这种情况下，“原来的部分不见了”是正常的，因为面被拉伸成了体。
-				if (currentCad.ShapeHandle) delete (TopoDS_Shape*)currentCad.ShapeHandle;
-				currentCad.ShapeHandle = new TopoDS_Shape(*toolShape);
-				currentCad.Type = Rongine::CADGeometryComponent::GeometryType::Imported;
-				Rongine::CADMesher::RebuildMesh(m_selectedEntity);
-				m_SceneChanged = true;
+				auto newSolidEntity = m_activeScene->createEntity("Extruded Solid");
+
+				// 复制 Transform：确保新物体和草图的位置一致
+				auto& srcTC = m_selectedEntity.GetComponent<Rongine::TransformComponent>();
+				auto& newTC = newSolidEntity.AddComponent<Rongine::TransformComponent>();
+				newTC = srcTC;
+
+				// 添加 CAD 组件
+				auto& newCad = newSolidEntity.AddComponent<Rongine::CADGeometryComponent>();
+				newCad.ShapeHandle = new TopoDS_Shape(*toolShape); // 深拷贝形状
+				newCad.Type = Rongine::CADGeometryComponent::GeometryType::Imported;
+
+				// 生成网格
+				newSolidEntity.AddComponent<Rongine::MeshComponent>();
+				Rongine::CADMesher::RebuildMesh(newSolidEntity);
+
+				// 选中新创建的物体
+				m_selectedEntity = newSolidEntity;
+				m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
+
+				RONG_CLIENT_INFO("Created new Extruded Solid from Sketch.");
 			}
 
-			delete (TopoDS_Shape*)toolShapePtr;
+			delete (TopoDS_Shape*)toolShapePtr; // 清理临时的 Tool Shape 指针
 		}
 	}
 
 	m_IsExtrudeMode = false;
 	m_ExtrudeHeight = 0.0f;
 	m_selectedFace = -1;
+	m_SceneChanged = true;
 }
 
 void EditorLayer::EnterFilletMode()

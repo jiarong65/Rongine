@@ -5,6 +5,9 @@
 #include <BRepPrimAPI_MakeSphere.hxx>
 #include <BRepPrimAPI_MakeCylinder.hxx>
 #include <BRepFilletAPI_MakeFillet.hxx>
+#include <glm/glm.hpp>
+
+#include "Rongine/Renderer/RenderTypes.h"
 
 namespace Rongine {
 
@@ -19,7 +22,10 @@ namespace Rongine {
         // 创建圆柱
         static void* MakeCylinder(float radius, float height);
 
-        // 释放 Shape 内存的辅助函数 (非常重要，防止内存泄漏)
+        //NURBS曲线
+        static void* MakeNURBSCurve(const std::vector<CADControlPoint>& points, int degree = 3, bool closed = false);
+
+        // 释放 Shape 内存的辅助函数 
         static void FreeShape(void* shapeHandle);
     };
 }
