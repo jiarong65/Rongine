@@ -39,98 +39,90 @@ namespace Rongine {
 
     void* CADModeler::MakeNURBSCurve(const std::vector<CADControlPoint>& points, int degree, bool closed)
     {
-        int numPoints = (int)points.size();
-        if (numPoints < 2) return nullptr;
+        int inputSize = (int)points.size();
+        if (inputSize < 2) return nullptr;
 
-        try {
-            // 1. 修正阶数 (OpenCASCADE 要求)
-            if (degree < 1) degree = 1;
-            if (degree > 9) degree = 9; // 限制最大阶数
+        // 限制阶数
+        if (degree > inputSize - 1) degree = inputSize - 1;
+        if (degree < 1) degree = 1;
 
-            // 对于非闭合曲线，点数必须 > 阶数
-            // 如果点太少，自动降阶
-            if (!closed && numPoints <= degree) degree = numPoints - 1;
-
-            // 2. 准备数据
-            std::vector<gp_Pnt> finalPoles;
-            std::vector<double> finalWeights;
-
-            for (size_t i = 0; i < points.size(); ++i)
+        try
+        {
+            // 1. 预计算堆叠后的点数量 (为了处理 IsSharp)
+            std::vector<CADControlPoint> finalPoints;
+            for (int i = 0; i < inputSize; ++i)
             {
-                const auto& p = points[i];
-                double w = std::max((double)p.Weight, 0.0001); // 权重防零
+                int repeat = 1;
+                // 如果是尖点（且不是首尾），则重复 Degree 次
+                if (points[i].IsSharp && i > 0 && i < inputSize - 1) {
+                    repeat = degree;
+                }
+                for (int k = 0; k < repeat; ++k) finalPoints.push_back(points[i]);
+            }
 
-                finalPoles.push_back(gp_Pnt(p.Position.x, p.Position.y, p.Position.z));
-                finalWeights.push_back(w);
+            int numPoles = (int)finalPoints.size();
 
-                // 处理尖点 (IsSharp)
-                // 仅在中间点生效，通过重复插入点来提升重数 (Multiplicity)
-                if (p.IsSharp && i > 0 && i < points.size() - 1)
-                {
-                    // 重复插入 (Degree - 1) 次，总共 Degree 次 -> 强制穿过且形成尖角
-                    for (int k = 0; k < degree - 1; ++k) {
-                        finalPoles.push_back(gp_Pnt(p.Position.x, p.Position.y, p.Position.z));
-                        finalWeights.push_back(w);
-                    }
+            // 安全检查：如果点数太少无法构建指定阶数的曲线
+            if (numPoles < 2 || degree > numPoles - 1) return nullptr;
+
+            // 2. 准备 OCC 数组：Poles (控制点) 和 Weights (权重)
+            TColgp_Array1OfPnt occPoles(1, numPoles);
+            TColStd_Array1OfReal occWeights(1, numPoles);
+
+            for (int i = 0; i < numPoles; ++i)
+            {
+                occPoles.SetValue(i + 1, gp_Pnt(finalPoints[i].Position.x, finalPoints[i].Position.y, finalPoints[i].Position.z));
+                occWeights.SetValue(i + 1, finalPoints[i].Weight);
+            }
+
+            // 3. [关键修复] 手动构建 Knots (节点) 和 Mults (多重数)
+            // 这是一个标准的 "Clamped" (两端固定) B-Spline 构造方式
+
+            // 计算唯一节点的数量
+            // 公式：KnotsLength = NumPoles - Degree + 1
+            int numKnots = numPoles - degree + 1;
+
+            TColStd_Array1OfReal occKnots(1, numKnots);
+            TColStd_Array1OfInteger occMults(1, numKnots);
+
+            // 填充 Knots 和 Mults
+            for (int i = 1; i <= numKnots; ++i)
+            {
+                // 简单的均匀参数化：节点值 0.0, 1.0, 2.0 ...
+                occKnots.SetValue(i, (double)(i - 1));
+
+                // 设置多重数
+                if (i == 1 || i == numKnots) {
+                    // 首尾节点：多重数 = Degree + 1 (Clamped)
+                    occMults.SetValue(i, degree + 1);
+                }
+                else {
+                    // 内部节点：多重数 = 1
+                    occMults.SetValue(i, 1);
                 }
             }
 
-            // 处理闭合逻辑 (Geometric Closure)
-            // 简单闭合：把前 Degree 个点复制到末尾 (这是构建 Periodic B-Spline 的一种简单模拟方式)
-            // OCCT 支持真正的 Periodic，但参数设置较繁琐，这里用“伪闭合”保证几何形状闭合
-            if (closed)
-            {
-                for (int k = 0; k < degree; ++k) {
-                    int idx = k % points.size(); // 防止越界
-                    auto& p = points[idx];
-                    finalPoles.push_back(gp_Pnt(p.Position.x, p.Position.y, p.Position.z));
-                    finalWeights.push_back(std::max((double)p.Weight, 0.0001));
-                }
-            }
-
-            int nPoles = (int)finalPoles.size();
-
-            // 3. 构建 OCCT 数组
-            TColgp_Array1OfPnt occtPoles(1, nPoles);
-            TColStd_Array1OfReal occtWeights(1, nPoles);
-
-            for (int i = 0; i < nPoles; ++i) {
-                occtPoles.SetValue(i + 1, finalPoles[i]);
-                occtWeights.SetValue(i + 1, finalWeights[i]);
-            }
-
-            // 4. 构建节点向量 (Knots) - 准均匀 (Clamped)
-            // 公式: Knots数量 = Poles数量 - Degree + 1
-            int nKnots = nPoles - degree + 1;
-            TColStd_Array1OfReal knots(1, nKnots);
-            TColStd_Array1OfInteger mults(1, nKnots);
-
-            for (int i = 1; i <= nKnots; ++i) {
-                knots.SetValue(i, (double)(i - 1));
-
-                // 首尾 Knot 重数 = Degree + 1 (Clamped)
-                if (i == 1 || i == nKnots)
-                    mults.SetValue(i, degree + 1);
-                else
-                    mults.SetValue(i, 1);
-            }
-
-            // 5. 创建几何曲线
+            // 4. 创建曲线
+            // 构造函数参数：Poles, Weights, Knots, Multiplicities, Degree, Periodic, CheckRational
             Handle(Geom_BSplineCurve) curve = new Geom_BSplineCurve(
-                occtPoles, occtWeights, knots, mults, degree,
-                Standard_False, // Periodic (我们手动处理了闭合点，所以这里填False)
-                Standard_True   // CheckRational
+                occPoles,
+                occWeights,
+                occKnots,
+                occMults,
+                degree,
+                false // Periodic (暂时不支持周期性闭合，闭合建议通过首尾点重合实现)
             );
 
-            // 6. 生成 Shape
-            BRepBuilderAPI_MakeEdge edgeMaker(curve);
-            if (!edgeMaker.IsDone()) return nullptr;
-
-            return new TopoDS_Shape(edgeMaker.Shape());
+            // 5. 生成拓扑边
+            BRepBuilderAPI_MakeEdge mkEdge(curve);
+            if (mkEdge.IsDone()) {
+                return new TopoDS_Shape(mkEdge.Shape());
+            }
         }
         catch (...) {
             return nullptr;
         }
+        return nullptr;
     }
 
     void CADModeler::FreeShape(void* shapeHandle)

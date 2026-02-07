@@ -424,76 +424,104 @@ namespace Rongine {
 					{
 						// [兼容修复] 使用旧版 Columns API (兼容所有 ImGui 版本)
 						// 5列: 序号 | 坐标 | 权重 | 尖点 | 删除
-						ImGui::Columns(5, "CP_Columns", true); // true = 显示竖线
+						ImGui::Columns(6, "CP_Columns", true);
 
-						// --- 初始化列宽 (只在第一次运行时设置) ---
 						static bool initWidths = false;
 						if (!initWidths)
 						{
-							// 手动设置每一列的偏移量 (根据你的窗口宽度微调)
-							ImGui::SetColumnOffset(1, 30.0f);  // 序号列宽 30
-							ImGui::SetColumnOffset(2, 220.0f); // 坐标列宽 ~190 (最宽)
-							ImGui::SetColumnOffset(3, 270.0f); // 权重列宽 50
-							ImGui::SetColumnOffset(4, 300.0f); // 尖点列宽 30
+							ImGui::SetColumnOffset(1, 30.0f);  // #
+							ImGui::SetColumnOffset(2, 200.0f); // Position
+							ImGui::SetColumnOffset(3, 250.0f); // Weight
+							ImGui::SetColumnOffset(4, 290.0f); // Sharp
+							ImGui::SetColumnOffset(5, 330.0f); // (+) 插入
+							// 第6列是 (X) 删除
 							initWidths = true;
 						}
 
-						// --- 表头 ---
 						ImGui::Text("#"); ImGui::NextColumn();
 						ImGui::Text("Position"); ImGui::NextColumn();
 						ImGui::Text("W"); ImGui::NextColumn();
 						ImGui::Text("S"); ImGui::NextColumn();
-						ImGui::Text("X"); ImGui::NextColumn();
+						ImGui::Text("Add"); ImGui::NextColumn(); // 新列表头
+						ImGui::Text("Del"); ImGui::NextColumn();
 						ImGui::Separator();
 
-						// --- 数据行 ---
+						// --- 数据行循环 ---
 						for (int i = 0; i < cadComp.SplinePoints.size(); ++i)
 						{
 							ImGui::PushID(i);
 
-							// 第1列: 序号
+							// 1. 序号
 							ImGui::AlignTextToFramePadding();
 							ImGui::Text("%d", i);
 							ImGui::NextColumn();
 
-							// 第2列: 坐标 (使用 PushItemWidth(-1) 填满列宽)
+							// 2. 坐标
 							ImGui::PushItemWidth(-1);
-							// "##Pos" 隐藏标签，只显示数字框
-							if (ImGui::DragFloat3("##Pos", glm::value_ptr(cadComp.SplinePoints[i].Position), 0.1f)) {
-								changed = true;
-							}
+							if (ImGui::DragFloat3("##Pos", glm::value_ptr(cadComp.SplinePoints[i].Position), 0.1f)) changed = true;
 							ImGui::PopItemWidth();
 							ImGui::NextColumn();
 
-							// 第3列: 权重
+							// 3. 权重
 							ImGui::PushItemWidth(-1);
-							if (ImGui::DragFloat("##W", &cadComp.SplinePoints[i].Weight, 0.05f, 0.001f, 100.0f, "%.1f")) {
-								changed = true;
-							}
+							if (ImGui::DragFloat("##W", &cadComp.SplinePoints[i].Weight, 0.05f, 0.001f, 100.0f, "%.1f")) changed = true;
 							ImGui::PopItemWidth();
-							if (ImGui::IsItemHovered()) ImGui::SetTooltip("Weight");
 							ImGui::NextColumn();
 
-							// 第4列: 尖点
-							if (ImGui::Checkbox("##Sharp", &cadComp.SplinePoints[i].IsSharp)) {
+							// 4. 尖点 (IsSharp)
+							// [逻辑提示] 首尾点默认通常是尖的，但在闭合曲线中首尾点也可以平滑
+							if (ImGui::Checkbox("##Sharp", &cadComp.SplinePoints[i].IsSharp)) changed = true;
+							ImGui::NextColumn();
+
+							// 5. [新增] 插入按钮 (+)
+							// 逻辑：在当前点后面插入一个新点（坐标取当前点和下一点的中点）
+							if (ImGui::Button("+", ImVec2(-1, 0)))
+							{
+								glm::vec3 newPos;
+								// 如果不是最后一个点，取中点
+								if (i < cadComp.SplinePoints.size() - 1) {
+									newPos = (cadComp.SplinePoints[i].Position + cadComp.SplinePoints[i + 1].Position) * 0.5f;
+								}
+								// 如果是最后一个点
+								else {
+									if (cadComp.SplineClosed && cadComp.SplinePoints.size() > 1) {
+										// 闭合曲线：取末点和起点的中点
+										newPos = (cadComp.SplinePoints[i].Position + cadComp.SplinePoints[0].Position) * 0.5f;
+									}
+									else {
+										// 开放曲线：简单延长
+										newPos = cadComp.SplinePoints[i].Position + glm::vec3(0.5f, 0, 0);
+									}
+								}
+
+								// 构造新点
+								CADControlPoint newPoint;
+								newPoint.Position = newPos;
+								newPoint.Weight = 1.0f;
+								newPoint.IsSharp = false; // 新插入的点默认平滑
+
+								// 插入到 vector (注意 iterator 位置是 begin + i + 1)
+								cadComp.SplinePoints.insert(cadComp.SplinePoints.begin() + i + 1, newPoint);
+
 								changed = true;
+								ImGui::PopID();
+								break; // 数据结构改变，必须跳出循环！
 							}
-							if (ImGui::IsItemHovered()) ImGui::SetTooltip("Sharp Corner");
 							ImGui::NextColumn();
 
-							// 第5列: 删除按钮
+							// 6. 删除按钮 (X)
 							if (ImGui::Button("X", ImVec2(-1, 0))) {
-								cadComp.SplinePoints.erase(cadComp.SplinePoints.begin() + i);
-								changed = true;
-								ImGui::PopID(); // 这里必须要 PopID
-								break; // 数据结构变了，必须跳出循环
+								if (cadComp.SplinePoints.size() > 2) { // 至少保留2个点
+									cadComp.SplinePoints.erase(cadComp.SplinePoints.begin() + i);
+									changed = true;
+									ImGui::PopID();
+									break;
+								}
 							}
 							ImGui::NextColumn();
 
 							ImGui::PopID();
 						}
-
-						//  结束分列模式，恢复正常布局
 						ImGui::Columns(1);
 					}
 					ImGui::EndChild();

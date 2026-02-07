@@ -106,4 +106,5 @@ namespace Rongine {
 		CADControlPoint(glm::vec3 pos, float weight = 1.0f, bool sharp = false)
 			: Position(pos), Weight(weight), IsSharp(sharp) {}
 	};
+
 }
