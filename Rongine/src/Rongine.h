@@ -25,6 +25,11 @@
 #include "Rongine/Renderer/VertexArray.h"
 #include "Rongine/Renderer/Texture.h"
 #include "Rongine/Renderer/Framebuffer.h"
+#include "Rongine/Renderer/UniformBuffer.h"
+#include "Rongine/Renderer/PipelineState.h"
+#include "Rongine/Renderer/RenderPass.h"
+#include "Rongine/Renderer/RenderGraph.h"
+#include "Rongine/Renderer/Material.h"
 
 #include "Rongine/Renderer/OrthographicCamera.h"
 #include "Rongine/Renderer/SpectralRenderer.h"

@@ -11,14 +11,28 @@ namespace Rongine {
 			None = 0, OpenGL = 1
 		};
 	public:
+		virtual ~RendererAPI() = default;
+
 		virtual void init() = 0;
 		virtual void setColor(const glm::vec4& color) = 0;
 		virtual void setViewPort(uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;
 		virtual void clear() = 0;
 
-		virtual void drawIndexed(const Ref<VertexArray>& vertexArray,uint32_t count=0 ) = 0;
-		virtual void drawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount) =0;
-		inline static API getAPI(){ return s_api; };
+		virtual void drawIndexed(const Ref<VertexArray>& vertexArray, uint32_t count = 0) = 0;
+		virtual void drawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount) = 0;
+
+		// 现代渲染命令
+		virtual void drawIndexedInstanced(const Ref<VertexArray>& vertexArray, uint32_t indexCount, uint32_t instanceCount) = 0;
+		virtual void drawArrays(const Ref<VertexArray>& vertexArray, uint32_t vertexCount) = 0;
+
+		// GPU 状态管理
+		virtual void setDepthTest(bool enabled) = 0;
+		virtual void setDepthWrite(bool enabled) = 0;
+		virtual void setBlend(bool enabled) = 0;
+		virtual void setCullFace(bool enabled, bool backFace = true) = 0;
+		virtual void setWireframe(bool enabled) = 0;
+
+		inline static API getAPI() { return s_api; };
 
 	private:
 		static API s_api;

@@ -1,9 +1,10 @@
 #include "Rongpch.h"
 #include "Renderer3D.h"
-#include "RenderCommand.h" // 确保包含 RenderCommand
+#include "RenderCommand.h"
 #include "Rongine/Scene/Entity.h" 
 #include "Rongine/Scene/Components.h"
 #include "Rongine/Renderer/BVH.h"
+#include "Rongine/Renderer/UniformBuffer.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <array>
@@ -129,7 +130,10 @@ namespace Rongine {
 		s_Data.BatchLineShader = Shader::create("assets/shaders/BatchLine.glsl");
 
 
-		//  初始化光线追踪资源
+		// 初始化 Camera UBO (binding point = 0)
+		s_Data.CameraUBO = UniformBuffer::create(sizeof(Renderer3DData::CameraData), 0);
+
+		// 初始化光线追踪资源
 		// 使用新的 Spec 创建高精度纹理
 		TextureSpecification spec;
 		spec.Width = 1280;
@@ -172,18 +176,16 @@ namespace Rongine {
 	{
 		s_Data.TextureShader->bind();
 
-		// 1. 设置 ViewProjection (纯相机矩阵)
+		// 通过 UBO 上传相机数据 (所有 shader 共享, binding = 0)
 		s_Data.ViewProjection = camera.getViewProjectionMatrix();
+		s_Data.CameraUBOData.ViewProjection = s_Data.ViewProjection;
+		s_Data.CameraUBOData.ViewPos = camera.getPosition();
+		s_Data.CameraUBO->setData(&s_Data.CameraUBOData, sizeof(Renderer3DData::CameraData));
+
+		// 保持兼容：继续用 uniform 设置 (逐步迁移到 UBO 后可移除)
 		s_Data.TextureShader->setMat4("u_ViewProjection", s_Data.ViewProjection);
-
-		// 2. 设置 ViewPos (用于高光)
 		s_Data.TextureShader->setFloat3("u_ViewPos", camera.getPosition());
-
-		// 3. 重置 u_Model 为单位矩阵
-		// 确保接下来的 Batch 渲染 (drawCube) 不会继承上次的物体变换
 		s_Data.TextureShader->setMat4("u_Model", glm::mat4(1.0f));
-
-		//清空上一轮鼠标拾取缓存
 		s_Data.TextureShader->setInt("u_EntityID", -1);
 
 		s_Data.CubeIndexCount = 0;
@@ -232,7 +234,7 @@ namespace Rongine {
 		s_Data.BatchLineShader->bind();
 		s_Data.BatchLineShader->setMat4("u_ViewProjection", camera.getViewProjectionMatrix());
 
-		glDisable(GL_DEPTH_TEST);
+		RenderCommand::setDepthTest(false);
 
 		s_Data.BatchLineVertexCount = 0;
 		s_Data.BatchLineVertexBufferPtr = s_Data.BatchLineVertexBufferBase;
@@ -251,7 +253,7 @@ namespace Rongine {
 			s_Data.Stats.DrawCalls++;
 		}
 
-		glEnable(GL_DEPTH_TEST);
+		RenderCommand::setDepthTest(true);
 	}
 
 	void Renderer3D::drawLine(const glm::vec3& p0, const glm::vec3& p1, const glm::vec4& color)

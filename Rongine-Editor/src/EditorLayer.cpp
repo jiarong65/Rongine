@@ -3,7 +3,8 @@
 #include "Platform/OpenGL/OpenGLShader.h"
 #include "Rongine/Core/Input.h"
 #include "Rongine/Core/KeyCodes.h"
-#include "Rongine/Renderer/Renderer3D.h" // 必须包含这个
+#include "Rongine/Renderer/Renderer3D.h"
+#include "Rongine/Renderer/RenderGraph.h"
 #include "Rongine/Commands/DeleteCommand.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <chrono>
@@ -447,221 +448,28 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
-	//光追渲染
+	// 光追渲染
 	if (m_ShowRayTracing)
 	{
 		if (m_SceneChanged)
 		{
 			Rongine::Renderer3D::UploadSceneDataToGPU(m_activeScene.get());
 			Rongine::Renderer3D::BuildAccelerationStructures(m_activeScene.get());
-			m_SceneChanged = false; // 重置标志位
+			m_SceneChanged = false;
 		}
 
-		Rongine::Renderer3D::RenderComputeFrame(m_cameraContorller.getCamera(), 
+		Rongine::Renderer3D::RenderComputeFrame(m_cameraContorller.getCamera(),
 			(float)Rongine::Application::get().getTime(),
 			reset);
-		uint32_t id = Rongine::Renderer3D::GetComputeOutputTexture()->getRendererID();
-		RONG_CLIENT_INFO("RayTrace Texture ID: {0}", id);
-		// cpu光追测试，渲染一帧
-		//m_SpectralRenderer->Render(*m_activeScene, m_cameraContorller.getCamera());
 		goto endRender;
 	}
 	////////////////////////////////////////////////////////////////////////////////////////////
-	//  开始光栅渲染
+	// 通过 RenderGraph 执行光栅渲染
 	Rongine::Renderer3D::resetStatistics();
 	{
 		PROFILE_SCOPE("Renderer 3D");
-		m_framebuffer->bind();
-		Rongine::RenderCommand::setColor({ 0.1f, 0.1f, 0.1f, 1 });
-		Rongine::RenderCommand::clear();
-
-		m_framebuffer->clearAttachment(1, -1);
-
-		//////////////////////////////////////////////////////////////////////////////////////////////////////////
-		//批处理渲染
-		Rongine::Renderer3D::beginScene(m_cameraContorller.getCamera());
-		Rongine::Renderer3D::drawCube({ 0.0f, -1.0f, 0.0f }, { 100.0f, 0.1f, 100.0f }, m_checkerboardTexture);
-		Rongine::Renderer3D::endScene();
-
-		//////////////////////////////////////////////////////////////////////////////////////////////////////////
-		//实例化渲染
-		//传入选中的实体和面id
-		int selectedEntityID = (int)(uint32_t)m_selectedEntity; // 这里的转换取决于你的 Entity 实现
-		if (!m_selectedEntity) selectedEntityID = -2;
-
-		Rongine::Renderer3D::setSelection(selectedEntityID, m_selectedFace);
-		Rongine::Renderer3D::setHover(m_HoveredEntityID, m_HoveredFaceID, m_HoveredEdgeID);
-
-		auto view = m_activeScene->getAllEntitiesWith<Rongine::TransformComponent, Rongine::MeshComponent>();
-
-		for (auto entityHandle : view)
-		{
-			auto [transform, mesh] = view.get<Rongine::TransformComponent, Rongine::MeshComponent>(entityHandle);
-			const Rongine::MaterialComponent* mat = m_activeScene->getRegistry().try_get<Rongine::MaterialComponent>(entityHandle);
-			if (mesh.VA)
-			{
-				if (m_selectedEntity == entityHandle && mesh.EdgeVA)
-				{
-					glEnable(GL_POLYGON_OFFSET_FILL);
-					// 设置偏移量：防止Z-fighting
-					glPolygonOffset(0.5f, 0.5f);
-					Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle, mat);
-					glDisable(GL_POLYGON_OFFSET_FILL);
-
-					// 绘制选中物体的边缘
-					Rongine::Renderer3D::drawEdges(mesh.EdgeVA, transform.GetTransform(), { 0.0f, 0.0f, 0.0f, 1.0f }, (int)entityHandle, m_selectedEdge);
-					continue;
-				}
-
-				// 普通绘制 (未选中)
-				Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle, mat);
-			}
-			else if (mesh.EdgeVA)
-			{
-				glm::vec4 edgeColor = (m_selectedEntity == entityHandle) ?
-					glm::vec4(1.0f, 0.5f, 0.0f, 1.0f) :  // 选中：橙色
-					glm::vec4(0.2f, 0.8f, 1.0f, 1.0f);   // 默认：青蓝色 (图1风格)
-
-				Rongine::Renderer3D::drawEdges(mesh.EdgeVA, transform.GetTransform(), edgeColor, (int)entityHandle, m_selectedEdge);
-			}
-		}
-		////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		//线框渲染
-		Rongine::Renderer3D::beginLines(m_cameraContorller.getCamera());
-		auto sketchView = m_activeScene->getAllEntitiesWith<Rongine::SketchComponent>();
-		for (auto entity : sketchView)
-		{
-			auto& sc = sketchView.get<Rongine::SketchComponent>(entity);
-			for (const auto& line : sc.Lines)
-			{
-				Rongine::Renderer3D::drawLine(line.P0, line.P1, line.Color);
-			}
-		}
-		if (m_IsSketchMode && m_SketchPlaneEntity)
-		{
-			auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
-			Rongine::Renderer3D::drawGrid(sc.SketchMatrix, 10.0f, 25);
-
-			//草图交互绘制
-			if (m_IsDrawing && m_CurrentTool != SketchToolType::None)
-			{
-				switch (m_CurrentTool) {
-				case SketchToolType::Line:{
-					Rongine::Renderer3D::drawLine(m_DrawStartPoint, m_SketchCursorPos, { 1.0f, 1.0f, 0.0f, 1.0f });
-					break;
-				}
-				case SketchToolType::Rectangle: {
-					auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
-					glm::vec3 right = glm::vec3(sc.SketchMatrix[0]);
-					glm::vec3 up = glm::vec3(sc.SketchMatrix[1]);
-
-					glm::vec3 v = m_SketchCursorPos - m_DrawStartPoint;
-					float w = glm::dot(v, right);
-					float h = glm::dot(v, up);
-
-					glm::vec3 p0 = m_DrawStartPoint;
-					glm::vec3 p1 = m_DrawStartPoint + right * w;
-					glm::vec3 p2 = m_SketchCursorPos;
-					glm::vec3 p3 = m_DrawStartPoint + up * h;
-
-					glm::vec4 color = { 1.0f, 1.0f, 0.0f, 1.0f }; 
-
-					Rongine::Renderer3D::drawLine(p0, p1, color);
-					Rongine::Renderer3D::drawLine(p1, p2, color);
-					Rongine::Renderer3D::drawLine(p2, p3, color);
-					Rongine::Renderer3D::drawLine(p3, p0, color);
-
-					break;
-				}
-				case SketchToolType::Circle: {
-					auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
-					glm::vec3 right = glm::vec3(sc.SketchMatrix[0]); // 面的 X 轴
-					glm::vec3 up = glm::vec3(sc.SketchMatrix[1]); // 面的 Y 轴
-
-					float radius = glm::distance(m_DrawStartPoint, m_SketchCursorPos);
-
-					glm::vec4 color = { 1.0f, 1.0f, 0.0f, 1.0f }; // 黄色
-
-					// 离散化画圆 (64段)
-					int segments = 64;
-					float step = 3.628318f / (float)segments; // 2*PI
-
-					// 预计算第一个点
-					glm::vec3 prevPoint = m_DrawStartPoint + right * radius;
-
-					for (int i = 1; i <= segments; i++)
-					{
-						float angle = (float)i * 2.0f * glm::pi<float>() / (float)segments;
-
-						// 参数方程: P = Center + Right * R * cos(a) + Up * R * sin(a)
-						glm::vec3 currPoint = m_DrawStartPoint
-							+ right * (radius * std::cos(angle))
-							+ up * (radius * std::sin(angle));
-
-						Rongine::Renderer3D::drawLine(prevPoint, currPoint, color);
-						prevPoint = currPoint;
-					}
-
-					Rongine::Renderer3D::drawLine(m_DrawStartPoint, m_SketchCursorPos, { 1,1,1,0.5f });
-					break;
-				}
-				case SketchToolType::Spline: {
-					if (m_SplinePoints.empty()) break;
-
-					// --- 颜色定义 ---
-					glm::vec4 curveColor = { 0.2f, 0.8f, 1.0f, 1.0f };      // 曲线：青蓝色
-					glm::vec4 polygonColor = { 0.5f, 0.5f, 0.5f, 0.6f };    // 控制多边形：半透明灰色
-					glm::vec4 pointColor = { 0.2f, 0.8f, 1.0f, 1.0f };      // 控制点：青蓝色
-					glm::vec4 activePointColor = { 1.0f, 0.8f, 0.0f, 1.0f };// 选中/悬停点：黄色
-
-					// --- 1. 绘制控制多边形 (Control Polygon) ---
-					// 连接所有控制点的折线，这对于理解曲线走势非常重要
-					for (size_t i = 0; i < m_SplinePoints.size() - 1; ++i)
-					{
-						Rongine::Renderer3D::drawLine(m_SplinePoints[i].Position, m_SplinePoints[i + 1].Position, polygonColor);
-					}
-
-					// 如果正在绘制中，画一条从最后一个点到鼠标的虚线
-					if (m_IsDrawing && m_IsCursorOnPlane)
-					{
-						Rongine::Renderer3D::drawLine(m_SplinePoints.back().Position, m_SketchCursorPos, polygonColor);
-					}
-					// 如果是闭合曲线，连接首尾
-					else if (!m_IsDrawing && m_SplinePoints.size() > 2) // 假设你有闭合标志位，这里简单判断
-					{
-						// 如果组件里有 Closed 属性，用那个判断更好
-						// Rongine::Renderer3D::drawLine(m_SplinePoints.back().Position, m_SplinePoints.front().Position, polygonColor);
-					}
-
-					break;
-				}
-				default:break;
-				}
-				
-			}
-
-			//草图光标
-			if (m_IsCursorOnPlane)
-			{
-				// 获取草图平面的局部坐标轴
-				// Matrix[0] = Right (X), Matrix[1] = Up (Y), Matrix[2] = Normal (Z)
-				glm::vec3 planeRight = glm::vec3(sc.SketchMatrix[0]);
-				glm::vec3 planeUp = glm::vec3(sc.SketchMatrix[1]);
-
-				glm::vec3 camPos = m_cameraContorller.getCamera().getPosition();
-				float dist = glm::distance(camPos, m_SketchCursorPos);
-				float s = dist* 0.01f; // 光标大小
-				glm::vec3 p = m_SketchCursorPos;
-
-				glm::vec4 cursorColor = m_IsSnapped ? glm::vec4(1, 0, 0, 1) : glm::vec4(0, 1, 0, 1);
-
-				Rongine::Renderer3D::drawLine(p - planeRight * s, p + planeRight * s, cursorColor);
-				Rongine::Renderer3D::drawLine(p - planeUp * s, p + planeUp * s, cursorColor);
-			}
-		}
-		Rongine::Renderer3D::endLines(); 
-		////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		m_framebuffer->unbind();
+		buildRenderGraph();
+		m_renderGraph.execute();
 	}
 
 	//////////////////////////////////////////////////////////////////////////////
@@ -2506,4 +2314,187 @@ void EditorLayer::ExitSketchMode()
 	m_SceneChanged = true;
 
 	RONG_CLIENT_INFO("Exited Sketch Mode.");
+}
+
+// ============================================================
+//  RenderGraph 构建 — 将命令式渲染流程声明为 Pass
+// ============================================================
+void EditorLayer::buildRenderGraph()
+{
+	m_renderGraph.clear();
+
+	// ==========================================
+	//  Pass 1: Geometry Pass (主场景渲染)
+	// ==========================================
+	{
+		Rongine::RenderPassSpec spec;
+		spec.Name = "GeometryPass";
+		spec.TargetFramebuffer = m_framebuffer;
+		spec.ClearColor = { 0.1f, 0.1f, 0.1f, 1.0f };
+		spec.ClearColorBuffer = true;
+		spec.ClearDepthBuffer = true;
+		spec.ClearAttachmentIndex = 1;
+		spec.ClearAttachmentValue = -1;
+
+		m_renderGraph.addPass(spec, [this](Rongine::RenderPass& pass) {
+			// 批处理渲染 (地面)
+			Rongine::Renderer3D::beginScene(m_cameraContorller.getCamera());
+			Rongine::Renderer3D::drawCube({ 0.0f, -1.0f, 0.0f }, { 100.0f, 0.1f, 100.0f }, m_checkerboardTexture);
+			Rongine::Renderer3D::endScene();
+
+			// 设置选中/悬停状态
+			int selectedEntityID = (int)(uint32_t)m_selectedEntity;
+			if (!m_selectedEntity) selectedEntityID = -2;
+			Rongine::Renderer3D::setSelection(selectedEntityID, m_selectedFace);
+			Rongine::Renderer3D::setHover(m_HoveredEntityID, m_HoveredFaceID, m_HoveredEdgeID);
+
+			// 遍历并绘制所有 Mesh 实体
+			auto view = m_activeScene->getAllEntitiesWith<Rongine::TransformComponent, Rongine::MeshComponent>();
+
+			for (auto entityHandle : view)
+			{
+				auto [transform, mesh] = view.get<Rongine::TransformComponent, Rongine::MeshComponent>(entityHandle);
+				const Rongine::MaterialComponent* mat = m_activeScene->getRegistry().try_get<Rongine::MaterialComponent>(entityHandle);
+
+				if (mesh.VA)
+				{
+					if (m_selectedEntity == entityHandle && mesh.EdgeVA)
+					{
+						Rongine::RenderCommand::setDepthTest(true);
+						// 通过 RenderCommand 设置 polygon offset 防止 Z-fighting
+						// (暂保留直接 GL 调用，后续可移入 PipelineState)
+						glEnable(GL_POLYGON_OFFSET_FILL);
+						glPolygonOffset(0.5f, 0.5f);
+						Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle, mat);
+						glDisable(GL_POLYGON_OFFSET_FILL);
+
+						Rongine::Renderer3D::drawEdges(mesh.EdgeVA, transform.GetTransform(), { 0.0f, 0.0f, 0.0f, 1.0f }, (int)entityHandle, m_selectedEdge);
+						continue;
+					}
+
+					Rongine::Renderer3D::drawModel(mesh.VA, transform.GetTransform(), (int)entityHandle, mat);
+				}
+				else if (mesh.EdgeVA)
+				{
+					glm::vec4 edgeColor = (m_selectedEntity == entityHandle) ?
+						glm::vec4(1.0f, 0.5f, 0.0f, 1.0f) :
+						glm::vec4(0.2f, 0.8f, 1.0f, 1.0f);
+
+					Rongine::Renderer3D::drawEdges(mesh.EdgeVA, transform.GetTransform(), edgeColor, (int)entityHandle, m_selectedEdge);
+				}
+			}
+		});
+	}
+
+	// ==========================================
+	//  Pass 2: Wireframe / Overlay Pass (线框、网格、草图)
+	// ==========================================
+	{
+		Rongine::RenderPassSpec spec;
+		spec.Name = "WireframePass";
+		spec.TargetFramebuffer = m_framebuffer;
+		spec.ClearColorBuffer = false;
+		spec.ClearDepthBuffer = false;
+
+		m_renderGraph.addPass(spec, [this](Rongine::RenderPass& pass) {
+			Rongine::Renderer3D::beginLines(m_cameraContorller.getCamera());
+
+			// 绘制草图线段
+			auto sketchView = m_activeScene->getAllEntitiesWith<Rongine::SketchComponent>();
+			for (auto entity : sketchView)
+			{
+				auto& sc = sketchView.get<Rongine::SketchComponent>(entity);
+				for (const auto& line : sc.Lines)
+				{
+					Rongine::Renderer3D::drawLine(line.P0, line.P1, line.Color);
+				}
+			}
+
+			// 草图模式下的辅助渲染
+			if (m_IsSketchMode && m_SketchPlaneEntity)
+			{
+				auto& sc = m_SketchPlaneEntity.GetComponent<Rongine::SketchComponent>();
+				Rongine::Renderer3D::drawGrid(sc.SketchMatrix, 10.0f, 25);
+
+				if (m_IsDrawing && m_CurrentTool != SketchToolType::None)
+				{
+					switch (m_CurrentTool)
+					{
+					case SketchToolType::Line:
+						Rongine::Renderer3D::drawLine(m_DrawStartPoint, m_SketchCursorPos, { 1.0f, 1.0f, 0.0f, 1.0f });
+						break;
+
+					case SketchToolType::Rectangle: {
+						glm::vec3 right = glm::vec3(sc.SketchMatrix[0]);
+						glm::vec3 up = glm::vec3(sc.SketchMatrix[1]);
+						glm::vec3 v = m_SketchCursorPos - m_DrawStartPoint;
+						float w = glm::dot(v, right);
+						float h = glm::dot(v, up);
+
+						glm::vec3 p0 = m_DrawStartPoint;
+						glm::vec3 p1 = m_DrawStartPoint + right * w;
+						glm::vec3 p2 = m_SketchCursorPos;
+						glm::vec3 p3 = m_DrawStartPoint + up * h;
+						glm::vec4 color = { 1.0f, 1.0f, 0.0f, 1.0f };
+
+						Rongine::Renderer3D::drawLine(p0, p1, color);
+						Rongine::Renderer3D::drawLine(p1, p2, color);
+						Rongine::Renderer3D::drawLine(p2, p3, color);
+						Rongine::Renderer3D::drawLine(p3, p0, color);
+						break;
+					}
+					case SketchToolType::Circle: {
+						glm::vec3 right = glm::vec3(sc.SketchMatrix[0]);
+						glm::vec3 up = glm::vec3(sc.SketchMatrix[1]);
+						float radius = glm::distance(m_DrawStartPoint, m_SketchCursorPos);
+						glm::vec4 color = { 1.0f, 1.0f, 0.0f, 1.0f };
+
+						int segments = 64;
+						glm::vec3 prevPoint = m_DrawStartPoint + right * radius;
+						for (int i = 1; i <= segments; i++)
+						{
+							float angle = (float)i * 2.0f * glm::pi<float>() / (float)segments;
+							glm::vec3 currPoint = m_DrawStartPoint
+								+ right * (radius * std::cos(angle))
+								+ up * (radius * std::sin(angle));
+							Rongine::Renderer3D::drawLine(prevPoint, currPoint, color);
+							prevPoint = currPoint;
+						}
+						Rongine::Renderer3D::drawLine(m_DrawStartPoint, m_SketchCursorPos, { 1, 1, 1, 0.5f });
+						break;
+					}
+					case SketchToolType::Spline: {
+						if (m_SplinePoints.empty()) break;
+
+						glm::vec4 polygonColor = { 0.5f, 0.5f, 0.5f, 0.6f };
+						for (size_t i = 0; i < m_SplinePoints.size() - 1; ++i)
+							Rongine::Renderer3D::drawLine(m_SplinePoints[i].Position, m_SplinePoints[i + 1].Position, polygonColor);
+
+						if (m_IsDrawing && m_IsCursorOnPlane)
+							Rongine::Renderer3D::drawLine(m_SplinePoints.back().Position, m_SketchCursorPos, polygonColor);
+						break;
+					}
+					default: break;
+					}
+				}
+
+				// 草图光标
+				if (m_IsCursorOnPlane)
+				{
+					glm::vec3 planeRight = glm::vec3(sc.SketchMatrix[0]);
+					glm::vec3 planeUp = glm::vec3(sc.SketchMatrix[1]);
+					glm::vec3 camPos = m_cameraContorller.getCamera().getPosition();
+					float dist = glm::distance(camPos, m_SketchCursorPos);
+					float s = dist * 0.01f;
+					glm::vec3 p = m_SketchCursorPos;
+					glm::vec4 cursorColor = m_IsSnapped ? glm::vec4(1, 0, 0, 1) : glm::vec4(0, 1, 0, 1);
+
+					Rongine::Renderer3D::drawLine(p - planeRight * s, p + planeRight * s, cursorColor);
+					Rongine::Renderer3D::drawLine(p - planeUp * s, p + planeUp * s, cursorColor);
+				}
+			}
+
+			Rongine::Renderer3D::endLines();
+		});
+	}
 }

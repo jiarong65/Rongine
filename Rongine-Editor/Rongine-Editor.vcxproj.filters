@@ -52,7 +52,19 @@
     <None Include="assets\Scenes\j01.rong">
       <Filter>assets\Scenes</Filter>
     </None>
+    <None Include="assets\cache\11.brep">
+      <Filter>assets\cache</Filter>
+    </None>
     <None Include="assets\cache\3.brep">
+      <Filter>assets\cache</Filter>
+    </None>
+    <None Include="assets\cache\4.brep">
+      <Filter>assets\cache</Filter>
+    </None>
+    <None Include="assets\cache\5.brep">
+      <Filter>assets\cache</Filter>
+    </None>
+    <None Include="assets\cache\6.brep">
       <Filter>assets\cache</Filter>
     </None>
     <None Include="assets\models\j01.rong">
@@ -76,11 +88,15 @@
     <None Include="assets\shaders\Line.glsl">
       <Filter>assets\shaders</Filter>
     </None>
+    <None Include="assets\shaders\Raytrace.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="assets\shaders\SpectralRaytrace.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
     <None Include="assets\shaders\Texture.glsl">
       <Filter>assets\shaders</Filter>
     </None>
-    <None Include="assets\shaders\Raytrace.glsl" />
-    <None Include="assets\shaders\SpectralRaytrace.glsl" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\models\mypage.jpg">

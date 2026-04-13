@@ -6,6 +6,7 @@
 #include "Rongine/Renderer/VertexArray.h"
 #include "Rongine/Renderer/Shader.h"
 #include "Rongine/Renderer/RenderCommand.h"
+#include "Rongine/Renderer/UniformBuffer.h"
 #include "Rongine/Scene/Scene.h"
 #include "RenderTypes.h"
 #include "Rongine/Renderer/ShaderStorageBuffer.h"
@@ -135,6 +136,16 @@ namespace Rongine {
 		Renderer3D::Statistics Stats;
 
 		glm::mat4 ViewProjection;
+
+		// Camera UBO (binding = 0)
+		struct CameraData
+		{
+			glm::mat4 ViewProjection;
+			glm::vec3 ViewPos;
+			float _pad0;
+		};
+		CameraData CameraUBOData;
+		Ref<UniformBuffer> CameraUBO;
 
 		// SSBO
 		Ref<ShaderStorageBuffer> VerticesSSBO;

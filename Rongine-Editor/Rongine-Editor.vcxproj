@@ -74,6 +74,9 @@
     <TargetName>Rongine-Editor</TargetName>
     <TargetExt>.exe</TargetExt>
   </PropertyGroup>
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnabled>false</VcpkgEnabled>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -169,7 +172,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\Scenes\j01.rong" />
+    <None Include="assets\cache\11.brep" />
     <None Include="assets\cache\3.brep" />
+    <None Include="assets\cache\4.brep" />
+    <None Include="assets\cache\5.brep" />
+    <None Include="assets\cache\6.brep" />
     <None Include="assets\models\j01.rong" />
     <None Include="assets\models\mypage.stp" />
     <None Include="assets\models\t0001.step" />

@@ -128,8 +128,8 @@ project "Rongine"
 	{
 		"GLFW",
 		"Glad",
-		"opengl32.lib",
 		"ImGui",
+		"opengl32.lib",
 		"yaml-cpp"
 	}
 
@@ -192,6 +192,7 @@ project "Sandbox"
 		"%{includeDir.glm}",
 		"Rongine/vendor",
 		"%{includeDir.Glad}",
+		"%{includeDir.entt}",
 		"%{includeDir.OCCT}" -- 以防 Sandbox 也需要用到几何类型
 	}
 

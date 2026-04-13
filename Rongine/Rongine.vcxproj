@@ -71,6 +71,9 @@
     <TargetName>Rongine</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnabled>false</VcpkgEnabled>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -146,22 +149,16 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\Rongine\Renderer\BVH.h" />
-    <ClInclude Include="src\Rongine\Renderer\AccelerationStructures.h" />
-    <ClInclude Include="src\Rongine\ImGui\ContentBrowserPanel.h" />
-    <ClInclude Include="src\Rongine\Scene\SpectralAssetManager.h" />
-    <ClInclude Include="src\Platform\OpenGL\OpenGLShaderStorageBuffer.h" />
-    <ClInclude Include="src\Rongine\Renderer\ShaderStorageBuffer.h" />
-    <ClInclude Include="src\Platform\OpenGL\OpenGLComputeShader.h" />
-    <ClInclude Include="src\Rongine\Renderer\RenderTypes.h" />
-    <ClInclude Include="src\Rongine\Renderer\SpectralRenderer.h" />
-    <ClInclude Include="src\Rongine\Math\Math.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLBuffer.h" />
+    <ClInclude Include="src\Platform\OpenGL\OpenGLComputeShader.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLContext.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLFramebuffer.h" />
+    <ClInclude Include="src\Platform\OpenGL\OpenGLPipelineState.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLRendererAPI.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLShader.h" />
+    <ClInclude Include="src\Platform\OpenGL\OpenGLShaderStorageBuffer.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLTexture.h" />
+    <ClInclude Include="src\Platform\OpenGL\OpenGLUniformBuffer.h" />
     <ClInclude Include="src\Platform\OpenGL\OpenGLVertexArray.h" />
     <ClInclude Include="src\Platform\Windows\WindowsWindow.h" />
     <ClInclude Include="src\Rongine.h" />
@@ -189,28 +186,41 @@
     <ClInclude Include="src\Rongine\Events\Event.h" />
     <ClInclude Include="src\Rongine\Events\KeyEvent.h" />
     <ClInclude Include="src\Rongine\Events\MouseEvent.h" />
+    <ClInclude Include="src\Rongine\ImGui\ContentBrowserPanel.h" />
     <ClInclude Include="src\Rongine\ImGui\ImGuiLayer.h" />
     <ClInclude Include="src\Rongine\ImGui\SceneHierarchyPanel.h" />
+    <ClInclude Include="src\Rongine\Math\Math.h" />
+    <ClInclude Include="src\Rongine\Renderer\AccelerationStructures.h" />
+    <ClInclude Include="src\Rongine\Renderer\BVH.h" />
     <ClInclude Include="src\Rongine\Renderer\Buffer.h" />
+    <ClInclude Include="src\Rongine\Renderer\ComputeShader.h" />
     <ClInclude Include="src\Rongine\Renderer\Framebuffer.h" />
     <ClInclude Include="src\Rongine\Renderer\GraphicsContext.h" />
+    <ClInclude Include="src\Rongine\Renderer\Material.h" />
     <ClInclude Include="src\Rongine\Renderer\OrthographicCamera.h" />
     <ClInclude Include="src\Rongine\Renderer\OrthographicCameraController.h" />
     <ClInclude Include="src\Rongine\Renderer\PerspectiveCamera.h" />
     <ClInclude Include="src\Rongine\Renderer\PerspectiveCameraController.h" />
+    <ClInclude Include="src\Rongine\Renderer\PipelineState.h" />
     <ClInclude Include="src\Rongine\Renderer\RenderCommand.h" />
+    <ClInclude Include="src\Rongine\Renderer\RenderGraph.h" />
+    <ClInclude Include="src\Rongine\Renderer\RenderPass.h" />
+    <ClInclude Include="src\Rongine\Renderer\RenderTypes.h" />
     <ClInclude Include="src\Rongine\Renderer\Renderer.h" />
     <ClInclude Include="src\Rongine\Renderer\Renderer2D.h" />
     <ClInclude Include="src\Rongine\Renderer\Renderer3D.h" />
     <ClInclude Include="src\Rongine\Renderer\RendererAPI.h" />
     <ClInclude Include="src\Rongine\Renderer\Shader.h" />
+    <ClInclude Include="src\Rongine\Renderer\ShaderStorageBuffer.h" />
+    <ClInclude Include="src\Rongine\Renderer\SpectralRenderer.h" />
     <ClInclude Include="src\Rongine\Renderer\Texture.h" />
+    <ClInclude Include="src\Rongine\Renderer\UniformBuffer.h" />
     <ClInclude Include="src\Rongine\Renderer\VertexArray.h" />
-    <ClInclude Include="src\Rongine\Renderer\ComputeShader.h" />
     <ClInclude Include="src\Rongine\Scene\Components.h" />
     <ClInclude Include="src\Rongine\Scene\Entity.h" />
     <ClInclude Include="src\Rongine\Scene\Scene.h" />
     <ClInclude Include="src\Rongine\Scene\SceneSerializer.h" />
+    <ClInclude Include="src\Rongine\Scene\SpectralAssetManager.h" />
     <ClInclude Include="src\Rongine\Utils\GeometryUtils.h" />
     <ClInclude Include="src\Rongine\Utils\PlatformUtils.h" />
     <ClInclude Include="src\Rongpch.h" />
@@ -637,21 +647,16 @@
     <ClInclude Include="vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Rongine\Renderer\BVH.cpp" />
-    <ClCompile Include="src\Rongine\ImGui\ContentBrowserPanel.cpp" />
-    <ClCompile Include="src\Rongine\Scene\SpectralAssetManager.cpp" />
-    <ClCompile Include="src\Platform\OpenGL\OpenGLShaderStorageBuffer.cpp" />
-    <ClCompile Include="src\Rongine\Renderer\ShaderStorageBuffer.cpp" />
-    <ClCompile Include="src\Platform\OpenGL\OpenGLComputeShader.cpp" />
-    <ClCompile Include="src\Rongine\Renderer\ComputeShader.cpp" />
-    <ClCompile Include="src\Rongine\Renderer\SpectralRenderer.cpp" />
-    <ClCompile Include="src\Rongine\Math\Math.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp" />
+    <ClCompile Include="src\Platform\OpenGL\OpenGLComputeShader.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLContext.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLFramebuffer.cpp" />
+    <ClCompile Include="src\Platform\OpenGL\OpenGLPipelineState.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLRendererAPI.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLShader.cpp" />
+    <ClCompile Include="src\Platform\OpenGL\OpenGLShaderStorageBuffer.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLTexture.cpp" />
+    <ClCompile Include="src\Platform\OpenGL\OpenGLUniformBuffer.cpp" />
     <ClCompile Include="src\Platform\OpenGL\OpenGLVertexArray.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsInput.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp" />
@@ -669,25 +674,37 @@
     <ClCompile Include="src\Rongine\Core\LayerStack.cpp" />
     <ClCompile Include="src\Rongine\Core\Log.cpp" />
     <ClCompile Include="src\Rongine\Core\Window.cpp" />
+    <ClCompile Include="src\Rongine\ImGui\ContentBrowserPanel.cpp" />
     <ClCompile Include="src\Rongine\ImGui\ImGuiBuild.cpp" />
     <ClCompile Include="src\Rongine\ImGui\ImGuiLayer.cpp" />
     <ClCompile Include="src\Rongine\ImGui\SceneHierarchyPanel.cpp" />
+    <ClCompile Include="src\Rongine\Math\Math.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\BVH.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Buffer.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\ComputeShader.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Framebuffer.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\Material.cpp" />
     <ClCompile Include="src\Rongine\Renderer\OrthographicCamera.cpp" />
     <ClCompile Include="src\Rongine\Renderer\OrthographicCameraController.cpp" />
     <ClCompile Include="src\Rongine\Renderer\PerspectiveCamera.cpp" />
     <ClCompile Include="src\Rongine\Renderer\PerspectiveCameraController.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\PipelineState.cpp" />
     <ClCompile Include="src\Rongine\Renderer\RenderCommand.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\RenderGraph.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\RenderPass.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Renderer.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Renderer2D.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Renderer3D.cpp" />
     <ClCompile Include="src\Rongine\Renderer\RendererAPI.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Shader.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\ShaderStorageBuffer.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\SpectralRenderer.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Texture.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\UniformBuffer.cpp" />
     <ClCompile Include="src\Rongine\Renderer\VertexArray.cpp" />
     <ClCompile Include="src\Rongine\Scene\Scene.cpp" />
     <ClCompile Include="src\Rongine\Scene\SceneSerializer.cpp" />
+    <ClCompile Include="src\Rongine\Scene\SpectralAssetManager.cpp" />
     <ClCompile Include="src\Rongine\Utils\GeometryUtils.cpp" />
     <ClCompile Include="src\Rongine\Utils\PlatformUtils.cpp" />
     <ClCompile Include="src\Rongpch.cpp">
@@ -705,11 +722,11 @@
     <ProjectReference Include="vendor\Glad\Glad.vcxproj">
       <Project>{BDD6857C-A90D-870D-52FA-6C103E10030F}</Project>
     </ProjectReference>
-    <ProjectReference Include="vendor\imgui\ImGui.vcxproj">
-      <Project>{C0FF640D-2C14-8DBE-F595-301E616989EF}</Project>
-    </ProjectReference>
     <ProjectReference Include="vendor\yaml-cpp\yaml-cpp.vcxproj">
       <Project>{88F1A057-74BE-FB62-9DD7-E90A890331F1}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\imgui\ImGui.vcxproj">
+      <Project>{C0FF640D-2C14-8DBE-F595-301E616989EF}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

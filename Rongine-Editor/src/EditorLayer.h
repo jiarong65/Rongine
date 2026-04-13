@@ -6,6 +6,7 @@
 #include "Rongine/Renderer/OrthographicCameraController.h"
 #include "Rongine/Renderer/PerspectiveCameraController.h"
 #include "Rongine/Renderer/Renderer.h"
+#include "Rongine/Renderer/RenderGraph.h"
 #include "Rongine/Core/Timestep.h"
 #include "Rongine/Scene/Scene.h"
 #include "Rongine/Scene/Entity.h"
@@ -139,5 +140,9 @@ private:
 
 	//材质面板
 	Rongine::ContentBrowserPanel m_contentBrowserPanel;
+
+	// --- 现代渲染管线 ---
+	Rongine::RenderGraph m_renderGraph;
+	void buildRenderGraph();
 };
 
