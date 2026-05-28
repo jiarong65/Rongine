@@ -37,6 +37,9 @@
     <Filter Include="src\Rongine\Renderer">
       <UniqueIdentifier>{348C6AAF-201B-F478-C939-0874B5A7041F}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Rongine\Renderer\Threading">
+      <UniqueIdentifier>{79937E71-65B9-48D8-4EFF-CDA33AC46DA4}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Rongine\Scene">
       <UniqueIdentifier>{6BD00396-D7E6-012C-205E-8D4D8CB3D2B3}</UniqueIdentifier>
     </Filter>
@@ -266,6 +269,12 @@
     </ClInclude>
     <ClInclude Include="src\Rongine\Renderer\Texture.h">
       <Filter>src\Rongine\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\Renderer\Threading\FrameSync.h">
+      <Filter>src\Rongine\Renderer\Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rongine\Renderer\Threading\RenderThread.h">
+      <Filter>src\Rongine\Renderer\Threading</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongine\Renderer\UniformBuffer.h">
       <Filter>src\Rongine\Renderer</Filter>
@@ -1720,6 +1729,12 @@
     </ClCompile>
     <ClCompile Include="src\Rongine\Renderer\Texture.cpp">
       <Filter>src\Rongine\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Renderer\Threading\FrameSync.cpp">
+      <Filter>src\Rongine\Renderer\Threading</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Renderer\Threading\RenderThread.cpp">
+      <Filter>src\Rongine\Renderer\Threading</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongine\Renderer\UniformBuffer.cpp">
       <Filter>src\Rongine\Renderer</Filter>

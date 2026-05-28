@@ -6,6 +6,11 @@
 #include "Input.h"
 #include "Rongine/Renderer/Renderer.h"
 #include "Rongine/Scene/SpectralAssetManager.h"
+#include "Rongine/Renderer/Threading/RenderThread.h"
+
+#include <GLFW/glfw3.h>
+#include <chrono>
+#include <thread>
 
 namespace Rongine {
 	Application* Application::s_instance = nullptr;
@@ -62,6 +67,50 @@ namespace Rongine {
 		WindowResizeEvent e(1280,720);
 		RONG_CLIENT_TRACE( e.toString());
 
+		// // Phase 1 smoke test: one magenta frame on the render thread
+		// GLFWwindow* win = static_cast<GLFWwindow*>(m_window->getNativeWindow());
+
+		// // The context was created/current on the main thread. GLFW requires it
+		// // to be detached before another thread can make it current.
+		// glfwMakeContextCurrent(nullptr);
+
+		// RenderThread::start(win);
+		// RenderThread::submit([win]() {
+		// 	int width = 0;
+		// 	int height = 0;
+		// 	glfwGetFramebufferSize(win, &width, &height);
+		// 	glViewport(0, 0, width, height);
+		// 	glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+		// 	glClear(GL_COLOR_BUFFER_BIT);
+		// 	glfwSwapBuffers(win);
+		// });
+		// RenderThread::sync();
+
+		// // Keep the frame visible while the main thread continues pumping events.
+		// const double smokeTestEndTime = glfwGetTime() + 0.8;
+		// while (glfwGetTime() < smokeTestEndTime)
+		// {
+		// 	glfwPollEvents();
+		// 	std::this_thread::sleep_for(std::chrono::milliseconds(16));
+		// }
+
+		// RenderThread::shutdown();
+		// glfwMakeContextCurrent(win);
+
+		// RONG_CORE_INFO("Render-thread smoke test done (magenta frame). GL context is back on the main thread.");
+
+		glfwMakeContextCurrent(nullptr);
+
+		GLFWwindow* win=std::static_cast<GLFWwindow*>(m_window->getNativeWindow());
+		RenderThread::start(win);
+
+		RenderThread::submit([win](){
+			Renderer::init();
+			SpectralAssetManager::init();
+		});
+
+		RenderThread::sync();
+
 		while (m_running) {
 			float time = (float)glfwGetTime();
 			Timestep ts = time - m_lastFrameTime;
@@ -79,6 +128,8 @@ namespace Rongine {
 
 			m_window->onUpdate();
 		}
+
+		RenderThread::shutdown();
 	}
 
 	void Application::close()

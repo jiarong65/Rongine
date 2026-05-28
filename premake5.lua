@@ -83,6 +83,9 @@ project "Rongine"
 	{
 		"%{prj.name}/src/**.h",
 		"%{prj.name}/src/**.cpp",
+		-- 多线程渲染（显式列出，避免未重新 generate 时漏编 Threading 下新文件）
+		"%{prj.name}/src/Rongine/Renderer/Threading/**.h",
+		"%{prj.name}/src/Rongine/Renderer/Threading/**.cpp",
 		"%{prj.name}/vendor/glm/glm/**.hpp",
 		"%{prj.name}/vendor/glm/glm/**.inl",
 		"%{prj.name}/vendor/stb_image/**.h",
@@ -111,6 +114,7 @@ project "Rongine"
 		"%{prj.name}/src/Rongine/Cammands",
 		"%{prj.name}/src/Rongine/ImGui",
 		"%{prj.name}/src/Rongine/Renderer",
+		"%{prj.name}/src/Rongine/Renderer/Threading",
 		"%{prj.name}/src/Rongine/Scene",
 		"%{prj.name}/src/Rongine/Utils",
 		"%{includeDir.GLFW}",

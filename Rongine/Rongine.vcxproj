@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -73,6 +73,7 @@
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnabled>false</VcpkgEnabled>
+    <VcpkgManifestEnabled>false</VcpkgManifestEnabled>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -80,7 +81,7 @@
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;YAML_CPP_STATIC_DEFINE;RONG_PLATFORM_WINDOWS;RONG_BUILD_DLL;GLFW_INCLUDE_NONE;RONG_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;src\Rongine\CAD;src\Rongine\Cammands;src\Rongine\ImGui;src\Rongine\Renderer;src\Rongine\Scene;src\Rongine\Utils;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;vendor\ImGuizmo;vendor\yaml-cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;src\Rongine\CAD;src\Rongine\Cammands;src\Rongine\ImGui;src\Rongine\Renderer;src\Rongine\Renderer\Threading;src\Rongine\Scene;src\Rongine\Utils;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;vendor\ImGuizmo;vendor\yaml-cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -102,7 +103,7 @@
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;YAML_CPP_STATIC_DEFINE;RONG_PLATFORM_WINDOWS;RONG_BUILD_DLL;GLFW_INCLUDE_NONE;RONG_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;src\Rongine\CAD;src\Rongine\Cammands;src\Rongine\ImGui;src\Rongine\Renderer;src\Rongine\Scene;src\Rongine\Utils;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;vendor\ImGuizmo;vendor\yaml-cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;src\Rongine\CAD;src\Rongine\Cammands;src\Rongine\ImGui;src\Rongine\Renderer;src\Rongine\Renderer\Threading;src\Rongine\Scene;src\Rongine\Utils;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;vendor\ImGuizmo;vendor\yaml-cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -128,7 +129,7 @@
       <PrecompiledHeaderFile>Rongpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;YAML_CPP_STATIC_DEFINE;RONG_PLATFORM_WINDOWS;RONG_BUILD_DLL;GLFW_INCLUDE_NONE;RONG_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;src\Rongine\CAD;src\Rongine\Cammands;src\Rongine\ImGui;src\Rongine\Renderer;src\Rongine\Scene;src\Rongine\Utils;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;vendor\ImGuizmo;vendor\yaml-cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;src\Rongine\Events;src\Rongine\Core;src\Rongine\CAD;src\Rongine\Cammands;src\Rongine\ImGui;src\Rongine\Renderer;src\Rongine\Renderer\Threading;src\Rongine\Scene;src\Rongine\Utils;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\stb_image;vendor\entt\include;vendor\OCCT\inc;vendor\ImGuizmo;vendor\yaml-cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -214,6 +215,8 @@
     <ClInclude Include="src\Rongine\Renderer\ShaderStorageBuffer.h" />
     <ClInclude Include="src\Rongine\Renderer\SpectralRenderer.h" />
     <ClInclude Include="src\Rongine\Renderer\Texture.h" />
+    <ClInclude Include="src\Rongine\Renderer\Threading\FrameSync.h" />
+    <ClInclude Include="src\Rongine\Renderer\Threading\RenderThread.h" />
     <ClInclude Include="src\Rongine\Renderer\UniformBuffer.h" />
     <ClInclude Include="src\Rongine\Renderer\VertexArray.h" />
     <ClInclude Include="src\Rongine\Scene\Components.h" />
@@ -700,6 +703,8 @@
     <ClCompile Include="src\Rongine\Renderer\ShaderStorageBuffer.cpp" />
     <ClCompile Include="src\Rongine\Renderer\SpectralRenderer.cpp" />
     <ClCompile Include="src\Rongine\Renderer\Texture.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\Threading\FrameSync.cpp" />
+    <ClCompile Include="src\Rongine\Renderer\Threading\RenderThread.cpp" />
     <ClCompile Include="src\Rongine\Renderer\UniformBuffer.cpp" />
     <ClCompile Include="src\Rongine\Renderer\VertexArray.cpp" />
     <ClCompile Include="src\Rongine\Scene\Scene.cpp" />
@@ -722,11 +727,11 @@
     <ProjectReference Include="vendor\Glad\Glad.vcxproj">
       <Project>{BDD6857C-A90D-870D-52FA-6C103E10030F}</Project>
     </ProjectReference>
-    <ProjectReference Include="vendor\yaml-cpp\yaml-cpp.vcxproj">
-      <Project>{88F1A057-74BE-FB62-9DD7-E90A890331F1}</Project>
-    </ProjectReference>
     <ProjectReference Include="vendor\imgui\ImGui.vcxproj">
       <Project>{C0FF640D-2C14-8DBE-F595-301E616989EF}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\yaml-cpp\yaml-cpp.vcxproj">
+      <Project>{88F1A057-74BE-FB62-9DD7-E90A890331F1}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
