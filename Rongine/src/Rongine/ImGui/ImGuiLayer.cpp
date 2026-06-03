@@ -70,10 +70,21 @@ namespace Rongine {
 		}
 	}
 
+	void ImGuiLayer::updateRendererFrame()
+	{
+		RONG_CORE_ASSERT(m_openGLBackendInitialized, "OpenGL ImGui backend not initialized");
+		ImGui_ImplOpenGL3_NewFrame();
+	}
+
+	void ImGuiLayer::updatePlatformInput()
+	{
+		RONG_CORE_ASSERT(m_openGLBackendInitialized, "OpenGL ImGui backend not initialized");
+		// Win32：glfwGet* / 光标须在创建窗口的线程（主线程）调用
+		ImGui_ImplGlfw_NewFrame();
+	}
+
 	void ImGuiLayer::begin()
 	{
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 	}
 
@@ -104,7 +115,9 @@ namespace Rongine {
 	void ImGuiLayer::initOpenGLBackent()
 	{
 		ImGui_ImplOpenGL3_Init("#version 410");
-		m_openGLBackendInitialized=true;
+		m_openGLBackendInitialized = true;
+		// 在渲染线程上构建 Font Atlas（ImGui_ImplGlfw_NewFrame 依赖 IsBuilt）
+		ImGui_ImplOpenGL3_NewFrame();
 	}
 
 	void ImGuiLayer::shutdownOpenGLBackend()

@@ -77,6 +77,10 @@ void RenderThread::sync()
     while (!done->load(std::memory_order_acquire))
     {
         cv->wait_for(lock, std::chrono::milliseconds(1));
+
+        if (s_window)
+            glfwPollEvents();
+
 #ifdef _WIN32
         MSG msg;
         while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))

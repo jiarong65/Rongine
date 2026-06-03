@@ -16,11 +16,17 @@ namespace Rongine {
 
 		virtual void onEvent(Event& e) override;
 
+		// 渲染线程：OpenGL3 NewFrame（构建/更新 Font Atlas）
+		void updateRendererFrame();
+		// 主线程：pollEvents 之后调用（GLFW 输入/显示尺寸，须在 updateRendererFrame 之后）
+		void updatePlatformInput();
+
 		void begin();
 		void end();
 
 		void initOpenGLBackent();
 		void shutdownOpenGLBackend();
+		bool isOpenGLBackendReady() const { return m_openGLBackendInitialized; }
 
 		void blockEvents(bool block) { m_blockEvents = block; }
 		bool getBlockEvents() const { return m_blockEvents; }

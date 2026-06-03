@@ -162,7 +162,9 @@ namespace Rongine {
 
     void WindowsWindow::Shutdown()
     {
+        glfwMakeContextCurrent(nullptr);
         glfwDestroyWindow(m_window);
+        m_window = nullptr;
         --s_GLFWWindowCount;
 
         if (s_GLFWWindowCount == 0)

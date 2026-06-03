@@ -92,6 +92,13 @@ void EditorLayer::onAttach()
 
 void EditorLayer::onDetach()
 {
+	// 须在渲染线程、且 GL context 仍有效时释放（避免 ~LayerStack 在主线程 glDelete 崩溃）
+	m_framebuffer.reset();
+	m_checkerboardTexture.reset();
+	m_logoTexture.reset();
+	m_SpectralRenderer.reset();
+	m_shader.reset();
+	m_vertexArray.reset();
 	Rongine::Renderer3D::shutdown();
 }
 
@@ -453,7 +460,7 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
-	// 光追渲染（全部 GL 在渲染线程）
+	// 光追渲染
 	////////////////////////////////////////////////////////////////////////////////////////////
 	if (m_ShowRayTracing)
 	{
