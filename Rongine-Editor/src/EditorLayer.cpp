@@ -99,15 +99,20 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 {
 	PROFILE_SCOPE("EditorLayer::OnUpdate");
 
-	// 自动调整 Framebuffer 和相机大小
-	if (m_viewportSize.x > 0.0f && m_viewportSize.y > 0.0f &&
-		(m_framebuffer->getSpecification().width != m_viewportSize.x || m_framebuffer->getSpecification().height != m_viewportSize.y))
+	// 视口尺寸变化：相机逻辑在主线程；FBO/纹理等 GL 资源在渲染线程 resize
+	const bool viewportResized = m_viewportSize.x > 0.0f && m_viewportSize.y > 0.0f &&
+		(m_framebuffer->getSpecification().width != m_viewportSize.x || m_framebuffer->getSpecification().height != m_viewportSize.y);
+	const uint32_t viewportWidthPx = (uint32_t)m_viewportSize.x;
+	const uint32_t viewportHeightPx = (uint32_t)m_viewportSize.y;
+	if (viewportResized)
 	{
-		m_framebuffer->resize((uint32_t)m_viewportSize.x, (uint32_t)m_viewportSize.y);
 		m_cameraContorller.onResize(m_viewportSize.x, m_viewportSize.y);
-		m_SpectralRenderer->OnResize((uint32_t)m_viewportSize.x, (uint32_t)m_viewportSize.y);
-
-		Rongine::Renderer3D::ResizeComputeOutput((uint32_t)m_viewportSize.x, (uint32_t)m_viewportSize.y);
+		Rongine::RenderThread::submit([this, viewportWidthPx, viewportHeightPx]() {
+			m_framebuffer->resize(viewportWidthPx, viewportHeightPx);
+			m_SpectralRenderer->OnResize(viewportWidthPx, viewportHeightPx);
+			Rongine::Renderer3D::ResizeComputeOutput(viewportWidthPx, viewportHeightPx);
+		});
+		Rongine::RenderThread::sync();
 	}
 
 	if (m_viewportFocused)
@@ -448,210 +453,182 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
-	// 光追渲染
+	// 光追渲染（全部 GL 在渲染线程）
+	////////////////////////////////////////////////////////////////////////////////////////////
 	if (m_ShowRayTracing)
 	{
-		if (m_SceneChanged)
-		{
-			Rongine::Renderer3D::UploadSceneDataToGPU(m_activeScene.get());
-			Rongine::Renderer3D::BuildAccelerationStructures(m_activeScene.get());
+		Rongine::Scene* scene = m_activeScene.get();
+		const bool rebuild = m_SceneChanged;
+		if (rebuild)
 			m_SceneChanged = false;
-		}
 
-		Rongine::Renderer3D::RenderComputeFrame(m_cameraContorller.getCamera(),
-			(float)Rongine::Application::get().getTime(),
-			reset);
+		const bool resetAccum = reset;
+		const auto camera = m_cameraContorller.getCamera();
+		const float time = static_cast<float>(Rongine::Application::get().getTime());
+
+		Rongine::RenderThread::submit([scene, rebuild, resetAccum, camera, time]() {
+			if (rebuild)
+			{
+				Rongine::Renderer3D::UploadSceneDataToGPU(scene);
+				Rongine::Renderer3D::BuildAccelerationStructures(scene);
+			}
+			Rongine::Renderer3D::RenderComputeFrame(camera, time, resetAccum);
+		});
 		goto endRender;
 	}
+
 	////////////////////////////////////////////////////////////////////////////////////////////
-	// 通过 RenderGraph 执行光栅渲染
-	Rongine::Renderer3D::resetStatistics();
+	// 光栅渲染 + 拾取（主线程准备，渲染线程 draw + readPixelID）
+	////////////////////////////////////////////////////////////////////////////////////////////
+	buildRenderGraph();
+
+	auto [mx, my] = ImGui::GetMousePos();
+	mx -= m_viewportBounds[0].x;
+	my -= m_viewportBounds[0].y;
+	const glm::vec2 viewportSize = m_viewportBounds[1] - m_viewportBounds[0];
+	const int mouseX = (int)mx;
+	const int mouseY = (int)(viewportSize.y - my);
+
+	m_HoveredEntityID = -1;
+	m_HoveredFaceID = -1;
+	m_HoveredEdgeID = -1;
+	m_HoveredControlPoint = -1;
+
+	const bool inViewport = !ImGuizmo::IsUsing() &&
+		mouseX >= 0 && mouseY >= 0 &&
+		mouseX < (int)viewportSize.x && mouseY < (int)viewportSize.y;
+
+	if (inViewport && m_selectedEntity && m_selectedEntity.HasComponent<Rongine::CADGeometryComponent>())
 	{
-		PROFILE_SCOPE("Renderer 3D");
-		buildRenderGraph();
-		m_renderGraph.execute();
-	}
-
-	//////////////////////////////////////////////////////////////////////////////
-	//  鼠标拾取逻辑 (使用 m_viewportBounds)
-	//////////////////////////////////////////////////////////////////////////////
-	{
-		// 1. 获取鼠标在视口内的坐标
-		auto [mx, my] = ImGui::GetMousePos();
-		mx -= m_viewportBounds[0].x;
-		my -= m_viewportBounds[0].y;
-		glm::vec2 viewportSize = m_viewportBounds[1] - m_viewportBounds[0];
-		int mouseX = (int)mx;
-		int mouseY = (int)(viewportSize.y - my);
-
-		// 默认重置悬停状态 (假设没有悬停在任何东西上)
-		m_HoveredEntityID = -1;
-		m_HoveredFaceID = -1;
-		m_HoveredEdgeID = -1;
-		m_HoveredControlPoint = -1;
-
-		// ==============================================================================
-		// Phase 1: 实时悬停探测 (Every Frame)
-		// 只要鼠标在视口内，且没有在使用 Gizmo，就开始探测
-		// ==============================================================================
-		if ( !ImGuizmo::IsUsing() &&
-			mouseX >= 0 && mouseY >= 0 && mouseX < (int)viewportSize.x && mouseY < (int)viewportSize.y)
+		auto& cad = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
+		if (cad.Type == Rongine::CADGeometryComponent::GeometryType::Spline && !cad.SplinePoints.empty())
 		{
-			m_framebuffer->bind();
+			float bestDist = 15.0f;
+			const auto viewProj = m_cameraContorller.getCamera().getViewProjectionMatrix();
 
-			// 定义搜索半径 (悬停时也可以搜一点范围，提升手感)
-			// 如果觉得卡顿，可以把这里的 radius 改为 0 或 1
-			int radius = 2;
-
-			int bestEntityID = -1;
-			int bestFaceID = -1;
-			int bestEdgeID = -1;
-			float minDistanceSq = 10000.0f;
-
-			// -------------------------------------------------------------------------
-			//  A. 优先检测：NURBS 控制点 (数学投影检测)
-			// -------------------------------------------------------------------------
-			if (m_selectedEntity && m_selectedEntity.HasComponent<Rongine::CADGeometryComponent>())
+			for (int i = 0; i < (int)cad.SplinePoints.size(); ++i)
 			{
-				auto& cad = m_selectedEntity.GetComponent<Rongine::CADGeometryComponent>();
-				if (cad.Type == Rongine::CADGeometryComponent::GeometryType::Spline && !cad.SplinePoints.empty())
+				glm::vec4 clipPos = viewProj * glm::vec4(cad.SplinePoints[i].Position, 1.0f);
+				if (clipPos.w > 0.0f)
 				{
-					float bestDist = 15.0f; // 拾取阈值 (像素单位，调大更容易点中)
-					auto viewProj = m_cameraContorller.getCamera().getViewProjectionMatrix();
+					glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w;
+					float screenX = (ndc.x + 1.0f) * 0.5f * viewportSize.x;
+					float screenY = (1.0f - ndc.y) * 0.5f * viewportSize.y;
+					float dist = std::sqrt(std::pow(screenX - mx, 2) + std::pow(screenY - my, 2));
 
-					for (int i = 0; i < cad.SplinePoints.size(); ++i)
+					if (dist < bestDist)
 					{
-						// 将 3D 控制点投影到 2D 屏幕坐标
-						glm::vec4 clipPos = viewProj * glm::vec4(cad.SplinePoints[i].Position, 1.0f);
-
-						// 只检测相机前方的点
-						if (clipPos.w > 0.0f)
-						{
-							glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w; // NDC 空间 [-1, 1]
-
-							// 转换到视口像素坐标 (注意 ImGui Y轴向下，NDC Y轴向上)
-							float screenX = (ndc.x + 1.0f) * 0.5f * viewportSize.x;
-							float screenY = (1.0f - ndc.y) * 0.5f * viewportSize.y;
-
-							// 计算鼠标距离
-							float dist = std::sqrt(std::pow(screenX - mx, 2) + std::pow(screenY - my, 2));
-
-							if (dist < bestDist)
-							{
-								bestDist = dist;
-								m_HoveredControlPoint = i; // [记录] 悬停了哪个点
-							}
-						}
+						bestDist = dist;
+						m_HoveredControlPoint = i;
 					}
 				}
 			}
+		}
+	}
 
-			// -------------------------------------------------------------------------
-			//  B. 次级检测：FBO 像素拾取 (实体/面/线)
-			// 只有当没有悬停在控制点上时，才去读像素，防止点和线打架
-			// -------------------------------------------------------------------------
-			if (m_HoveredControlPoint == -1)
+	const int hoveredControlPoint = m_HoveredControlPoint;
+	const bool doFboPick = inViewport && (hoveredControlPoint == -1);
+
+	Rongine::RenderThread::submit([this, mouseX, mouseY, viewportSize, doFboPick]() {
+		Rongine::Renderer3D::resetStatistics();
+		m_renderGraph.execute();
+
+		if (!doFboPick)
+			return;
+
+		int bestEntityID = -1;
+		int bestFaceID = -1;
+		int bestEdgeID = -1;
+		float minDistanceSq = 10000.0f;
+		const int radius = 2;
+
+		m_framebuffer->bind();
+
+		for (int dy = -radius; dy <= radius; ++dy)
+		{
+			for (int dx = -radius; dx <= radius; ++dx)
 			{
-				m_framebuffer->bind();
+				int x = mouseX + dx;
+				int y = mouseY + dy;
 
-				int radius = 2;
-				float minDistanceSq = 10000.0f;
+				if (x < 0 || y < 0 || x >= (int)viewportSize.x || y >= (int)viewportSize.y)
+					continue;
 
-				for (int dy = -radius; dy <= radius; dy++)
+				glm::ivec4 ids = m_framebuffer->readPixelID(1, x, y);
+				int eID = ids.r;
+				int fID = ids.g;
+				int lID = ids.b;
+
+				if (eID > -1)
 				{
-					for (int dx = -radius; dx <= radius; dx++)
+					float distSq = (float)(dx * dx + dy * dy);
+					bool isEdge = (lID > -1);
+					float effectiveDist = distSq;
+					if (isEdge)
+						effectiveDist -= 1000.0f;
+
+					if (effectiveDist < minDistanceSq)
 					{
-						int x = mouseX + dx;
-						int y = mouseY + dy;
-
-						if (x < 0 || y < 0 || x >= (int)viewportSize.x || y >= (int)viewportSize.y)
-							continue;
-
-						glm::ivec4 ids = m_framebuffer->readPixelID(1, x, y);
-						int eID = ids.r;
-						int fID = ids.g;
-						int lID = ids.b; // EdgeID
-
-						if (eID > -1)
-						{
-							float distSq = (float)(dx * dx + dy * dy);
-							bool isEdge = (lID > -1);
-							float effectiveDist = distSq;
-							if (isEdge) effectiveDist -= 1000.0f;
-
-							if (effectiveDist < minDistanceSq)
-							{
-								minDistanceSq = effectiveDist;
-								bestEntityID = eID;
-								bestFaceID = fID;
-								bestEdgeID = lID;
-							}
-						}
+						minDistanceSq = effectiveDist;
+						bestEntityID = eID;
+						bestFaceID = fID;
+						bestEdgeID = lID;
 					}
-				}
-				m_framebuffer->unbind();
-
-				// 更新 FBO 悬停结果
-				if (bestEntityID > -1)
-				{
-					m_HoveredEntityID = bestEntityID;
-					m_HoveredFaceID = bestFaceID;
-					m_HoveredEdgeID = bestEdgeID;
-
-					if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-						RONG_CLIENT_INFO("eid {0},fid {1},edid{2}", bestEntityID, bestFaceID, bestEdgeID);
 				}
 			}
 		}
 
-		// ==============================================================================
-		// Phase 2: 点击确认选择 (On Click)
-		// 如果此时用户点击了左键，直接把刚才探测到的 Hover 结果应用为 Selected
-		// ==============================================================================
-		if (!m_IsExtrudeMode && m_viewportHovered && !ImGuizmo::IsUsing() && !ImGuizmo::IsOver() &&
-			ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		m_framebuffer->unbind();
+
+		if (bestEntityID > -1)
 		{
-			// 优先级 1: 选中了控制点 (最优先)
-			if (m_HoveredControlPoint != -1)
-			{
-				m_SelectedControlPointIndex = m_HoveredControlPoint;
-				RONG_CLIENT_INFO("Picked Control Point: {0}", m_SelectedControlPointIndex);
-				// 保持 m_selectedEntity 不变
-			}
-			// 优先级 2: 选中了物体 (但没中点)
-			else if (m_HoveredEntityID > -1)
-			{
-				m_selectedEntity = Rongine::Entity((entt::entity)m_HoveredEntityID, m_activeScene.get());
-				m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
+			m_HoveredEntityID = bestEntityID;
+			m_HoveredFaceID = bestFaceID;
+			m_HoveredEdgeID = bestEdgeID;
+		}
+	});
 
-				// 既然点的是物体本身，说明用户想操作物体，取消点的选中
-				m_SelectedControlPointIndex = -1;
+	Rongine::RenderThread::sync();
 
-				// 边面选择逻辑
-				if (m_HoveredEdgeID > -1) {
-					m_selectedEdge = m_HoveredEdgeID; m_selectedFace = -1;
-				}
-				else if (m_HoveredFaceID > -1) {
-					m_selectedFace = m_HoveredFaceID; m_selectedEdge = -1;
-				}
-				else {
-					m_selectedFace = -1; m_selectedEdge = -1;
-				}
+	if (!m_IsExtrudeMode && m_viewportHovered && !ImGuizmo::IsUsing() && !ImGuizmo::IsOver() &&
+		ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	{
+		if (m_HoveredControlPoint != -1)
+		{
+			m_SelectedControlPointIndex = m_HoveredControlPoint;
+			RONG_CLIENT_INFO("Picked Control Point: {0}", m_SelectedControlPointIndex);
+		}
+		else if (m_HoveredEntityID > -1)
+		{
+			m_selectedEntity = Rongine::Entity((entt::entity)m_HoveredEntityID, m_activeScene.get());
+			m_sceneHierarchyPanel.setSelectedEntity(m_selectedEntity);
+			m_SelectedControlPointIndex = -1;
+
+			if (m_HoveredEdgeID > -1) {
+				m_selectedEdge = m_HoveredEdgeID;
+				m_selectedFace = -1;
 			}
-			// 优先级 3: 点了虚空 -> 全部取消
-			else
-			{
-				m_selectedEntity = {};
-				m_SelectedControlPointIndex = -1; // [关键] 必须重置
+			else if (m_HoveredFaceID > -1) {
+				m_selectedFace = m_HoveredFaceID;
+				m_selectedEdge = -1;
+			}
+			else {
 				m_selectedFace = -1;
 				m_selectedEdge = -1;
-				m_sceneHierarchyPanel.setSelectedEntity({});
 			}
-
-			// 同步 UI
-			m_sceneHierarchyPanel.setSelectedEdge(m_selectedEdge);
 		}
+		else
+		{
+			m_selectedEntity = {};
+			m_SelectedControlPointIndex = -1;
+			m_selectedFace = -1;
+			m_selectedEdge = -1;
+			m_sceneHierarchyPanel.setSelectedEntity({});
+		}
+
+		m_sceneHierarchyPanel.setSelectedEdge(m_selectedEdge);
 	}
+
 endRender:;
 }
 

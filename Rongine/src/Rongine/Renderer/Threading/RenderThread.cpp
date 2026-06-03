@@ -8,6 +8,10 @@
 #include <mutex>
 #include <queue>
 #include <thread>
+#include <chrono>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 namespace Rongine{
 
@@ -70,12 +74,24 @@ void RenderThread::sync()
     });
 
     std::unique_lock lock(*mtx);
-    cv->wait(lock,[&]{return done->load(std::memory_order_acquire);});
+    while (!done->load(std::memory_order_acquire))
+    {
+        cv->wait_for(lock, std::chrono::milliseconds(1));
+#ifdef _WIN32
+        MSG msg;
+        while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
+        {
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+#endif
+    }
 }
 
 bool RenderThread::isRenderThread()
 {
-    return std::this_thread::get_id()==s_renderThreadId;
+    return s_started.load(std::memory_order_acquire)
+        && std::this_thread::get_id()==s_renderThreadId;
 }
 
 void RenderThread::threadMain(GLFWwindow* window)

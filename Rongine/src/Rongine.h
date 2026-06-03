@@ -35,6 +35,9 @@
 #include "Rongine/Renderer/SpectralRenderer.h"
 #include "Rongine/Renderer/AccelerationStructures.h"
 
+#include "Rongine/Renderer/Threading/RenderThread.h"
+#include "Rongine/Renderer/Threading/FrameSync.h"
+
 #include "Rongine/ImGui/ImGuiLayer.h"
 #include "Rongine/ImGui/SceneHierarchyPanel.h"
 #include "Rongine/ImGui/ContentBrowserPanel.h"

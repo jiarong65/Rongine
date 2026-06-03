@@ -15,6 +15,9 @@ namespace Rongine {
 		void popLayer(Layer* layer);
 		void popOverLayer(Layer* layer);
 
+		void setDeferAttach(bool defer) { m_deferAttach=defer;}
+		void attachAll();
+
 
 		std::vector<Layer*>::iterator begin() { return m_layers.begin(); }
 		std::vector<Layer*>::iterator end() { return m_layers.end(); }
@@ -29,6 +32,7 @@ namespace Rongine {
 	private:
 		std::vector<Layer* > m_layers;
 		unsigned int m_layerInsertIndex = 0;
+		bool m_deferAttach=false;
 	};
 
 }

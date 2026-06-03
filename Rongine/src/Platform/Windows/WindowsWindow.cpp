@@ -173,8 +173,8 @@ namespace Rongine {
 
     void WindowsWindow::onUpdate()
     {
-        glfwPollEvents();
-        m_context->swapBuffers(); 
+        pollEvents();
+        swapBuffers();
     }
 
     void WindowsWindow::setVSync(bool enabled)
@@ -186,6 +186,16 @@ namespace Rongine {
     bool WindowsWindow::isVSync() const
     {
         return m_Data.VSync;
+    }
+
+    void WindowsWindow::pollEvents()
+    {
+        glfwPollEvents();
+    }
+
+    void WindowsWindow::swapBuffers() 
+    {
+        m_context->swapBuffers();
     }
 
 } // namespace Rongine

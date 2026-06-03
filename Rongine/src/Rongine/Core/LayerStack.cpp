@@ -7,7 +7,7 @@ namespace Rongine {
 	{
 		for (Layer* layer : m_layers)
 		{
-			layer->onDetach();
+			layer->detachIfNeeded();
 			delete layer;
 		}
 	}
@@ -16,13 +16,15 @@ namespace Rongine {
 	{
 		m_layers.emplace(m_layers.begin()+m_layerInsertIndex, layer);
 		m_layerInsertIndex++;
-		layer->onAttach();
+		if(!m_deferAttach)
+			layer->attachIfNeeded();
 	}
 
 	void LayerStack::pushOverLayer(Layer* layer)
 	{
 		m_layers.emplace_back(layer);
-		layer->onAttach();
+		if(!m_deferAttach)
+			layer->attachIfNeeded();
 	}
 
 	void LayerStack::popLayer(Layer* layer)
@@ -30,7 +32,7 @@ namespace Rongine {
 		auto it = std::find(m_layers.begin(), m_layers.end(), layer);
 		if (it != m_layers.end())
 		{
-			(*it)->onDetach();
+			(*it)->detachIfNeeded();
 			m_layers.erase(it);
 			m_layerInsertIndex--;
 		}
@@ -41,11 +43,16 @@ namespace Rongine {
 		auto it = std::find(m_layers.begin(), m_layers.end(), layer);
 		if (it != m_layers.end())
 		{
-			(*it)->onDetach();
+			(*it)->detachIfNeeded();
 			m_layers.erase(it);
 		}
 	}
 
+	void LayerStack::attachAll()
+	{
+		for(Layer* layer : m_layers)
+			layer->attachIfNeeded();
+	}
 
 }
 

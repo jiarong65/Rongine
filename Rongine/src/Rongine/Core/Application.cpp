@@ -5,6 +5,7 @@
 #include "Platform/Windows/WindowsWindow.h"
 #include "Input.h"
 #include "Rongine/Renderer/Renderer.h"
+#include "Rongine/Renderer/Renderer3D.h"
 #include "Rongine/Scene/SpectralAssetManager.h"
 #include "Rongine/Renderer/Threading/RenderThread.h"
 
@@ -23,10 +24,11 @@ namespace Rongine {
 		m_window->setEventCallBack(RONG_BIND_EVENT_FN(onEvent));
 		m_window->setVSync(true);
 
-		Renderer::init();
-		SpectralAssetManager::init();
+		//Renderer::init();
+		//SpectralAssetManager::init();
 
 		m_imguiLayer = new ImGuiLayer();
+		m_layerStack.setDeferAttach(true);
 	}
 
 	Application::~Application() {
@@ -67,69 +69,57 @@ namespace Rongine {
 		WindowResizeEvent e(1280,720);
 		RONG_CLIENT_TRACE( e.toString());
 
-		// // Phase 1 smoke test: one magenta frame on the render thread
-		// GLFWwindow* win = static_cast<GLFWwindow*>(m_window->getNativeWindow());
-
-		// // The context was created/current on the main thread. GLFW requires it
-		// // to be detached before another thread can make it current.
-		// glfwMakeContextCurrent(nullptr);
-
-		// RenderThread::start(win);
-		// RenderThread::submit([win]() {
-		// 	int width = 0;
-		// 	int height = 0;
-		// 	glfwGetFramebufferSize(win, &width, &height);
-		// 	glViewport(0, 0, width, height);
-		// 	glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-		// 	glClear(GL_COLOR_BUFFER_BIT);
-		// 	glfwSwapBuffers(win);
-		// });
-		// RenderThread::sync();
-
-		// // Keep the frame visible while the main thread continues pumping events.
-		// const double smokeTestEndTime = glfwGetTime() + 0.8;
-		// while (glfwGetTime() < smokeTestEndTime)
-		// {
-		// 	glfwPollEvents();
-		// 	std::this_thread::sleep_for(std::chrono::milliseconds(16));
-		// }
-
-		// RenderThread::shutdown();
-		// glfwMakeContextCurrent(win);
-
-		// RONG_CORE_INFO("Render-thread smoke test done (magenta frame). GL context is back on the main thread.");
-
 		glfwMakeContextCurrent(nullptr);
 
-		GLFWwindow* win=std::static_cast<GLFWwindow*>(m_window->getNativeWindow());
+		GLFWwindow* win = static_cast<GLFWwindow*>(m_window->getNativeWindow());
 		RenderThread::start(win);
 
-		RenderThread::submit([win](){
+		RenderThread::submit([this](){
 			Renderer::init();
 			SpectralAssetManager::init();
+			m_layerStack.attachAll();
+			m_imguiLayer->initOpenGLBackent();
 		});
 
 		RenderThread::sync();
+		RONG_CORE_INFO("Render thread init done.");
 
 		while (m_running) {
 			float time = (float)glfwGetTime();
 			Timestep ts = time - m_lastFrameTime;
 			m_lastFrameTime = time;
 
-			if (!m_minimized) {
-				for (Layer* layer : m_layerStack)
+			m_window->pollEvents();
+
+			if(!m_minimized)
+			{
+				for(Layer* layer : m_layerStack)
 					layer->onUpdate(ts);
 			}
 
-			m_imguiLayer->begin();
-			for (Layer* layer : m_layerStack)
-				layer->onImGuiRender();
-			m_imguiLayer->end();
+			RenderThread::submit([this, ts](){
+				// ImGui OpenGL3 必须在渲染线程、且 context current 时调用
+				m_imguiLayer->begin();
+				for (Layer* layer : m_layerStack)
+					layer->onImGuiRender();
+				m_imguiLayer->end();
 
-			m_window->onUpdate();
+				m_window->swapBuffers();
+			});
+
+			RenderThread::sync();
 		}
 
+		RenderThread::submit([this]() {
+			m_imguiLayer->shutdownOpenGLBackend();
+			for (auto it = m_layerStack.rbegin(); it != m_layerStack.rend(); ++it)
+				(*it)->detachIfNeeded();
+			Renderer3D::shutdown();
+		});
+		RenderThread::sync();
+	
 		RenderThread::shutdown();
+		glfwMakeContextCurrent(win);
 	}
 
 	void Application::close()
@@ -150,8 +140,13 @@ namespace Rongine {
 		}
 
 		m_minimized = false;
-		Renderer::onWindowResize(event.getWidth(), event.getHeight());
-		
+
+		const uint32_t width = event.getWidth();
+		const uint32_t height = event.getHeight();
+		RenderThread::submit([width, height]() {
+			Renderer::onWindowResize(width, height);
+		});
+
 		return false;
 	}
 }

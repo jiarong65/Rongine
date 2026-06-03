@@ -19,12 +19,15 @@ namespace Rongine {
 		void begin();
 		void end();
 
+		void initOpenGLBackent();
+		void shutdownOpenGLBackend();
+
 		void blockEvents(bool block) { m_blockEvents = block; }
 		bool getBlockEvents() const { return m_blockEvents; }
 	private:
 		float m_time = 0.0f;
 		bool m_blockEvents = false;	
+		bool m_openGLBackendInitialized=false;
 	};
 
 }
-

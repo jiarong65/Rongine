@@ -18,9 +18,13 @@ namespace Rongine {
 		virtual void onImGuiRender() {};
 		virtual void onEvent(Event& e) {};
 
+		void attachIfNeeded();
+		void detachIfNeeded();
+
 		const std::string& getName() { return m_debugName; }
 	protected:
 		std::string m_debugName;
+		bool m_attached=false;
 	};
 
 }
