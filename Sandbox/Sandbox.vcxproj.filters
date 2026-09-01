@@ -15,24 +15,18 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\ExampleLayer.h">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="src\Rongpch.h">
-      <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Sandbox2D.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\ExampleLayer.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="src\Rongpch.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\Sandbox2D.cpp">
+    <ClCompile Include="src\Sandbox.ExampleLayer.ixx">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Sandbox.Sandbox2D.ixx">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\SandboxApp.cpp">

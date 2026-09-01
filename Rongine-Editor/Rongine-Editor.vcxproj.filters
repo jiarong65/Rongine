@@ -24,24 +24,18 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\EditorLayer.h">
-      <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="src\ExampleLayer.h">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="src\Rongpch.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\EditorLayer.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="src\ExampleLayer.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="src\RongEditorApp.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RongineEditor.EditorLayer.ixx">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RongineEditor.ExampleLayer.ixx">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongpch.cpp">

@@ -70,8 +70,11 @@ project "Rongine"
 	location "Rongine"
 	kind "StaticLib"
 	language "C++"
-	cppdialect "C++17"
+	cppdialect "C++20"
+	enablemodules "On"
+	scanformoduledependencies "On"
 	staticruntime "on"
+	flags { "MultiProcessorCompile" }
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -83,6 +86,7 @@ project "Rongine"
 	{
 		"%{prj.name}/src/**.h",
 		"%{prj.name}/src/**.cpp",
+		"%{prj.name}/src/**.ixx",
 		-- 多线程渲染（显式列出，避免未重新 generate 时漏编 Threading 下新文件）
 		"%{prj.name}/src/Rongine/Renderer/Threading/**.h",
 		"%{prj.name}/src/Rongine/Renderer/Threading/**.cpp",
@@ -103,6 +107,15 @@ project "Rongine"
 	filter "files:**/ImGuizmo.cpp"
         flags { "NoPCH" }
     filter {} -- 重置过滤器，防止影响后面的配置
+
+	filter "files:**.ixx"
+		compileas "Module"
+		flags { "NoPCH" }
+	filter {} -- 重置过滤器
+
+	filter "files:**/Rongine.Renderer.impl.cpp"
+		flags { "NoPCH" }
+	filter {} -- 重置过滤器
 
 	includedirs
 	{
@@ -170,8 +183,11 @@ project "Sandbox"
 	location "Sandbox"
 	kind "ConsoleApp"
 	language "C++"
-	cppdialect "C++17"
+	cppdialect "C++20"
+	enablemodules "On"
+	scanformoduledependencies "On"
 	staticruntime "on"
+	flags { "MultiProcessorCompile" }
 	buildoptions "/utf-8"
 
 	debugdir "Sandbox"
@@ -186,6 +202,7 @@ project "Sandbox"
 	{
 		"%{prj.name}/src/**.h",
 		"%{prj.name}/src/**.cpp",
+		"%{prj.name}/src/**.ixx",
 		"%{prj.name}/assets/**"
 	}
 
@@ -237,8 +254,11 @@ project "Rongine-Editor"
 	location "Rongine-Editor"
 	kind "ConsoleApp"
 	language "C++"
-	cppdialect "C++17"
+	cppdialect "C++20"
+	enablemodules "On"
+	scanformoduledependencies "On"
 	staticruntime "on"
+	flags { "MultiProcessorCompile" }
 	buildoptions "/utf-8"
 
 	debugdir "%{prj.name}"
@@ -253,6 +273,7 @@ project "Rongine-Editor"
 	{
 		"%{prj.name}/src/**.h",
 		"%{prj.name}/src/**.cpp",
+		"%{prj.name}/src/**.ixx",
 		"%{prj.name}/assets/**"
 	}
 

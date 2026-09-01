@@ -4,15 +4,6 @@
     <Filter Include="src">
       <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\Platform">
-      <UniqueIdentifier>{21CA02E5-0D2D-9289-B6B2-CA3FA2F45D0C}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\Platform\OpenGL">
-      <UniqueIdentifier>{35A49437-A105-7245-2A73-B8F796D3A804}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\Platform\Windows">
-      <UniqueIdentifier>{5B054582-4794-CE4B-F0B2-E246DC20DFF1}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\Rongine">
       <UniqueIdentifier>{CE800EC0-3A36-87B5-C32A-818C2FDF7DB9}</UniqueIdentifier>
     </Filter>
@@ -75,74 +66,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\Platform\OpenGL\OpenGLBuffer.h">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Platform\OpenGL\OpenGLComputeShader.h">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Platform\OpenGL\OpenGLContext.h">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Platform\OpenGL\OpenGLFramebuffer.h">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Platform\OpenGL\OpenGLPipelineState.h">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Platform\OpenGL\OpenGLRendererAPI.h">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Platform\OpenGL\OpenGLShader.h">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Platform\OpenGL\OpenGLShaderStorageBuffer.h">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Platform\OpenGL\OpenGLTexture.h">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Platform\OpenGL\OpenGLUniformBuffer.h">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Platform\OpenGL\OpenGLVertexArray.h">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Platform\Windows\WindowsWindow.h">
-      <Filter>src\Platform\Windows</Filter>
-    </ClInclude>
     <ClInclude Include="src\Rongine.h">
       <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\CAD\CADBoolean.h">
-      <Filter>src\Rongine\CAD</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\CAD\CADFeature.h">
-      <Filter>src\Rongine\CAD</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\CAD\CADImporter.h">
-      <Filter>src\Rongine\CAD</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\CAD\CADMesher.h">
-      <Filter>src\Rongine\CAD</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\CAD\CADModeler.h">
-      <Filter>src\Rongine\CAD</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Commands\CADModifyCommand.h">
-      <Filter>src\Rongine\Commands</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Commands\Command.h">
-      <Filter>src\Rongine\Commands</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Commands\DeleteCommand.h">
-      <Filter>src\Rongine\Commands</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Commands\TransformCommand.h">
-      <Filter>src\Rongine\Commands</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Core\Application.h">
-      <Filter>src\Rongine\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongine\Core\Core.h">
       <Filter>src\Rongine\Core</Filter>
@@ -150,158 +75,11 @@
     <ClInclude Include="src\Rongine\Core\EntryPoint.h">
       <Filter>src\Rongine\Core</Filter>
     </ClInclude>
-    <ClInclude Include="src\Rongine\Core\Input.h">
-      <Filter>src\Rongine\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Core\KeyCodes.h">
-      <Filter>src\Rongine\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Core\Layer.h">
-      <Filter>src\Rongine\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Core\LayerStack.h">
-      <Filter>src\Rongine\Core</Filter>
-    </ClInclude>
     <ClInclude Include="src\Rongine\Core\Log.h">
       <Filter>src\Rongine\Core</Filter>
     </ClInclude>
-    <ClInclude Include="src\Rongine\Core\MouseCodes.h">
+    <ClInclude Include="src\Rongine\Core\RongineMacros.h">
       <Filter>src\Rongine\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Core\Timestep.h">
-      <Filter>src\Rongine\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Core\Window.h">
-      <Filter>src\Rongine\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Events\ApplicationEvent.h">
-      <Filter>src\Rongine\Events</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Events\Event.h">
-      <Filter>src\Rongine\Events</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Events\KeyEvent.h">
-      <Filter>src\Rongine\Events</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Events\MouseEvent.h">
-      <Filter>src\Rongine\Events</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\ImGui\ContentBrowserPanel.h">
-      <Filter>src\Rongine\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\ImGui\ImGuiLayer.h">
-      <Filter>src\Rongine\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\ImGui\SceneHierarchyPanel.h">
-      <Filter>src\Rongine\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Math\Math.h">
-      <Filter>src\Rongine\Math</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\AccelerationStructures.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\BVH.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\Buffer.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\ComputeShader.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\Framebuffer.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\GraphicsContext.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\Material.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\OrthographicCamera.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\OrthographicCameraController.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\PerspectiveCamera.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\PerspectiveCameraController.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\PipelineState.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\RenderCommand.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\RenderGraph.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\RenderPass.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\RenderTypes.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\Renderer.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\Renderer2D.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\Renderer3D.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\RendererAPI.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\Shader.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\ShaderStorageBuffer.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\SpectralRenderer.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\Texture.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\Threading\FrameSync.h">
-      <Filter>src\Rongine\Renderer\Threading</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\Threading\RenderThread.h">
-      <Filter>src\Rongine\Renderer\Threading</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\UniformBuffer.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Renderer\VertexArray.h">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Scene\Components.h">
-      <Filter>src\Rongine\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Scene\Entity.h">
-      <Filter>src\Rongine\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Scene\Scene.h">
-      <Filter>src\Rongine\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Scene\SceneSerializer.h">
-      <Filter>src\Rongine\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Scene\SpectralAssetManager.h">
-      <Filter>src\Rongine\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Utils\GeometryUtils.h">
-      <Filter>src\Rongine\Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Rongine\Utils\PlatformUtils.h">
-      <Filter>src\Rongine\Utils</Filter>
     </ClInclude>
     <ClInclude Include="src\Rongpch.h">
       <Filter>src</Filter>
@@ -1571,190 +1349,157 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Platform\OpenGL\OpenGLComputeShader.cpp">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Platform\OpenGL\OpenGLContext.cpp">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Platform\OpenGL\OpenGLFramebuffer.cpp">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Platform\OpenGL\OpenGLPipelineState.cpp">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Platform\OpenGL\OpenGLRendererAPI.cpp">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Platform\OpenGL\OpenGLShader.cpp">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Platform\OpenGL\OpenGLShaderStorageBuffer.cpp">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Platform\OpenGL\OpenGLTexture.cpp">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Platform\OpenGL\OpenGLUniformBuffer.cpp">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Platform\OpenGL\OpenGLVertexArray.cpp">
-      <Filter>src\Platform\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Platform\Windows\WindowsInput.cpp">
-      <Filter>src\Platform\Windows</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp">
-      <Filter>src\Platform\Windows</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Rongine\CAD\CADBoolean.cpp">
+    <ClCompile Include="src\Rongine\CAD\Rongine.CAD.ixx">
       <Filter>src\Rongine\CAD</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\CAD\CADFeature.cpp">
+    <ClCompile Include="src\Rongine\CAD\Rongine.CADBoolean.ixx">
       <Filter>src\Rongine\CAD</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\CAD\CADImporter.cpp">
+    <ClCompile Include="src\Rongine\CAD\Rongine.CADBooleanData.ixx">
       <Filter>src\Rongine\CAD</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\CAD\CADMesher.cpp">
+    <ClCompile Include="src\Rongine\CAD\Rongine.CADFeature.ixx">
       <Filter>src\Rongine\CAD</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\CAD\CADModeler.cpp">
+    <ClCompile Include="src\Rongine\CAD\Rongine.CADImporter.ixx">
       <Filter>src\Rongine\CAD</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Commands\CADModifyCommand.cpp">
+    <ClCompile Include="src\Rongine\CAD\Rongine.CADMesher.ixx">
+      <Filter>src\Rongine\CAD</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\CAD\Rongine.CADModeler.ixx">
+      <Filter>src\Rongine\CAD</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Commands\Rongine.CADModifyCommand.ixx">
       <Filter>src\Rongine\Commands</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Commands\Command.cpp">
+    <ClCompile Include="src\Rongine\Commands\Rongine.Commands.ixx">
       <Filter>src\Rongine\Commands</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Commands\DeleteCommand.cpp">
+    <ClCompile Include="src\Rongine\Commands\Rongine.DeleteCommand.ixx">
       <Filter>src\Rongine\Commands</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Commands\TransformCommand.cpp">
+    <ClCompile Include="src\Rongine\Commands\Rongine.TransformCommand.ixx">
       <Filter>src\Rongine\Commands</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Core\Application.cpp">
+    <ClCompile Include="src\Rongine\Core\Rongine.Application.ixx">
       <Filter>src\Rongine\Core</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Core\Layer.cpp">
+    <ClCompile Include="src\Rongine\Core\Rongine.ApplicationImpl.ixx">
       <Filter>src\Rongine\Core</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Core\LayerStack.cpp">
+    <ClCompile Include="src\Rongine\Core\Rongine.Core.ixx">
       <Filter>src\Rongine\Core</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Core\Log.cpp">
+    <ClCompile Include="src\Rongine\Core\Rongine.Input.ixx">
       <Filter>src\Rongine\Core</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Core\Window.cpp">
+    <ClCompile Include="src\Rongine\Core\Rongine.LayerStack.ixx">
       <Filter>src\Rongine\Core</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\ImGui\ContentBrowserPanel.cpp">
-      <Filter>src\Rongine\ImGui</Filter>
+    <ClCompile Include="src\Rongine\Core\Rongine.Log.ixx">
+      <Filter>src\Rongine\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Core\Rongine.Window.ixx">
+      <Filter>src\Rongine\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Events\Rongine.Events.ixx">
+      <Filter>src\Rongine\Events</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongine\ImGui\ImGuiBuild.cpp">
       <Filter>src\Rongine\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\ImGui\ImGuiLayer.cpp">
+    <ClCompile Include="src\Rongine\ImGui\Rongine.ContentBrowserPanel.ixx">
       <Filter>src\Rongine\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\ImGui\SceneHierarchyPanel.cpp">
+    <ClCompile Include="src\Rongine\ImGui\Rongine.ImGuiLayer.ixx">
       <Filter>src\Rongine\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Math\Math.cpp">
+    <ClCompile Include="src\Rongine\ImGui\Rongine.SceneHierarchyPanel.ixx">
+      <Filter>src\Rongine\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Math\Math.ixx">
       <Filter>src\Rongine\Math</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\BVH.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.BVH.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\Buffer.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.BufferData.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\ComputeShader.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.FramebufferData.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\Framebuffer.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.MaterialData.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\Material.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.OrthographicCameraController.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\OrthographicCamera.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.PerspectiveCameraController.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\OrthographicCameraController.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.PipelineStateData.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\PerspectiveCamera.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.Renderer.Interfaces.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\PerspectiveCameraController.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.Renderer.OpenGL.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\PipelineState.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.Renderer.impl.cpp">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\RenderCommand.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.Renderer.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\RenderGraph.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.RendererAcceleration.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\RenderPass.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.RendererCameras.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\Renderer.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.RendererData.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\Renderer2D.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.RendererTypes.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\Renderer3D.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.ShaderStorageBufferData.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\RendererAPI.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Rongine.TextureData.ixx">
       <Filter>src\Rongine\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\Shader.cpp">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\ShaderStorageBuffer.cpp">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\SpectralRenderer.cpp">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\Texture.cpp">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\Threading\FrameSync.cpp">
+    <ClCompile Include="src\Rongine\Renderer\Threading\Rongine.RenderThread.ixx">
       <Filter>src\Rongine\Renderer\Threading</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\Threading\RenderThread.cpp">
-      <Filter>src\Rongine\Renderer\Threading</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\UniformBuffer.cpp">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Rongine\Renderer\VertexArray.cpp">
-      <Filter>src\Rongine\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Rongine\Scene\Scene.cpp">
+    <ClCompile Include="src\Rongine\Scene\Rongine.Components.ixx">
       <Filter>src\Rongine\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Scene\SceneSerializer.cpp">
+    <ClCompile Include="src\Rongine\Scene\Rongine.Scene.ixx">
       <Filter>src\Rongine\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Scene\SpectralAssetManager.cpp">
+    <ClCompile Include="src\Rongine\Scene\Rongine.SceneData.ixx">
       <Filter>src\Rongine\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Utils\GeometryUtils.cpp">
+    <ClCompile Include="src\Rongine\Scene\Rongine.SceneSerializer.ixx">
+      <Filter>src\Rongine\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Scene\Rongine.SpectralAssetManager.ixx">
+      <Filter>src\Rongine\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Scene\Rongine.SpectralData.ixx">
+      <Filter>src\Rongine\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Utils\Rongine.GeometryData.ixx">
       <Filter>src\Rongine\Utils</Filter>
     </ClCompile>
-    <ClCompile Include="src\Rongine\Utils\PlatformUtils.cpp">
+    <ClCompile Include="src\Rongine\Utils\Rongine.GeometryUtils.ixx">
+      <Filter>src\Rongine\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Rongine\Utils\Rongine.PlatformUtils.ixx">
       <Filter>src\Rongine\Utils</Filter>
     </ClCompile>
     <ClCompile Include="src\Rongpch.cpp">

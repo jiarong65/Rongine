@@ -6,19 +6,20 @@
 #include <glm/mat4x4.hpp> // glm::mat4
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale, glm::perspective
 
-#include "Platform/OpenGL/OpenGLShader.h"
+import Rongine.Renderer;
+import Rongine.ImGuiLayer;
 #include "Rongine/Core/EntryPoint.h"
 #include <glm/gtc/type_ptr.hpp>
 
 #include "imgui/imgui.h"
-#include "EditorLayer.h"
+import RongineEditor.EditorLayer;
 
 class RongEditorApp :public Rongine::Application {
 public:
 	RongEditorApp() {
 		//pushLayer(new ExampleLayer());
 		pushLayer(new EditorLayer());
-		pushOverLayer(Rongine::Application::getImGuiLayer());
+		pushOverLayer(static_cast<Rongine::ImGuiLayer*>(Rongine::Application::get().getImGuiLayer()));
 	}
 	~RongEditorApp() {
 
