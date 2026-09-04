@@ -127,6 +127,12 @@ private:
 	};
 	std::vector<ProfileResult> m_profileResult;
 
+	// FPS 每 1 秒统计并刷新一次（帧数 / 该窗口内累计耗时）
+	float m_fpsWindowTime = 0.0f;   // 当前统计窗口已过秒数
+	float m_fpsTimeSumMs = 0.0f;    // 窗口内 OnUpdate 耗时累计 (ms)
+	int m_fpsFrames = 0;            // 窗口内帧数
+	float m_displayFps = 0.0f;      // 对外显示的帧率
+
 	glm::vec4 m_squareColor = { 0.2f, 0.3f, 0.8f, 1.0f };
 	glm::vec3 m_squarePosition = { 0.0f,0.0f,0.0f };
 
@@ -979,8 +985,24 @@ void EditorLayer::onImGuiRender()
 
 	ImGui::Separator();
 	for (auto& result : m_profileResult)
-		if(result.name=="EditorLayer::OnUpdate")ImGui::Text("FPS: %.3f", 1000.0f/result.time);
+		if (result.name == "EditorLayer::OnUpdate")
+		{
+			m_fpsTimeSumMs += result.time;
+			++m_fpsFrames;
+		}
 	m_profileResult.clear();
+
+	// 每 1 秒刷新一次显示（窗口内平均帧率），避免数字每帧乱跳
+	m_fpsWindowTime += ImGui::GetIO().DeltaTime;
+	if (m_fpsWindowTime >= 1.0f)
+	{
+		if (m_fpsFrames > 0)
+			m_displayFps = 1000.0f * m_fpsFrames / m_fpsTimeSumMs;
+		m_fpsWindowTime = 0.0f;
+		m_fpsTimeSumMs = 0.0f;
+		m_fpsFrames = 0;
+	}
+	ImGui::Text("FPS: %.3f", m_displayFps);
 
 	ImGui::Separator();
 	ImGui::Checkbox("Enable RGB Ray Tracing (GPU)", &m_ShowRayTracing);

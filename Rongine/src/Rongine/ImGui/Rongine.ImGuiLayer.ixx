@@ -65,7 +65,7 @@ export namespace Rongine {
 		ImGui::StyleColorsDark();
 
 		ImGuiIO& io = ImGui::GetIO();
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		// 不启用 NavEnableKeyboard：启用后按 Alt 会激活 ImGui 菜单层抢焦点
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
 		io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
