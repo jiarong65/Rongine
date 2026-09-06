@@ -120,6 +120,26 @@ private:
 
 	Rongine::Ref<Rongine::Framebuffer> m_framebuffer;
 
+	// PCSS 阴影：光视角深度图 + 深度专用 shader。矩阵在主线程算好，按值捕获进渲染线程的 pass。
+	Rongine::Ref<Rongine::Framebuffer> m_shadowFramebuffer;
+	Rongine::Ref<Rongine::Shader> m_depthShader;
+	static constexpr uint32_t kShadowMapSize = 2048;
+	static constexpr uint32_t kShadowMapTextureUnit = 32; // 0..31 被 Renderer3D 的 u_Textures[32] 占用
+	struct ShadowFrameData
+	{
+		glm::mat4 LightSpaceMatrix = glm::mat4(1.0f);
+		glm::vec3 LightDirection = { 0.0f, -1.0f, 0.0f };
+		glm::vec3 LightColor = { 1.0f, 1.0f, 1.0f };
+		float LightIntensity = 0.0f;   // 0 = 场景里没有方向光
+		float LightSize = 0.5f;
+		float LightFrustumWidth = 40.0f;
+		float LightNear = 1.0f;
+		float LightFar = 80.0f;     // 与 updateShadowFrameData 里 ortho 的 far 保持一致
+		bool Enabled = false;
+	};
+	ShadowFrameData m_shadowData;
+	int m_ShadowDebugMode = 0; // 0=Final 1=Shadow 2=ShadowMap
+	void updateShadowFrameData();
 	struct ProfileResult
 	{
 		const char* name;
@@ -256,9 +276,22 @@ void EditorLayer::onAttach()
 	};
 	m_framebuffer = Rongine::Framebuffer::create(fbSpec);
 
+	// 光视角深度图：只有深度附件，无颜色输出
+	Rongine::FramebufferSpecification shadowSpec;
+	shadowSpec.width = kShadowMapSize;
+	shadowSpec.height = kShadowMapSize;
+	shadowSpec.Attachments = { Rongine::FramebufferTextureFormat::Depth };
+	m_shadowFramebuffer = Rongine::Framebuffer::create(shadowSpec);
+	m_depthShader = Rongine::Shader::create("assets/shaders/Shadow.glsl");
+
 	//////////////////////////////////////////////////////////////////////////
 
 	m_activeScene = Rongine::CreateRef<Rongine::Scene>();
+
+	{
+		auto sun = m_activeScene->createEntity("Directional Light");
+		sun.AddComponent<Rongine::DirectionalLightComponent>();
+	}
 
 	//////////////////////////////////////////////////////////////////////////
 	//ui面板
@@ -277,6 +310,8 @@ void EditorLayer::onDetach()
 {
 	// 须在渲染线程、且 GL context 仍有效时释放（避�?~LayerStack 在主线程 glDelete 崩溃�?
 	m_framebuffer.reset();
+	m_shadowFramebuffer.reset();
+	m_depthShader.reset();
 	m_checkerboardTexture.reset();
 	m_logoTexture.reset();
 	m_SpectralRenderer.reset();
@@ -668,8 +703,9 @@ void EditorLayer::onUpdate(Rongine::Timestep ts)
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
-	// 光栅渲染 + 拾取（主线程准备，渲染线�?draw + readPixelID�?
+	// 光栅渲染 + 拾取（主线程准备，渲染线程 draw + readPixelID）
 	////////////////////////////////////////////////////////////////////////////////////////////
+	updateShadowFrameData();
 	buildRenderGraph();
 
 	auto [mx, my] = ImGui::GetMousePos();
@@ -1003,6 +1039,42 @@ void EditorLayer::onImGuiRender()
 		m_fpsFrames = 0;
 	}
 	ImGui::Text("FPS: %.3f", m_displayFps);
+
+	// --- 方向光面板：编辑场景里第一个 DirectionalLightComponent ---
+	{
+		auto lightView = m_activeScene->getAllEntitiesWith<Rongine::DirectionalLightComponent>();
+		if (lightView.front() != entt::null)
+		{
+			auto& light = lightView.get<Rongine::DirectionalLightComponent>(lightView.front());
+
+			ImGui::Separator();
+			if (ImGui::CollapsingHeader("Directional Light"))
+			{
+				ImGui::Text("Shadow Debug:");
+				ImGui::RadioButton("Final", &m_ShadowDebugMode, 0); ImGui::SameLine();
+				ImGui::RadioButton("Shadow", &m_ShadowDebugMode, 1); ImGui::SameLine();
+				ImGui::RadioButton("ShadowMap", &m_ShadowDebugMode, 2);
+				ImGui::Separator();
+				// 方向用两个角度编辑，比直接拖 vec3 直观
+				float theta = std::atan2(light.Direction.x, light.Direction.z);        // 方位角
+				float phi = std::acos(glm::clamp(light.Direction.y, -1.0f, 1.0f));    // 仰角
+				bool changed = false;
+				changed |= ImGui::SliderAngle("Azimuth", &theta, -180.0f, 180.0f);
+				changed |= ImGui::SliderAngle("Elevation", &phi, 5.0f, 175.0f);
+				if (changed)
+				{
+					light.Direction = glm::vec3(
+						std::sin(phi) * std::sin(theta),
+						std::cos(phi),
+						std::sin(phi) * std::cos(theta));
+				}
+				ImGui::ColorEdit3("Color", &light.Color.x);
+				ImGui::SliderFloat("Intensity", &light.Intensity, 0.0f, 8.0f);
+				ImGui::SliderFloat("Light Size", &light.LightSize, 0.0f, 3.0f);
+				ImGui::Checkbox("Cast Shadows", &light.CastShadows);
+			}
+		}
+	}
 
 	ImGui::Separator();
 	ImGui::Checkbox("Enable RGB Ray Tracing (GPU)", &m_ShowRayTracing);
@@ -2502,12 +2574,66 @@ void EditorLayer::ExitSketchMode()
 // ============================================================
 //  RenderGraph 构建 �?将命令式渲染流程声明�?Pass
 // ============================================================
+void EditorLayer::updateShadowFrameData()
+{
+	m_shadowData = {};
+
+	auto view = m_activeScene->getAllEntitiesWith<Rongine::DirectionalLightComponent>();
+	for (auto entityHandle : view)
+	{
+		const auto& light = view.get<Rongine::DirectionalLightComponent>(entityHandle);
+		if (!light.CastShadows || light.Intensity <= 0.0f) continue;
+
+		glm::vec3 dir = glm::normalize(light.Direction);
+		glm::vec3 up = (std::abs(dir.y) > 0.99f) ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
+		glm::mat4 lightView = glm::lookAt(-dir * 30.0f, glm::vec3(0.0f), up);
+		glm::mat4 lightProj = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 1.0f, 80.0f);
+
+		m_shadowData.LightSpaceMatrix = lightProj * lightView;
+		m_shadowData.LightDirection = dir;
+		m_shadowData.LightColor = light.Color;
+		m_shadowData.LightIntensity = light.Intensity;
+		m_shadowData.LightSize = light.LightSize;
+		m_shadowData.Enabled = true;
+		break; // 阶段一：只取第一个开阴影的方向光
+	}
+}
+
 void EditorLayer::buildRenderGraph()
 {
 	m_renderGraph.clear();
 
 	// ==========================================
-	//  Pass 1: Geometry Pass (主场景渲�?
+	//  Pass 0: Shadow Pass (光视角深度图)
+	//  深度专用 shader 直接绘制——同一几何体在不同 pass 用不同 shader，
+	//  正是将来材质系统 MaterialPass 要正式化的东西。
+	// ==========================================
+	if (m_shadowData.Enabled)
+	{
+		Rongine::RenderPassSpec spec;
+		spec.Name = "ShadowPass";
+		spec.TargetFramebuffer = m_shadowFramebuffer;
+		spec.ClearColorBuffer = false; // 无颜色附件
+		spec.ClearDepthBuffer = true;
+
+		m_renderGraph.addPass(spec, [this, data = m_shadowData](Rongine::RenderPass&) {
+			m_depthShader->bind();
+			m_depthShader->setMat4("u_LightSpaceMatrix", data.LightSpaceMatrix);
+
+			auto view = m_activeScene->getAllEntitiesWith<Rongine::TransformComponent, Rongine::MeshComponent>();
+			for (auto entityHandle : view)
+			{
+				auto [transform, mesh] = view.get<Rongine::TransformComponent, Rongine::MeshComponent>(entityHandle);
+				if (!mesh.VA) continue;
+				m_depthShader->setMat4("u_Model", transform.GetTransform());
+				mesh.VA->bind();
+				Rongine::RenderCommand::drawIndexed(mesh.VA, mesh.VA->getIndexBuffer()->getCount());
+			}
+		});
+	}
+
+	// ==========================================
+	//  Pass 1: Geometry Pass (主场景渲染)
 	// ==========================================
 	{
 		Rongine::RenderPassSpec spec;
@@ -2520,8 +2646,26 @@ void EditorLayer::buildRenderGraph()
 		spec.ClearAttachmentValue = -1;
 
 		m_renderGraph.addPass(spec, [this](Rongine::RenderPass& pass) {
-			// 批处理渲�?(地面)
+			// 批处理渲染(地面)
 			Rongine::Renderer3D::beginScene(m_cameraContorller.getCamera());
+
+			// 把光视角深度图绑到独立纹理单元，并把本帧光源数据传给场景 shader
+			{
+				Rongine::RenderCommand::bindTextureUnit(kShadowMapTextureUnit,
+					m_shadowFramebuffer->getDepthAttachmentRendererID());
+				auto sceneShader = Rongine::Renderer3D::getSceneShader();
+				sceneShader->setInt("u_ShadowMap", (int)kShadowMapTextureUnit);
+				sceneShader->setInt("u_ShadowDebugMode", m_ShadowDebugMode);
+				sceneShader->setInt("u_LightEnabled", m_shadowData.Enabled ? 1 : 0);
+				sceneShader->setMat4("u_LightSpaceMatrix", m_shadowData.LightSpaceMatrix);
+				sceneShader->setFloat3("u_LightDirection", m_shadowData.LightDirection);
+				sceneShader->setFloat3("u_LightColor", m_shadowData.LightColor * m_shadowData.LightIntensity);
+				sceneShader->setFloat("u_LightSize", m_shadowData.LightSize);
+				sceneShader->setFloat("u_LightFrustumWidth", m_shadowData.LightFrustumWidth);
+				sceneShader->setFloat("u_LightNear", m_shadowData.LightNear);
+				sceneShader->setFloat("u_LightFar", m_shadowData.LightFar);
+			}
+
 			Rongine::Renderer3D::drawCube({ 0.0f, -1.0f, 0.0f }, { 100.0f, 0.1f, 100.0f }, m_checkerboardTexture);
 			Rongine::Renderer3D::endScene();
 

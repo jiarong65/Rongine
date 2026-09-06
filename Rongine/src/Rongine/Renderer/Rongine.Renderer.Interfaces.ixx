@@ -236,6 +236,7 @@ export namespace Rongine {
 		virtual void setBlend(bool enabled) = 0;
 		virtual void setCullFace(bool enabled, bool backFace = true) = 0;
 		virtual void setWireframe(bool enabled) = 0;
+		virtual void bindTextureUnit(uint32_t slot, uint32_t rendererID) = 0;
 
 		inline static API getAPI() { return s_api; };
 
@@ -316,6 +317,12 @@ export namespace Rongine {
 			s_rendererAPI->setWireframe(enabled);
 		}
 
+		// 把一个外部 GL 纹理 ID 绑定到指定纹理单元（如 FBO 深度附件作为阴影图采样）
+		inline static void bindTextureUnit(uint32_t slot, uint32_t rendererID)
+		{
+			s_rendererAPI->bindTextureUnit(slot, rendererID);
+		}
+
 	private:
 		static RendererAPI* s_rendererAPI;
 	};
@@ -384,6 +391,7 @@ export namespace Rongine {
 		virtual glm::ivec4 readPixelID(uint32_t attachmentIndex, int x, int y) = 0;
 		virtual void clearAttachment(uint32_t attachmentIndex, int value) = 0;
 		virtual uint32_t getColorAttachmentRendererID(uint32_t index = 0) const = 0;
+		virtual uint32_t getDepthAttachmentRendererID() const = 0;
 
 		static Ref<Framebuffer> create(const FramebufferSpecification& spec);
 	};
@@ -737,6 +745,9 @@ export namespace Rongine {
 		static void beginScene(const PerspectiveCamera& camera);
 		static void endScene();
 		static void flush();
+
+		// 场景主 shader（Texture.glsl），供上层 pass 设置阴影等跨 pass 的 uniform
+		static Ref<Shader> getSceneShader();
 
 		static void beginLines(const PerspectiveCamera& camera);
 		static void endLines();
@@ -1560,6 +1571,11 @@ namespace Rongine {
 		uint32_t dataSize = (uint32_t)((uint8_t*)s_Data.CubeVertexBufferPtr - (uint8_t*)s_Data.CubeVertexBufferBase);
 		s_Data.CubeVB->setData(s_Data.CubeVertexBufferBase, dataSize);
 		flush();
+	}
+
+	Ref<Shader> Renderer3D::getSceneShader()
+	{
+		return s_Data.TextureShader;
 	}
 
 	void Renderer3D::flush()

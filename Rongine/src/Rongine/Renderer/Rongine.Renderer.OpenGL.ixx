@@ -809,6 +809,11 @@ export namespace Rongine {
 			{
 				createTextures(multisample, &m_depthAttachment, 1);
 				glTextureStorage2D(m_depthAttachment, 1, GL_DEPTH24_STENCIL8, m_specification.width, m_specification.height);
+				// 深度附件可能被当作阴影图采样：用 NEAREST 保证读到原始深度，不做插值
+				glTextureParameteri(m_depthAttachment, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTextureParameteri(m_depthAttachment, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				glTextureParameteri(m_depthAttachment, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTextureParameteri(m_depthAttachment, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 				glNamedFramebufferTexture(m_rendererID, GL_DEPTH_STENCIL_ATTACHMENT, m_depthAttachment, 0);
 			}
 
@@ -849,6 +854,12 @@ export namespace Rongine {
 		{
 			RONG_CORE_ASSERT(index < m_colorAttachments.size(), "Index out of bounds!");
 			return m_colorAttachments[index];
+		}
+
+		virtual uint32_t getDepthAttachmentRendererID() const override
+		{
+			RONG_CORE_ASSERT(m_depthAttachment != 0, "Framebuffer has no depth attachment!");
+			return m_depthAttachment;
 		}
 
 		virtual const FramebufferSpecification& getSpecification() const override { return m_specification; }
@@ -1223,6 +1234,11 @@ export namespace Rongine {
 		virtual void setWireframe(bool enabled) override
 		{
 			glPolygonMode(GL_FRONT_AND_BACK, enabled ? GL_LINE : GL_FILL);
+		}
+
+		virtual void bindTextureUnit(uint32_t slot, uint32_t rendererID) override
+		{
+			glBindTextureUnit(slot, rendererID);
 		}
 	};
 

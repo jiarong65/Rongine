@@ -88,6 +88,16 @@ export namespace Rongine {
 		float Metallic = 0.0f;                   // 0.0 = dielectric, 1.0 = metal
 	};
 
+	// 方向光（太阳）。Direction 是光的传播方向（从光源指向场景），着色时取反得到 L。
+	struct DirectionalLightComponent
+	{
+		glm::vec3 Direction = glm::normalize(glm::vec3(-1.0f, -1.5f, -0.6f));
+		glm::vec3 Color = { 1.0f, 1.0f, 1.0f };
+		float Intensity = 2.0f;
+		float LightSize = 0.5f;      // 光源的物理尺寸（世界单位），决定 PCSS 半影宽度
+		bool CastShadows = true;
+	};
+
 	struct SpectralMaterialComponent
 	{
 		enum class MaterialType {

@@ -94,18 +94,15 @@ export namespace Rongine {
 		std::unique_lock lock(*mtx);
 		while (!done->load(std::memory_order_acquire))
 		{
-			cv->wait_for(lock, std::chrono::milliseconds(1));
+			cv->wait_for(lock, std::chrono::milliseconds(50));
 
-			if (s_window)
-				glfwPollEvents();
-
+			// Events must only be dispatched from the main loop's frame-start pollEvents;
+			// dispatching here would re-enter Application::onEvent mid-frame. Peeking
+			// without removal is enough to stop Windows from flagging the window as hung
+			// while a long render-thread task (e.g. BVH build) is in flight.
 #ifdef _WIN32
 			MSG msg;
-			while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
-			{
-				TranslateMessage(&msg);
-				DispatchMessageW(&msg);
-			}
+			PeekMessageW(&msg, nullptr, 0, 0, PM_NOREMOVE);
 #endif
 		}
 	}

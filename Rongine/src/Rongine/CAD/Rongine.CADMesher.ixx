@@ -107,7 +107,7 @@ export namespace Rongine {
 
 					CubeVertex v;
 					v.Position = { (float)p.X(), (float)p.Y(), (float)p.Z() };
-					v.Normal = { 0.0f, 1.0f, 0.0f }; // 简单默认法线
+					v.Normal = { 0.0f, 1.0f, 0.0f }; // 占位，三角化后按几何累加重算
 					v.Color = { 0.8f, 0.8f, 0.8f, 1.0f };
 					v.TexCoord = { 0.0f, 0.0f };
 					v.TexIndex = 0.0f;
@@ -116,6 +116,9 @@ export namespace Rongine {
 
 					outVertices.push_back(v);
 				}
+
+				// 法线累加器：每个节点一个，用调整过 winding 的三角形面法线累加
+				std::vector<glm::vec3> normalAccum(nodeCount, glm::vec3(0.0f));
 
 				// --- B. 提取三角形索引 ---
 				for (int i = 1; i <= triangleCount; i++)
@@ -133,21 +136,44 @@ export namespace Rongine {
 					// ========================================================
 					// 根据 Orientation 调整顶点写入顺序
 					// ========================================================
+					uint32_t a, b, c;
 					if (isReversed)
 					{
 						// 如果是反向面，交换 2 和 3 的顺序 (1-3-2)
 						// 存入 outIndices
-						outIndices.push_back(idx1);
-						outIndices.push_back(idx3);
-						outIndices.push_back(idx2);
+						a = idx1; b = idx3; c = idx2;
 					}
 					else
 					{
 						// 正常顺序 (1-2-3)
-						outIndices.push_back(idx1);
-						outIndices.push_back(idx2);
-						outIndices.push_back(idx3);
+						a = idx1; b = idx2; c = idx3;
 					}
+					outIndices.push_back(a);
+					outIndices.push_back(b);
+					outIndices.push_back(c);
+
+					// 用最终 winding 计算面法线并累加到三个顶点（shared-vertex 平滑，
+					// 圆柱/球等曲面能自然得到平滑法线；平面内各三角形同向抵消误差）
+					glm::vec3 pa = outVertices[a].Position;
+					glm::vec3 pb = outVertices[b].Position;
+					glm::vec3 pc = outVertices[c].Position;
+					glm::vec3 fn = glm::cross(pb - pa, pc - pa);
+					float len = glm::length(fn);
+					if (len > 1e-12f)
+					{
+						fn /= len;
+						normalAccum[a - currentFaceOffset] += fn;
+						normalAccum[b - currentFaceOffset] += fn;
+						normalAccum[c - currentFaceOffset] += fn;
+					}
+				}
+
+				// 归一化并写回该面的顶点法线
+				for (int i = 0; i < nodeCount; i++)
+				{
+					glm::vec3 n = normalAccum[i];
+					float len = glm::length(n);
+					outVertices[currentFaceOffset + i].Normal = (len > 1e-12f) ? n / len : glm::vec3(0.0f, 1.0f, 0.0f);
 				}
 
 				indexOffset += nodeCount;
